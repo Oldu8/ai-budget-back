@@ -20,8 +20,8 @@ class SupabaseAuthViaServiceRole
 
         $accessToken = substr($authHeader, 7);
 
-        $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
-        $serviceRoleKey = env('SUPABASE_SERVICE_ROLE');
+        $supabaseUrl = rtrim(config('services.supabase.url'), '/');
+        $serviceRoleKey = config('services.supabase.service_role');
 
         if (!$supabaseUrl || !$serviceRoleKey) {
             return response()->json(['message' => 'Server auth misconfigured'], 500);

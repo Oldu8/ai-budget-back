@@ -1,0 +1,12 @@
+---
+description: TypeScript and Fastify conventions
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# TypeScript
+
+- Prefer `const` and explicit types where they help readability.
+- Use async/await; avoid raw `.then()` chains.
+- In Fastify: use `reply`/`request` types from `fastify`; type route handlers and plugins.
+- Export from `index` files where it keeps imports clean (e.g. `routes/index.ts`).

@@ -1,0 +1,42 @@
+---
+description: Project conventions for ai-budget-backend
+alwaysApply: true
+---
+
+# ai-budget-backend
+
+### 1. NO EXTRA ROUTES
+
+- Do NOT create validation, test, check, or config routes
+- Only create routes that directly serve the application purpose
+- Keep API endpoints minimal and functional
+- Avoid over-engineering for a small project
+
+### 2. COMPACT & ACCURATE CODE
+
+- Write small, focused functions
+- Avoid unnecessary abstractions
+- Keep code simple and readable
+- Don't create extra layers unless absolutely necessary
+- Prefer inline solutions over separate utilities
+
+### 3. TWO AUTH ENTITIES
+
+- `AppUser` — mobile app users, authenticated via Supabase Auth middleware (`supabase.auth`)
+- `User` — admin panel users, authenticated via standard Laravel Auth (session + password)
+- Never mix these two entities or their auth mechanisms
+
+### 4. README.md
+
+- Keep all info about start/setup project in it. Add to it env example without variables.
+
+### 5. DB
+
+- For migration and DB changes use only Laravel Migrations suggest me to:
+  `php artisan make:migration`
+  `php artisan migrate`
+  but don't run migration at yourself
+
+### 6. General
+
+- Always refer to backend-spec.md for the database schema, table naming conventions, and business logic before generating any backend code.
