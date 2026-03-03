@@ -1,4 +1,12 @@
-# AI Budget: Backend Technical Specification (v1.2)
+# AI Budget: Backend Technical Specification (v1.3)
+
+## Changelog
+
+| Version | Changes |
+| ------- | ------- |
+| v1.3 | Auth proxy: register/login/refresh/logout через бэкенд. Добавлен AuthController, клиентская инструкция, описание env-переменных. |
+| v1.2 | Двухсущностная авторизация (AppUser + User), backend-spec обновлён под Laravel. |
+| v1.1 | Исправления: Authenticatable, config(), миграции, AppUserSettings. |
 
 ## 1. Project Overview
 
@@ -55,6 +63,136 @@ The system has two separate user entities with different auth mechanisms:
 | `app` | session | `app_users`| Mobile (backup)  |
 
 Mobile API routes use the `supabase.auth` middleware (not Laravel guards).
+
+### 3.3. AppUser Auth Flow (Backend Proxy)
+
+All auth goes through the backend. The client never talks to Supabase directly.
+Backend proxies requests to Supabase Auth API and returns tokens to the client.
+
+**Registration:**
+
+```
+Mobile App                     Backend API                     Supabase
+    |                              |                               |
+    |-- POST /api/auth/register -->|                               |
+    |   { email, password }        |                               |
+    |                              |-- POST /auth/v1/signup -----> |
+    |                              |   apiKey: SUPABASE_ANON_KEY   |
+    |                              |<-- { user, access_token } --- |
+    |                              |                               |
+    |                              |   AppUser::firstOrCreate()    |
+    |                              |   (new record in app_users)   |
+    |                              |                               |
+    |<-- 201 --------------------- |                               |
+    |   { access_token,            |                               |
+    |     refresh_token,           |                               |
+    |     user }                   |                               |
+```
+
+1. Client sends `POST /api/auth/register` with `{ email, password }`
+2. Backend validates input, sends signup request to Supabase Auth API
+3. Supabase creates the auth user, returns JWT tokens
+4. Backend creates `AppUser` record via `firstOrCreate(supabase_user_id)`
+5. Backend returns `access_token`, `refresh_token`, and user profile to client
+
+**Login:**
+
+```
+Mobile App                     Backend API                     Supabase
+    |                              |                               |
+    |-- POST /api/auth/login ----> |                               |
+    |   { email, password }        |                               |
+    |                              |-- POST /auth/v1/token ------> |
+    |                              |   ?grant_type=password        |
+    |                              |<-- { user, access_token } --- |
+    |                              |                               |
+    |                              |   AppUser::firstOrCreate()    |
+    |                              |   (existing record found)     |
+    |                              |                               |
+    |<-- 200 --------------------- |                               |
+    |   { access_token,            |                               |
+    |     refresh_token,           |                               |
+    |     user + settings }        |                               |
+```
+
+1. Client sends `POST /api/auth/login` with `{ email, password }`
+2. Backend sends credentials to Supabase `/auth/v1/token?grant_type=password`
+3. Supabase validates credentials, returns JWT tokens
+4. Backend finds/creates `AppUser`, loads settings
+5. Backend returns tokens + user profile to client
+
+**Token refresh:**
+
+```
+Mobile App                     Backend API                     Supabase
+    |                              |                               |
+    |-- POST /api/auth/refresh --> |                               |
+    |   { refresh_token }          |-- POST /auth/v1/token ------> |
+    |                              |   ?grant_type=refresh_token   |
+    |                              |<-- { new tokens } ----------- |
+    |<-- { access_token,           |                               |
+    |      refresh_token } ------- |                               |
+```
+
+**Logout:**
+
+```
+Mobile App                     Backend API                     Supabase
+    |                              |                               |
+    |-- POST /api/auth/logout ---> |                               |
+    |   Authorization: Bearer <t>  |-- POST /auth/v1/logout -----> |
+    |<-- { message: "Logged out" } |                               |
+```
+
+**Key points:**
+- Client stores `access_token` and `refresh_token` locally (e.g. SecureStorage)
+- `access_token` is sent as `Authorization: Bearer <token>` on all protected routes
+- When `access_token` expires → client calls `/api/auth/refresh` with `refresh_token`
+- Auth routes (`/api/auth/*`) are public — no middleware required
+- Protected routes (`/api/me/*`) use `supabase.auth` middleware that validates the token
+- `supabase_user_id` is the bridge between Supabase Auth and `app_users` table
+- Sensitive fields (`supabase_user_id`, `payment_customer_id`) are hidden from JSON responses
+
+### 3.4. API Routes
+
+**Public (no auth required):**
+
+| Method | Route                | Action              | Body                     |
+| ------ | -------------------- | ------------------- | ------------------------ |
+| `POST` | `/api/auth/register` | Register new user   | `{ email, password }`    |
+| `POST` | `/api/auth/login`    | Login               | `{ email, password }`    |
+| `POST` | `/api/auth/refresh`  | Refresh tokens      | `{ refresh_token }`      |
+| `POST` | `/api/auth/logout`   | Logout              | Header: `Bearer <token>` |
+
+**Protected (requires `Authorization: Bearer <token>`):**
+
+| Method   | Route              | Action                        |
+| -------- | ------------------ | ----------------------------- |
+| `GET`    | `/api/me`          | Get profile + settings        |
+| `PUT`    | `/api/me`          | Update profile                |
+| `DELETE` | `/api/me`          | Soft-delete account           |
+| `GET`    | `/api/me/settings` | Get user settings             |
+| `PUT`    | `/api/me/settings` | Create/update user settings   |
+
+### 3.5. Client Implementation
+
+**Token storage:**
+- Сохранять `access_token` и `refresh_token` в SecureStorage / Keychain (не в обычном storage)
+- При успешном register/login — записать оба токена
+
+**Protected requests:**
+- Добавлять заголовок `Authorization: Bearer <access_token>` ко всем запросам к `/api/me*` и другим защищённым эндпоинтам
+- При 401 — попробовать `/api/auth/refresh` с `refresh_token`, затем повторить исходный запрос
+- Если refresh вернул 401 — очистить токены и перенаправить на экран логина
+
+**Example flow:**
+```
+1. POST /api/auth/register { email, password } → 201 { access_token, refresh_token, user }
+2. Сохранить токены, перейти в приложение
+3. GET /api/me + Authorization: Bearer <access_token> → профиль
+4. При истечении токена: POST /api/auth/refresh { refresh_token } → новые токены
+5. POST /api/auth/logout + Authorization: Bearer <token> → выход
+```
 
 ## 4. Database Schema
 
@@ -146,19 +284,25 @@ Before calling OpenAI:
 
 ## 6. Environment Variables
 
-```
-DATABASE_URL=
-OPENAI_API_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE=
-SUPABASE_ANON_KEY=
-```
+| Variable | Purpose |
+| -------- | ------- |
+| `DB_CONNECTION` | `pgsql` — использовать PostgreSQL |
+| `DB_URL` | Connection string к Supabase PostgreSQL (Settings → Database → URI) |
+| `SUPABASE_URL` | Project URL (Settings → API → Project URL) |
+| `SUPABASE_ANON_KEY` | Используется в AuthController для register/login/refresh (Supabase → anon public) |
+| `SUPABASE_SERVICE_ROLE` | Используется в middleware и logout (валидация токена, Supabase → service_role secret) |
+| `OPENAI_API_KEY` | OpenAI API key для AI receipt scanning |
+| `STRIPE_SECRET_KEY` | Stripe secret key (отложено) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (отложено) |
+
+**Supabase keys:**
+- `SUPABASE_ANON_KEY` — для прокси auth-запросов (signup, token)
+- `SUPABASE_SERVICE_ROLE` — для проверки JWT и logout (никогда не отдавать клиенту)
 
 ## 7. MVP Scope
 
 Included:
+- Auth proxy: register, login, refresh, logout (AuthController)
 - Supabase Auth middleware (mobile users)
 - Laravel Auth (admin users)
 - Manual transaction CRUD

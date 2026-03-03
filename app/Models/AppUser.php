@@ -22,6 +22,11 @@ class AppUser extends Authenticatable
         'payment_customer_id',
     ];
 
+    protected $hidden = [
+        'supabase_user_id',
+        'payment_customer_id',
+    ];
+
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];

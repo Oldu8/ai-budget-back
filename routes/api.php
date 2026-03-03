@@ -1,12 +1,19 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AppUserController;
+
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/refresh', [AuthController::class, 'refresh']);
+Route::post('/auth/logout', [AuthController::class, 'logout']);
 
 Route::middleware('supabase.auth')->group(function () {
-    Route::get('/me', function (Request $request) {
-        return $request->user(); // это AppUser из app_users
-    });
-    // и т.д.
+    Route::get('/me', [AppUserController::class, 'show']);
+    Route::put('/me', [AppUserController::class, 'update']);
+    Route::delete('/me', [AppUserController::class, 'destroy']);
+
+    Route::get('/me/settings', [AppUserController::class, 'showSettings']);
+    Route::put('/me/settings', [AppUserController::class, 'updateSettings']);
 });
