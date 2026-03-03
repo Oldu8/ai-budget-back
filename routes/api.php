@@ -15,5 +15,6 @@ Route::middleware('supabase.auth')->group(function () {
     Route::delete('/me', [AppUserController::class, 'destroy']);
 
     Route::get('/me/settings', [AppUserController::class, 'showSettings']);
+    Route::post('/me/settings', [AppUserController::class, 'createSettings']);
     Route::put('/me/settings', [AppUserController::class, 'updateSettings']);
 });

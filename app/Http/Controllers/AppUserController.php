@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AppUserSettingsRequest;
 use App\Models\AppUserSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,17 +48,27 @@ class AppUserController extends Controller
         return response()->json($settings);
     }
 
-    public function updateSettings(Request $request): JsonResponse
+    public function createSettings(AppUserSettingsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'currency' => ['required', 'string', 'max:10'],
-            'language' => ['required', 'string', 'max:10'],
-            'timezone' => ['required', 'string', 'max:64', 'timezone:all'],
+        $user = $request->user();
+
+        if ($user->settings) {
+            return response()->json(['message' => 'Settings already configured'], 409);
+        }
+
+        $settings = AppUserSettings::create([
+            'app_user_id' => $user->id,
+            ...$request->validated(),
         ]);
 
+        return response()->json($settings, 201);
+    }
+
+    public function updateSettings(AppUserSettingsRequest $request): JsonResponse
+    {
         $settings = AppUserSettings::updateOrCreate(
             ['app_user_id' => $request->user()->id],
-            $validated,
+            $request->validated(),
         );
 
         return response()->json($settings);

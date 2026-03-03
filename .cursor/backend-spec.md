@@ -172,7 +172,8 @@ Mobile App                     Backend API                     Supabase
 | `PUT`    | `/api/me`          | Update profile                |
 | `DELETE` | `/api/me`          | Soft-delete account           |
 | `GET`    | `/api/me/settings` | Get user settings             |
-| `PUT`    | `/api/me/settings` | Create/update user settings   |
+| `POST`   | `/api/me/settings` | Create settings (onboarding)   |
+| `PUT`    | `/api/me/settings` | Update user settings          |
 
 ### 3.5. Client Implementation
 
@@ -188,11 +189,16 @@ Mobile App                     Backend API                     Supabase
 **Example flow:**
 ```
 1. POST /api/auth/register { email, password } → 201 { access_token, refresh_token, user }
-2. Сохранить токены, перейти в приложение
-3. GET /api/me + Authorization: Bearer <access_token> → профиль
-4. При истечении токена: POST /api/auth/refresh { refresh_token } → новые токены
-5. POST /api/auth/logout + Authorization: Bearer <token> → выход
+2. Сохранить токены, экран онбординга
+3. POST /api/me/settings { currency, language, timezone } → 201 (создание настроек)
+4. GET /api/me + Authorization: Bearer <access_token> → профиль
+5. При истечении токена: POST /api/auth/refresh { refresh_token } → новые токены
+6. POST /api/auth/logout + Authorization: Bearer <token> → выход
 ```
+
+**Settings:**
+- `POST /api/me/settings` — для онбординга после регистрации. Создаёт настройки один раз. При повторном вызове → 409.
+- `PUT /api/me/settings` — для изменения уже существующих настроек.
 
 ## 4. Database Schema
 
