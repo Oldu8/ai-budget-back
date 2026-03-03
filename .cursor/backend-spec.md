@@ -170,6 +170,15 @@ Mobile App                     Backend API                     Supabase
 | `POST`   | `/api/me/settings` | Create settings (onboarding) |
 | `PUT`    | `/api/me/settings` | Update user settings         |
 
+| `GET`    | `/api/categories`        | List categories (tree: parent + children)              |
+| `GET`    | `/api/transactions`      | List transactions (paginated, filters: from, to, type) |
+| `POST`   | `/api/transactions`      | Create transaction (manual, ManualTransactionController) |
+| `GET`    | `/api/transactions/{id}` | Get transaction                                         |
+| `PUT`    | `/api/transactions/{id}` | Update transaction                                      |
+| `DELETE` | `/api/transactions/{id}` | Soft-delete transaction                                 |
+
+AI-создание транзакций — отдельный роут и контроллер (будущее): `POST /api/transactions/from-receipt` или аналогичный.
+
 ### 3.5. Client Implementation
 
 **Token storage:**
@@ -263,10 +272,14 @@ Mobile App                     Backend API                     Supabase
 - `created_by` — enum: `user`, `ai`
 - `category_id` — FK to categories (restrictOnDelete — cannot delete category with transactions)
 - `raw_ai_data` (JSON, nullable) — full OpenAI response for AI-created transactions
-- `confirmed_at` (nullable) — timestamp when user confirmed AI suggestion
+- `confirmed_at` (nullable) — timestamp when transaction was confirmed
 - `img_path` (nullable) — path to receipt image in Supabase Storage
 - Soft deletes enabled
 - Indexed: (app_user_id, date), (app_user_id, category_id, date)
+
+**confirmed_at logic:**
+- **Manual** (`created_by = 'user'`): `confirmed_at` устанавливается сразу при создании — юзер вводит данные сам, подтверждение не требуется
+- **AI** (`created_by = 'ai'`): `confirmed_at = null` при создании, заполняется отдельно когда юзер одобряет предложение ИИ
 
 ### 4.4. Subscriptions & Billing (Stripe)
 
@@ -299,7 +312,15 @@ Mobile App                     Backend API                     Supabase
 
 ## 5. Key Business Rules
 
-### 5.1. AI Receipt Processing Pipeline
+### 5.1. Manual Transactions (ManualTransactionController)
+
+- `POST /api/transactions` — body: `{ amount, date, type, category_id }`
+- `type`: `income` | `expense`
+- `amount` — в копейках (целое число)
+- `created_by` = `user`, `confirmed_at` = now() (сразу)
+- Список: `GET /api/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&type=expense&per_page=20`
+
+### 5.2. AI Receipt Processing Pipeline
 
 1. Receive image path and context from client
 2. Fetch user's active categories
@@ -309,14 +330,14 @@ Mobile App                     Backend API                     Supabase
 6. User reviews and confirms → set `confirmed_at`
 7. Increment `used_checks_count` in UserSubscription
 
-### 5.2. Quota Enforcement
+### 5.3. Quota Enforcement
 
 Before calling OpenAI:
 
 - Verify `user_subscription.used_checks_count < plan.check_limit`
 - If limit reached → 403 Forbidden with "Limit Exceeded"
 
-### 5.3. Stripe Webhook Handling
+### 5.4. Stripe Webhook Handling
 
 - `checkout.session.completed` → activate new subscription
 - `invoice.paid` → reset `used_checks_count` to 0 for new billing cycle
