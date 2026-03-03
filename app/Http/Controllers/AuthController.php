@@ -34,6 +34,12 @@ class AuthController extends Controller
             ['email' => $data['user']['email']],
         );
 
+        $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
+        if ($emailConfirmedAt && !$appUser->email_verified_at) {
+            $appUser->email_verified_at = $emailConfirmedAt;
+            $appUser->save();
+        }
+
         return response()->json([
             'access_token' => $data['access_token'],
             'refresh_token' => $data['refresh_token'],
@@ -65,6 +71,12 @@ class AuthController extends Controller
             ['supabase_user_id' => $data['user']['id']],
             ['email' => $data['user']['email']],
         );
+
+        $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
+        if ($emailConfirmedAt && !$appUser->email_verified_at) {
+            $appUser->email_verified_at = $emailConfirmedAt;
+            $appUser->save();
+        }
 
         $appUser->load('settings');
 

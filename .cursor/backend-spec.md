@@ -1,13 +1,5 @@
 # AI Budget: Backend Technical Specification (v1.3)
 
-## Changelog
-
-| Version | Changes |
-| ------- | ------- |
-| v1.3 | Auth proxy: register/login/refresh/logout через бэкенд. Добавлен AuthController, клиентская инструкция, описание env-переменных. |
-| v1.2 | Двухсущностная авторизация (AppUser + User), backend-spec обновлён под Laravel. |
-| v1.1 | Исправления: Authenticatable, config(), миграции, AppUserSettings. |
-
 ## 1. Project Overview
 
 Backend API for AI Budget — mobile app for personal budget management.
@@ -24,17 +16,17 @@ Users can manually log income/expenses or use AI (photo of receipt) to auto-extr
 
 ## 2. Tech Stack
 
-| Layer      | Technology                                 |
-| ---------- | ------------------------------------------ |
-| Framework  | Laravel 12 (PHP 8.2+)                      |
-| Database   | PostgreSQL (managed via Supabase)           |
-| ORM        | Eloquent ORM                               |
-| Migrations | Laravel Migrations (`php artisan migrate`) |
+| Layer      | Technology                                    |
+| ---------- | --------------------------------------------- |
+| Framework  | Laravel 12 (PHP 8.2+)                         |
+| Database   | PostgreSQL (managed via Supabase)             |
+| ORM        | Eloquent ORM                                  |
+| Migrations | Laravel Migrations (`php artisan migrate`)    |
 | Auth       | Supabase Auth (mobile) + Laravel Auth (admin) |
-| AI         | OpenAI SDK (gpt-4o-mini, JSON mode)        |
-| Payments   | Stripe SDK (Subscriptions & Webhooks)      |
-| Storage    | Supabase Storage (receipt images)          |
-| Host       | Railway.app                                |
+| AI         | OpenAI SDK (gpt-4o-mini, JSON mode)           |
+| Payments   | Stripe SDK (Subscriptions & Webhooks)         |
+| Storage    | Supabase Storage (receipt images)             |
+| Host       | Railway.app                                   |
 
 ## 3. Authentication Architecture
 
@@ -43,6 +35,7 @@ Users can manually log income/expenses or use AI (photo of receipt) to auto-extr
 The system has two separate user entities with different auth mechanisms:
 
 **AppUser (`app_users`)** — Mobile application users.
+
 - Authenticated via Supabase Auth (JWT tokens)
 - Custom middleware `supabase.auth` validates token against Supabase `/auth/v1/user`
 - Auto-created on first request (firstOrCreate by `supabase_user_id`)
@@ -50,6 +43,7 @@ The system has two separate user entities with different auth mechanisms:
 - Model: `App\Models\AppUser` (extends Authenticatable)
 
 **User (`users`)** — Admin panel users.
+
 - Authenticated via standard Laravel Auth (session + password)
 - Guard: `web` (default Laravel guard)
 - Used for: admin panel access, managing categories/plans/statuses
@@ -57,10 +51,10 @@ The system has two separate user entities with different auth mechanisms:
 
 ### 3.2. Auth Guards (config/auth.php)
 
-| Guard | Driver  | Provider   | Purpose          |
-| ----- | ------- | ---------- | ---------------- |
-| `web` | session | `users`    | Admin panel      |
-| `app` | session | `app_users`| Mobile (backup)  |
+| Guard | Driver  | Provider    | Purpose         |
+| ----- | ------- | ----------- | --------------- |
+| `web` | session | `users`     | Admin panel     |
+| `app` | session | `app_users` | Mobile (backup) |
 
 Mobile API routes use the `supabase.auth` middleware (not Laravel guards).
 
@@ -145,6 +139,7 @@ Mobile App                     Backend API                     Supabase
 ```
 
 **Key points:**
+
 - Client stores `access_token` and `refresh_token` locally (e.g. SecureStorage)
 - `access_token` is sent as `Authorization: Bearer <token>` on all protected routes
 - When `access_token` expires → client calls `/api/auth/refresh` with `refresh_token`
@@ -157,36 +152,39 @@ Mobile App                     Backend API                     Supabase
 
 **Public (no auth required):**
 
-| Method | Route                | Action              | Body                     |
-| ------ | -------------------- | ------------------- | ------------------------ |
-| `POST` | `/api/auth/register` | Register new user   | `{ email, password }`    |
-| `POST` | `/api/auth/login`    | Login               | `{ email, password }`    |
-| `POST` | `/api/auth/refresh`  | Refresh tokens      | `{ refresh_token }`      |
-| `POST` | `/api/auth/logout`   | Logout              | Header: `Bearer <token>` |
+| Method | Route                | Action            | Body                     |
+| ------ | -------------------- | ----------------- | ------------------------ |
+| `POST` | `/api/auth/register` | Register new user | `{ email, password }`    |
+| `POST` | `/api/auth/login`    | Login             | `{ email, password }`    |
+| `POST` | `/api/auth/refresh`  | Refresh tokens    | `{ refresh_token }`      |
+| `POST` | `/api/auth/logout`   | Logout            | Header: `Bearer <token>` |
 
 **Protected (requires `Authorization: Bearer <token>`):**
 
-| Method   | Route              | Action                        |
-| -------- | ------------------ | ----------------------------- |
-| `GET`    | `/api/me`          | Get profile + settings        |
-| `PUT`    | `/api/me`          | Update profile                |
-| `DELETE` | `/api/me`          | Soft-delete account           |
-| `GET`    | `/api/me/settings` | Get user settings             |
-| `POST`   | `/api/me/settings` | Create settings (onboarding)   |
-| `PUT`    | `/api/me/settings` | Update user settings          |
+| Method   | Route              | Action                       |
+| -------- | ------------------ | ---------------------------- |
+| `GET`    | `/api/me`          | Get profile + settings       |
+| `PUT`    | `/api/me`          | Update profile               |
+| `DELETE` | `/api/me`          | Soft-delete account          |
+| `GET`    | `/api/me/settings` | Get user settings            |
+| `POST`   | `/api/me/settings` | Create settings (onboarding) |
+| `PUT`    | `/api/me/settings` | Update user settings         |
 
 ### 3.5. Client Implementation
 
 **Token storage:**
+
 - Сохранять `access_token` и `refresh_token` в SecureStorage / Keychain (не в обычном storage)
 - При успешном register/login — записать оба токена
 
 **Protected requests:**
+
 - Добавлять заголовок `Authorization: Bearer <access_token>` ко всем запросам к `/api/me*` и другим защищённым эндпоинтам
 - При 401 — попробовать `/api/auth/refresh` с `refresh_token`, затем повторить исходный запрос
 - Если refresh вернул 401 — очистить токены и перенаправить на экран логина
 
 **Example flow:**
+
 ```
 1. POST /api/auth/register { email, password } → 201 { access_token, refresh_token, user }
 2. Сохранить токены, экран онбординга
@@ -197,14 +195,39 @@ Mobile App                     Backend API                     Supabase
 ```
 
 **Settings:**
+
 - `POST /api/me/settings` — для онбординга после регистрации. Создаёт настройки один раз. При повторном вызове → 409.
 - `PUT /api/me/settings` — для изменения уже существующих настроек.
+
+### 3.6. Email Confirmation (Supabase)
+
+Подтверждение почты полностью обрабатывается Supabase. Бэкенд не создаёт отдельных роутов для подтверждения.
+
+**Текущее поведение:**
+- `app_users.email_verified_at` — синхронизируется из Supabase `email_confirmed_at` в middleware
+- Юзер в ответах auth получает `user.email_verified_at` (null до подтверждения)
+- **Ничего не блокируется** — юзер может пользоваться приложением без подтверждения
+
+**Планируется (после реализации транзакций):**
+- Транзакции (создание, просмотр) будут доступны только при `email_verified_at !== null`
+- Остальные эндпоинты (профиль, настройки) — без ограничений
+
+**Настройка Supabase (после деплоя):**
+
+1. Supabase Dashboard → Authentication → Providers → Email → **Confirm email** (уже включено)
+2. Authentication → URL Configuration:
+   - **Site URL** — URL приложения (например `https://yourapp.com` или deep link `myapp://`)
+   - **Redirect URLs** — куда редиректить после клика по ссылке в письме (например `myapp://auth/confirm`)
+3. Email Templates → Confirm signup — при необходимости изменить текст письма
+
+**Порядок:** сначала деплой бэка и фронта, затем добавить реальные ссылки в Supabase.
 
 ## 4. Database Schema
 
 ### 4.1. Users & Settings
 
 **app_users** — mobile user profile linked to Supabase Auth and Stripe.
+
 - `supabase_user_id` (uuid, unique) — link to Supabase Auth
 - `email` (unique)
 - `first_name`, `last_name` (nullable)
@@ -212,16 +235,19 @@ Mobile App                     Backend API                     Supabase
 - Soft deletes enabled
 
 **users** — admin panel users (standard Laravel).
+
 - `name`, `email`, `password`
 - Standard Laravel Authenticatable
 
 **app_user_settings** — per-user preferences (1:1 with app_users).
+
 - `currency`, `language`, `timezone` (IANA format)
 - Timezone is used to calculate correct transaction dates relative to user location
 
 ### 4.2. Categories
 
 **categories** — static hierarchical table of predefined categories.
+
 - `category_id` (self-FK, nullable): null = Level 1 (e.g. Housing), set = Level 2 (e.g. Rent)
 - `label` — display name for the client
 - `visibility_tag` (nullable) — metadata (e.g. kids, car, pets) for bulk-toggling
@@ -231,6 +257,7 @@ Mobile App                     Backend API                     Supabase
 ### 4.3. Transactions
 
 **transactions** — financial records (manual or AI-created).
+
 - `amount` — integer (in cents/smallest currency units, no floating point)
 - `type` — enum: `income`, `expense`
 - `created_by` — enum: `user`, `ai`
@@ -244,12 +271,14 @@ Mobile App                     Backend API                     Supabase
 ### 4.4. Subscriptions & Billing (Stripe)
 
 **plans** — catalog of subscription tiers (no timestamps).
+
 - `type` — enum: `free`, `basic`, `standard`, `premium`
 - `payment_price_id` (nullable) — Stripe Price ID (null for free plan)
 - `price` — integer (cents)
 - `check_limit` — max AI scans per billing cycle
 
 **user_subscriptions** — real-time subscription state per user.
+
 - `payment_subscription_id` — Stripe Subscription ID
 - `status_id` — FK to statuses
 - `used_checks_count` — incremented after each successful AI scan
@@ -258,12 +287,14 @@ Mobile App                     Backend API                     Supabase
 - Trial fields: `trial_start`, `trial_end`
 
 **payments** — individual payment records linked to Stripe invoices.
+
 - `payment_invoice_id` — Stripe Invoice ID
 - `status_id` — FK to statuses
 - `amount` — integer (cents)
 - `currency`
 
 **statuses** — normalized dictionary for subscription/payment states (no timestamps).
+
 - Values: `active`, `canceled`, `pending`, `trialing`, `past_due`
 
 ## 5. Key Business Rules
@@ -281,6 +312,7 @@ Mobile App                     Backend API                     Supabase
 ### 5.2. Quota Enforcement
 
 Before calling OpenAI:
+
 - Verify `user_subscription.used_checks_count < plan.check_limit`
 - If limit reached → 403 Forbidden with "Limit Exceeded"
 
@@ -292,24 +324,26 @@ Before calling OpenAI:
 
 ## 6. Environment Variables
 
-| Variable | Purpose |
-| -------- | ------- |
-| `DB_CONNECTION` | `pgsql` — использовать PostgreSQL |
-| `DB_URL` | Connection string к Supabase PostgreSQL (Settings → Database → URI) |
-| `SUPABASE_URL` | Project URL (Settings → API → Project URL) |
-| `SUPABASE_ANON_KEY` | Используется в AuthController для register/login/refresh (Supabase → anon public) |
+| Variable                | Purpose                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `DB_CONNECTION`         | `pgsql` — использовать PostgreSQL                                                     |
+| `DB_URL`                | Connection string к Supabase PostgreSQL (Settings → Database → URI)                   |
+| `SUPABASE_URL`          | Project URL (Settings → API → Project URL)                                            |
+| `SUPABASE_ANON_KEY`     | Используется в AuthController для register/login/refresh (Supabase → anon public)     |
 | `SUPABASE_SERVICE_ROLE` | Используется в middleware и logout (валидация токена, Supabase → service_role secret) |
-| `OPENAI_API_KEY` | OpenAI API key для AI receipt scanning |
-| `STRIPE_SECRET_KEY` | Stripe secret key (отложено) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (отложено) |
+| `OPENAI_API_KEY`        | OpenAI API key для AI receipt scanning                                                |
+| `STRIPE_SECRET_KEY`     | Stripe secret key (отложено)                                                          |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (отложено)                                              |
 
 **Supabase keys:**
+
 - `SUPABASE_ANON_KEY` — для прокси auth-запросов (signup, token)
 - `SUPABASE_SERVICE_ROLE` — для проверки JWT и logout (никогда не отдавать клиенту)
 
 ## 7. MVP Scope
 
 Included:
+
 - Auth proxy: register, login, refresh, logout (AuthController)
 - Supabase Auth middleware (mobile users)
 - Laravel Auth (admin users)
@@ -320,6 +354,7 @@ Included:
 - Stripe integration (checkout, webhooks)
 
 Deferred (post-MVP):
+
 - User category personalization (user_category_settings)
 - Google Sheets export
 - Chat/message history for AI interactions
