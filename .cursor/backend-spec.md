@@ -226,6 +226,8 @@ Mobile App                     Backend API                     Supabase
 - `label` — display name for the client
 - `visibility_tag` (nullable) — metadata (e.g. kids, car, pets) for bulk-toggling
 
+**Seeding categories:** `php artisan categories:seed`. Data: `database/data/categories.php`. Uses `updateOrCreate` by `name` — safe to run multiple times.
+
 ### 4.3. Transactions
 
 **transactions** — financial records (manual or AI-created).
