@@ -6,6 +6,7 @@ use App\Enums\TransactionCreatedBy;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Transaction;
+use App\Models\TransactionItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,7 @@ class ManualTransactionController extends Controller
     {
         $user = $request->user();
         $query = Transaction::where('app_user_id', $user->id)
-            ->with('category')
+            ->with('items.category')
             ->orderByDesc('date')
             ->orderByDesc('created_at');
 
@@ -40,17 +41,23 @@ class ManualTransactionController extends Controller
 
     public function store(StoreTransactionRequest $request): JsonResponse
     {
+        $totalAmount = $request->validated('total_amount');
         $transaction = Transaction::create([
             'app_user_id' => $request->user()->id,
-            'amount' => $request->validated('amount'),
+            'total_amount' => $totalAmount,
             'date' => $request->validated('date'),
             'type' => $request->validated('type'),
-            'category_id' => $request->validated('category_id'),
             'created_by' => TransactionCreatedBy::User,
             'confirmed_at' => now(),
         ]);
 
-        $transaction->load('category');
+        TransactionItem::create([
+            'transaction_id' => $transaction->id,
+            'category_id' => $request->validated('category_id'),
+            'amount' => $totalAmount,
+        ]);
+
+        $transaction->load('items.category');
 
         return response()->json($transaction, 201);
     }
@@ -61,7 +68,7 @@ class ManualTransactionController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transaction->load('category');
+        $transaction->load('items.category');
 
         return response()->json($transaction);
     }
@@ -72,8 +79,25 @@ class ManualTransactionController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $transaction->update($request->validated());
-        $transaction->load('category');
+        $validated = $request->validated();
+        $transaction->update([
+            'total_amount' => $validated['total_amount'] ?? $transaction->total_amount,
+            'date' => $validated['date'] ?? $transaction->date,
+            'type' => $validated['type'] ?? $transaction->type,
+        ]);
+
+        $item = $transaction->items()->first();
+        if ($item && (isset($validated['category_id']) || isset($validated['total_amount']))) {
+            if (isset($validated['category_id'])) {
+                $item->category_id = $validated['category_id'];
+            }
+            if (isset($validated['total_amount'])) {
+                $item->amount = $validated['total_amount'];
+            }
+            $item->save();
+        }
+
+        $transaction->load('items.category');
 
         return response()->json($transaction);
     }

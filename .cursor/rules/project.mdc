@@ -31,10 +31,7 @@ description: Project conventions for ai-budget-backend
 
 ### 5. DB
 
-- For migration and DB changes use only Laravel Migrations suggest me to:
-  `php artisan make:migration`
-  `php artisan migrate`
-  but don't run migration at yourself
+- You can edit, add migrations. But DONT RUN MIGRATION.
 
 ### 6. General
 

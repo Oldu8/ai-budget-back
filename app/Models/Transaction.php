@@ -7,6 +7,7 @@ use App\Enums\TransactionType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaction extends Model
 {
@@ -14,8 +15,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'app_user_id',
-        'category_id',
-        'amount',
+        'total_amount',
         'date',
         'type',
         'created_by',
@@ -37,8 +37,8 @@ class Transaction extends Model
         return $this->belongsTo(AppUser::class, 'app_user_id');
     }
 
-    public function category(): BelongsTo
+    public function items(): HasMany
     {
-        return $this->belongsTo(Category::class);
+        return $this->hasMany(TransactionItem::class);
     }
 }

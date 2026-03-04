@@ -11,7 +11,7 @@ class StoreTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'integer', 'min:1'],
+            'total_amount' => ['required', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'type' => ['required', Rule::enum(TransactionType::class)],
             'category_id' => ['required', 'exists:categories,id'],

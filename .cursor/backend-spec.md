@@ -263,23 +263,34 @@ AI-создание транзакций — отдельный роут и ко
 
 **Seeding categories:** `php artisan categories:seed`. Data: `database/data/categories.php`. Uses `updateOrCreate` by `name` — safe to run multiple times.
 
-### 4.3. Transactions
+### 4.3. Transactions & Transaction Items
 
-**transactions** — financial records (manual or AI-created).
+**transactions** — операция / чек (дата, общая сумма, картинка).
 
-- `amount` — integer (in cents/smallest currency units, no floating point)
+- `total_amount` — integer (в копейках, сумма чека)
 - `type` — enum: `income`, `expense`
 - `created_by` — enum: `user`, `ai`
-- `category_id` — FK to categories (restrictOnDelete — cannot delete category with transactions)
-- `raw_ai_data` (JSON, nullable) — full OpenAI response for AI-created transactions
-- `confirmed_at` (nullable) — timestamp when transaction was confirmed
-- `img_path` (nullable) — path to receipt image in Supabase Storage
-- Soft deletes enabled
-- Indexed: (app_user_id, date), (app_user_id, category_id, date)
+- `raw_ai_data` (JSON, nullable) — полный ответ OpenAI для AI-чеков
+- `confirmed_at` (nullable) — когда транзакция подтверждена
+- `img_path` (nullable) — путь к фото чека в Supabase Storage
+- Soft deletes
+- Indexes: (app_user_id, date), (app_user_id, date, type)
 
-**confirmed_at logic:**
-- **Manual** (`created_by = 'user'`): `confirmed_at` устанавливается сразу при создании — юзер вводит данные сам, подтверждение не требуется
-- **AI** (`created_by = 'ai'`): `confirmed_at = null` при создании, заполняется отдельно когда юзер одобряет предложение ИИ
+**transaction_items** — позиции внутри операции (категория, сумма, название).
+
+- `transaction_id` — FK на transactions (cascadeOnDelete)
+- `category_id` — FK на categories (restrictOnDelete)
+- `amount` — integer (в копейках)
+- `label` (nullable) — название позиции (хлеб, бананы и т.д.)
+- Indexes: (transaction_id, category_id), (category_id)
+
+**Структура:**
+- **Ручная:** 1 transaction с total_amount, 1 transaction_item с amount = total_amount
+- **AI-чек:** 1 transaction с общей суммой, N transaction_items по категориям
+
+**confirmed_at:**
+- **Manual:** устанавливается сразу
+- **AI:** null при создании, заполняется при одобрении юзером
 
 ### 4.4. Subscriptions & Billing (Stripe)
 
@@ -314,13 +325,50 @@ AI-создание транзакций — отдельный роут и ко
 
 ### 5.1. Manual Transactions (ManualTransactionController)
 
-- `POST /api/transactions` — body: `{ amount, date, type, category_id }`
+- `POST /api/transactions` — body: `{ total_amount, date, type, category_id }`
 - `type`: `income` | `expense`
-- `amount` — в копейках (целое число)
+- `total_amount` — в копейках (целое число)
+- Создаётся 1 transaction + 1 transaction_item (amount = total_amount)
 - `created_by` = `user`, `confirmed_at` = now() (сразу)
 - Список: `GET /api/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&type=expense&per_page=20`
 
-### 5.2. AI Receipt Processing Pipeline
+### 5.2. Агрегация по месяцу и категориям (рекурсивный CTE)
+
+Items поднимаются вверх по дереву категорий. Шампунь и гель из разных транзакций суммируются в home_cosmetics и home.
+
+**Результат:** `date`, `category_id`, `category_name`, `total_amount`.
+
+```sql
+WITH RECURSIVE cat_path AS (
+  SELECT c.id AS leaf_id, c.id AS node_id, c.category_id AS parent_id
+  FROM categories c
+  UNION ALL
+  SELECT cp.leaf_id, p.id AS node_id, p.category_id AS parent_id
+  FROM cat_path cp
+  JOIN categories p ON p.id = cp.parent_id
+  WHERE cp.parent_id IS NOT NULL
+),
+items_in_month AS (
+  SELECT t.date AS date, ti.category_id AS leaf_category_id, ti.amount AS amount
+  FROM transactions t
+  JOIN transaction_items ti ON ti.transaction_id = t.id
+  WHERE t.app_user_id = :user_id
+    AND t.deleted_at IS NULL
+    AND t.date BETWEEN :start_date AND :end_date
+    AND t.type = 'expense'
+)
+SELECT iim.date AS date, cp.node_id AS category_id, c.name AS category_name,
+       SUM(iim.amount)::bigint AS total_amount
+FROM items_in_month iim
+JOIN cat_path cp ON cp.leaf_id = iim.leaf_category_id
+JOIN categories c ON c.id = cp.node_id
+GROUP BY iim.date, cp.node_id, c.name
+ORDER BY iim.date, cp.node_id;
+```
+
+На фронте: маппить `category_id` → `category_name` (или использовать `name` как ключ).
+
+### 5.3. AI Receipt Processing Pipeline
 
 1. Receive image path and context from client
 2. Fetch user's active categories
@@ -330,14 +378,14 @@ AI-создание транзакций — отдельный роут и ко
 6. User reviews and confirms → set `confirmed_at`
 7. Increment `used_checks_count` in UserSubscription
 
-### 5.3. Quota Enforcement
+### 5.4. Quota Enforcement
 
 Before calling OpenAI:
 
 - Verify `user_subscription.used_checks_count < plan.check_limit`
 - If limit reached → 403 Forbidden with "Limit Exceeded"
 
-### 5.4. Stripe Webhook Handling
+### 5.5. Stripe Webhook Handling
 
 - `checkout.session.completed` → activate new subscription
 - `invoice.paid` → reset `used_checks_count` to 0 for new billing cycle
