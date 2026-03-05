@@ -121,10 +121,14 @@ class AuthController extends Controller
 
         $url = rtrim(config('services.supabase.url'), '/');
 
-        Http::withHeaders([
+        $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $token,
             'apiKey' => config('services.supabase.service_role'),
         ])->post($url . '/auth/v1/logout');
+
+        if ($response->failed()) {
+            return response()->json(['message' => 'Logout failed'], $response->status());
+        }
 
         return response()->json(['message' => 'Logged out']);
     }

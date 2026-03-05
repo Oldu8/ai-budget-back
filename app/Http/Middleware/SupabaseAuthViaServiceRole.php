@@ -62,7 +62,9 @@ class SupabaseAuthViaServiceRole
             $user->email_verified_at = $emailConfirmedAt;
         }
 
-        $user->save();
+        if ($user->isDirty()) {
+            $user->save();
+        }
 
         Auth::setUser($user);
 

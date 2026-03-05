@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransactionCreatedBy;
+use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Transaction;
@@ -16,25 +17,27 @@ use Illuminate\Http\Request;
  */
 class ManualTransactionController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(IndexTransactionRequest $request): JsonResponse
     {
-        $user = $request->user();
-        $query = Transaction::where('app_user_id', $user->id)
+        $filters = $request->validated();
+
+        $query = $request->user()->transactions()
+            ->whereNotNull('confirmed_at')
             ->with('items.category')
             ->orderByDesc('date')
             ->orderByDesc('created_at');
 
-        if ($request->has('from')) {
-            $query->where('date', '>=', $request->input('from'));
+        if (isset($filters['from'])) {
+            $query->where('date', '>=', $filters['from']);
         }
-        if ($request->has('to')) {
-            $query->where('date', '<=', $request->input('to'));
+        if (isset($filters['to'])) {
+            $query->where('date', '<=', $filters['to']);
         }
-        if ($request->has('type')) {
-            $query->where('type', $request->input('type'));
+        if (isset($filters['type'])) {
+            $query->where('type', $filters['type']);
         }
 
-        $transactions = $query->paginate($request->input('per_page', 20));
+        $transactions = $query->paginate($filters['per_page'] ?? 20);
 
         return response()->json($transactions);
     }
@@ -64,10 +67,7 @@ class ManualTransactionController extends Controller
 
     public function show(Request $request, Transaction $transaction): JsonResponse
     {
-        if ($transaction->app_user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
+        $transaction = $request->user()->transactions()->findOrFail($transaction->id);
         $transaction->load('items.category');
 
         return response()->json($transaction);
@@ -75,9 +75,7 @@ class ManualTransactionController extends Controller
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction): JsonResponse
     {
-        if ($transaction->app_user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $transaction = $request->user()->transactions()->findOrFail($transaction->id);
 
         $validated = $request->validated();
         $transaction->update([
@@ -104,10 +102,7 @@ class ManualTransactionController extends Controller
 
     public function destroy(Request $request, Transaction $transaction): JsonResponse
     {
-        if ($transaction->app_user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
+        $transaction = $request->user()->transactions()->findOrFail($transaction->id);
         $transaction->delete();
 
         return response()->json(['message' => 'Deleted'], 200);

@@ -20,8 +20,8 @@ class Category extends Model
         return $this->hasMany(Category::class, 'category_id');
     }
 
-    public function transactions(): HasMany
+    public function transactionItems(): HasMany
     {
-        return $this->hasMany(Transaction::class);
+        return $this->hasMany(TransactionItem::class);
     }
 }

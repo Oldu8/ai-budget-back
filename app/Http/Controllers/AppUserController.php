@@ -66,10 +66,13 @@ class AppUserController extends Controller
 
     public function updateSettings(AppUserSettingsRequest $request): JsonResponse
     {
-        $settings = AppUserSettings::updateOrCreate(
-            ['app_user_id' => $request->user()->id],
-            $request->validated(),
-        );
+        $settings = $request->user()->settings;
+
+        if (!$settings) {
+            return response()->json(['message' => 'Settings not configured'], 404);
+        }
+
+        $settings->update($request->validated());
 
         return response()->json($settings);
     }

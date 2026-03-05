@@ -261,6 +261,11 @@ AI-создание транзакций — отдельный роут и ко
 - `label` — display name for the client
 - `visibility_tag` (nullable) — metadata (e.g. kids, car, pets) for bulk-toggling
 
+**Category hierarchy rules:**
+- **Level 1 (parent)** — категории агрегации (e.g. Housing, Food). НЕ выбираются пользователем при создании транзакции. На фронте отображают сумму всех дочерних подкатегорий.
+- **Level 2 (child)** — конкретные подкатегории (e.g. Rent, Groceries). Именно их пользователь выбирает при создании/редактировании транзакции.
+- `transaction_items.category_id` всегда ссылается на Level 2 категорию. Привязка к Level 1 запрещена на уровне клиента (parent-категории не отображаются как опции для выбора).
+
 **Seeding categories:** `php artisan categories:seed`. Data: `database/data/categories.php`. Uses `updateOrCreate` by `name` — safe to run multiple times.
 
 ### 4.3. Transactions & Transaction Items
@@ -288,9 +293,14 @@ AI-создание транзакций — отдельный роут и ко
 - **Ручная:** 1 transaction с total_amount, 1 transaction_item с amount = total_amount
 - **AI-чек:** 1 transaction с общей суммой, N transaction_items по категориям
 
-**confirmed_at:**
-- **Manual:** устанавливается сразу
-- **AI:** null при создании, заполняется при одобрении юзером
+**confirmed_at — ключевое поле для видимости транзакции:**
+- **Manual:** устанавливается сразу (`now()`) при создании
+- **AI:** `null` при создании. Заполняется только когда юзер подтверждает результат сканирования
+- **Неподтверждённые транзакции (`confirmed_at IS NULL`):**
+  - НЕ отображаются в списке транзакций (`GET /api/transactions`)
+  - НЕ учитываются в агрегации по месяцу/категориям (CTE)
+  - Существуют в БД, но невидимы для итоговых данных на всех устройствах
+- Это гарантирует, что если юзер отсканировал чек, но не подтвердил — транзакция не повлияет на статистику и не появится в списках
 
 ### 4.4. Subscriptions & Billing (Stripe)
 
@@ -354,6 +364,7 @@ items_in_month AS (
   JOIN transaction_items ti ON ti.transaction_id = t.id
   WHERE t.app_user_id = :user_id
     AND t.deleted_at IS NULL
+    AND t.confirmed_at IS NOT NULL
     AND t.date BETWEEN :start_date AND :end_date
     AND t.type = 'expense'
 )
@@ -371,12 +382,15 @@ ORDER BY iim.date, cp.node_id;
 ### 5.3. AI Receipt Processing Pipeline
 
 1. Receive image path and context from client
-2. Fetch user's active categories
+2. Fetch user's active categories (only Level 2 — leaf categories)
 3. Construct prompt with categories list, send to OpenAI (JSON mode)
-4. OpenAI returns: amount, date, vendor, category_id
-5. Create Transaction with `created_by = 'ai'`, `confirmed_at = null`
-6. User reviews and confirms → set `confirmed_at`
-7. Increment `used_checks_count` in UserSubscription
+4. OpenAI returns: items (amount, category_id, label), total amount, date
+5. Create Transaction (`created_by = 'ai'`, `confirmed_at = null`) + N TransactionItems
+6. Return transaction to client for review (transaction is invisible in lists/aggregations until confirmed)
+7. User reviews items, may edit categories/amounts, then confirms → set `confirmed_at = now()`
+8. Increment `used_checks_count` in UserSubscription
+
+**Важно:** между шагами 5 и 7 транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
 
 ### 5.4. Quota Enforcement
 
