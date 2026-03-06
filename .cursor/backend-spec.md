@@ -1,4 +1,4 @@
-# AI Budget: Backend Technical Specification (v1.3)
+# AI Budget: Backend Technical Specification (v1.4)
 
 ## 1. Project Overview
 
@@ -170,12 +170,14 @@ Mobile App                     Backend API                     Supabase
 | `POST`   | `/api/me/settings` | Create settings (onboarding) |
 | `PUT`    | `/api/me/settings` | Update user settings         |
 
-| `GET`    | `/api/categories`        | List categories (tree: parent + children)              |
-| `GET`    | `/api/transactions`      | List transactions (paginated, filters: from, to, type) |
-| `POST`   | `/api/transactions`      | Create transaction (manual, ManualTransactionController) |
-| `GET`    | `/api/transactions/{id}` | Get transaction                                         |
-| `PUT`    | `/api/transactions/{id}` | Update transaction                                      |
-| `DELETE` | `/api/transactions/{id}` | Soft-delete transaction                                 |
+| `GET`    | `/api/categories`               | List categories and subcategories (id, slug, label, children)     |
+| `GET`    | `/api/transactions`             | List transactions (paginated, filters: from, to, type)            |
+| `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
+| `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |
+| `POST`   | `/api/transactions`             | Create transaction (manual, ManualTransactionController)          |
+| `GET`    | `/api/transactions/{id}`        | Get transaction                                                    |
+| `PUT`    | `/api/transactions/{id}`        | Update transaction                                                  |
+| `DELETE` | `/api/transactions/{id}`        | Soft-delete transaction                                             |
 
 | `POST`   | `/api/transactions/scan`               | AI scan: upload image, get transaction suggestion (ScanController) |
 | `POST`   | `/api/transactions/{id}/confirm`       | Confirm AI-created transaction (ScanController)                    |
@@ -343,11 +345,55 @@ Mobile App                     Backend API                     Supabase
 - `created_by` = `user`, `confirmed_at` = now() (сразу)
 - Список: `GET /api/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&type=expense&per_page=20`
 
-### 5.2. Агрегация по месяцу и категориям (рекурсивный CTE)
+### 5.2. Categories list and transaction summary
 
-Items поднимаются вверх по дереву категорий. Шампунь и гель из разных транзакций суммируются в home_cosmetics и home.
+Эндпоинты для отображения дерева категорий и сводки трат за период. Учитываются только подтверждённые транзакции (`confirmed_at IS NOT NULL`), тип `expense`, данные текущего пользователя. Период задаётся параметрами `from` и `to` (YYYY-MM-DD); в ответах не передаются лейблы категорий/подкатегорий — только id, фронт резолвит названия по списку категорий.
 
-**Результат:** `date`, `category_id`, `category_name`, `total_amount`.
+**1. Список категорий и подкатегорий**
+
+- **Route:** `GET /api/categories`
+- **Response:** `{ "data": [ { "id", "slug", "label", "children": [ { "id", "slug", "label" } ] } ] }`
+- `slug` = поле `categories.name` из БД. Level 1 (родители) — объекты с массивом `children` (Level 2). Используется как единственный источник id → slug/label для подписей на графиках и в сводках.
+
+**2. Сводка по категориям (Level 1) за период**
+
+- **Route:** `GET /api/transactions/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- **Query:** `from`, `to` — обязательны, даты, `to >= from`.
+- **Response:**
+
+```json
+{
+  "from": "2026-03-01",
+  "to": "2026-03-31",
+  "days": {
+    "2026-03-01": { "1": 15000, "5": 5000 },
+    "2026-03-02": {},
+    "2026-03-03": { "1": 7000 }
+  },
+  "meta": {
+    "totals_by_category": { "1": 22000, "5": 5000 },
+    "grand_total": 27000
+  }
+}
+```
+
+- `days` — объект «дата → объект category_id → сумма в копейках за день». Все даты в интервале присутствуют (при отсутствии трат — пустой объект).
+- `meta.totals_by_category` — сумма по каждой категории за период; `meta.grand_total` — общая сумма.
+
+**3. Сводка по подкатегориям одной категории за период**
+
+- **Route:** `GET /api/transactions/summary/{category}?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- **URL:** `{category}` — id категории Level 1. Если категория не верхнего уровня — 404.
+- **Query:** `from`, `to` — как выше.
+- **Response:** то же, что в п.2, плюс в начале объект `category: { "id", "slug", "label" }`; в `days` ключи — id подкатегорий (Level 2); в `meta` — `totals_by_subcategory` и `grand_total` (итог по выбранной категории).
+
+**Файлы:** `CategoryController` (index), `TransactionSummaryController` (index, show), `SummaryRangeRequest`, `SummaryResponse` (DTO).
+
+### 5.3. Агрегация по месяцу и категориям (концепция / legacy SQL)
+
+Items поднимаются вверх по дереву категорий. Шампунь и гель из разных транзакций суммируются в home_cosmetics и home. Фактическая отдача данных — через эндпоинты summary (см. 5.2).
+
+**Результат (концептуально):** `date`, `category_id`, `category_name`, `total_amount`.
 
 ```sql
 WITH RECURSIVE cat_path AS (
@@ -378,9 +424,9 @@ GROUP BY iim.date, cp.node_id, c.name
 ORDER BY iim.date, cp.node_id;
 ```
 
-На фронте: маппить `category_id` → `category_name` (или использовать `name` как ключ).
+На фронте: маппить `category_id` → `category_name` (или использовать `name` как ключ). Реализация — через summary API (5.2).
 
-### 5.3. AI Scan Pipeline (ScanController)
+### 5.4. AI Scan Pipeline (ScanController)
 
 **Route:** `POST /api/transactions/scan` — multipart/form-data, field `image` (jpeg/jpg/png/webp, max 5 MB).
 
@@ -435,14 +481,14 @@ ORDER BY iim.date, cp.node_id;
 
 **Между шагами 9 и confirm** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
 
-### 5.4. Quota Enforcement
+### 5.5. Quota Enforcement
 
 Before calling OpenAI:
 
 - Verify `user_subscription.used_checks_count < plan.check_limit`
 - If limit reached → 403 Forbidden with "Limit Exceeded"
 
-### 5.5. Stripe Webhook Handling
+### 5.6. Stripe Webhook Handling
 
 - `checkout.session.completed` → activate new subscription
 - `invoice.paid` → reset `used_checks_count` to 0 for new billing cycle
