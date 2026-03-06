@@ -177,7 +177,8 @@ Mobile App                     Backend API                     Supabase
 | `PUT`    | `/api/transactions/{id}` | Update transaction                                      |
 | `DELETE` | `/api/transactions/{id}` | Soft-delete transaction                                 |
 
-AI-создание транзакций — отдельный роут и контроллер (будущее): `POST /api/transactions/from-receipt` или аналогичный.
+| `POST`   | `/api/transactions/scan`               | AI scan: upload image, get transaction suggestion (ScanController) |
+| `POST`   | `/api/transactions/{id}/confirm`       | Confirm AI-created transaction (ScanController)                    |
 
 ### 3.5. Client Implementation
 
@@ -379,18 +380,60 @@ ORDER BY iim.date, cp.node_id;
 
 На фронте: маппить `category_id` → `category_name` (или использовать `name` как ключ).
 
-### 5.3. AI Receipt Processing Pipeline
+### 5.3. AI Scan Pipeline (ScanController)
 
-1. Receive image path and context from client
-2. Fetch user's active categories (only Level 2 — leaf categories)
-3. Construct prompt with categories list, send to OpenAI (JSON mode)
-4. OpenAI returns: items (amount, category_id, label), total amount, date
-5. Create Transaction (`created_by = 'ai'`, `confirmed_at = null`) + N TransactionItems
-6. Return transaction to client for review (transaction is invisible in lists/aggregations until confirmed)
-7. User reviews items, may edit categories/amounts, then confirms → set `confirmed_at = now()`
-8. Increment `used_checks_count` in UserSubscription
+**Route:** `POST /api/transactions/scan` — multipart/form-data, field `image` (jpeg/jpg/png/webp, max 5 MB).
 
-**Важно:** между шагами 5 и 7 транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
+**Flow:**
+
+1. Validate image (ScanRequest: file type, size ≤ 5 MB)
+2. Base64-encode the uploaded file (still in memory)
+3. Upload original to Supabase Storage (private bucket `receipts`, service role key, path: `{userId}/{uuid}.{ext}`)
+4. Fetch all Level 2 categories from DB (`Category::whereNotNull('category_id')->with('parent')`)
+5. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (JSON mode)
+6. Validate AI response structure (`is_receipt`, `total_amount`, `date`, `items` must be present)
+7. If `is_receipt = false` → delete image from Storage, return 422
+8. If AI call fails → keep image in Storage (for future retry), return 503 with `img_path`
+9. If valid → create Transaction (`created_by = 'ai'`, `confirmed_at = null`, `type = expense`) + N TransactionItems
+10. Return 201 with unconfirmed transaction (invisible in lists/aggregations until confirmed)
+
+**Confirm route:** `POST /api/transactions/{id}/confirm` — sets `confirmed_at = now()`. Only works for AI-created unconfirmed transactions belonging to the current user.
+
+**Key implementation details:**
+
+- **Category fallback:** if AI returns an invalid `category_id`, the item falls back to `finance_other_misc`. The prompt also instructs AI to use `*_other` subcategories when no specific match fits.
+- **Prompt (ScanPromptBuilder):** categories are passed grouped by parent label. AI must return strict JSON with amounts in smallest currency unit (cents/kopecks).
+- **Type is always `expense`** — hardcoded in controller, not requested from AI.
+- **Private bucket** — Supabase Storage bucket `receipts` is private. All access (upload, download, delete) uses the service role key. No public URLs, no RLS policies needed. OpenAI receives image as base64, not URL.
+- **`raw_ai_data`** stores the full OpenAI response JSON for debugging.
+
+**AI response schema (from OpenAI):**
+
+```json
+{
+  "is_receipt": true,
+  "date": "2026-03-05",
+  "total_amount": 15000,
+  "items": [
+    {
+      "product": "Bread",
+      "amount": 5000,
+      "category_id": 15,
+      "category_label": "Groceries"
+    }
+  ]
+}
+```
+
+**Files:**
+
+- `app/Http/Controllers/ScanController.php` — scan() and confirm() actions
+- `app/Services/ScanService.php` — OpenAI API call orchestration
+- `app/Services/Scan/ScanPromptBuilder.php` — prompt construction and category grouping
+- `app/Services/SupabaseStorageService.php` — Supabase Storage REST API (upload, download, delete)
+- `app/Http/Requests/ScanRequest.php` — image validation
+
+**Между шагами 9 и confirm** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
 
 ### 5.4. Quota Enforcement
 
@@ -414,7 +457,9 @@ Before calling OpenAI:
 | `SUPABASE_URL`          | Project URL (Settings → API → Project URL)                                            |
 | `SUPABASE_ANON_KEY`     | Используется в AuthController для register/login/refresh (Supabase → anon public)     |
 | `SUPABASE_SERVICE_ROLE` | Используется в middleware и logout (валидация токена, Supabase → service_role secret) |
-| `OPENAI_API_KEY`        | OpenAI API key для AI receipt scanning                                                |
+| `OPENAI_API_KEY`        | OpenAI API key для AI scan                                                            |
+| `SUPABASE_STORAGE_BUCKET` | Supabase Storage bucket name (default: `receipts`)                                  |
+| `OPENAI_REQUEST_TIMEOUT`| OpenAI request timeout in seconds (default: 60)                                       |
 | `STRIPE_SECRET_KEY`     | Stripe secret key (отложено)                                                          |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (отложено)                                              |
 
