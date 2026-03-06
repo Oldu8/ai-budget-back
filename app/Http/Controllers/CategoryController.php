@@ -14,6 +14,17 @@ class CategoryController extends Controller
             ->orderBy('label')
             ->get();
 
-        return response()->json($categories);
+        $data = $categories->map(fn (Category $c) => [
+            'id' => $c->id,
+            'slug' => $c->name,
+            'label' => $c->label,
+            'children' => $c->children->map(fn (Category $child) => [
+                'id' => $child->id,
+                'slug' => $child->name,
+                'label' => $child->label,
+            ])->values()->all(),
+        ])->values()->all();
+
+        return response()->json(['data' => $data]);
     }
 }

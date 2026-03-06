@@ -6,6 +6,7 @@ use App\Http\Controllers\AppUserController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ManualTransactionController;
 use App\Http\Controllers\ScanController;
+use App\Http\Controllers\TransactionSummaryController;
 
 Route::middleware('throttle:5,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
@@ -27,6 +28,9 @@ Route::middleware('supabase.auth')->group(function () {
 
     Route::post('/transactions/scan', [ScanController::class, 'scan']);
     Route::post('/transactions/{transaction}/confirm', [ScanController::class, 'confirm']);
+
+    Route::get('/transactions/summary', [TransactionSummaryController::class, 'index']);
+    Route::get('/transactions/summary/{category}', [TransactionSummaryController::class, 'show']);
 
     Route::get('/transactions', [ManualTransactionController::class, 'index']);
     Route::post('/transactions', [ManualTransactionController::class, 'store']);
