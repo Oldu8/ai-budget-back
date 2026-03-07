@@ -56,6 +56,14 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## Admin panel
+
+Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`.
+
+- Set `ADMIN_PASSWORD` in `.env`.
+- Create/update admin user: `php artisan db:seed --class=AdminUserSeeder` (email: oldu2002@gmail.com).
+- Open `/admin` and sign in with that email and `ADMIN_PASSWORD`.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
