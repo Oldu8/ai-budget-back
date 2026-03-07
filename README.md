@@ -64,6 +64,15 @@ Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`
 - Create/update admin user: `php artisan db:seed --class=AdminUserSeeder` (email: oldu2002@gmail.com).
 - Open `/admin` and sign in with that email and `ADMIN_PASSWORD`.
 
+**UI:** Left sidebar (dark) with branding **Anton**, search field, navigation (Dashboard, Users, Subscriptions) with icons, and Logout at the bottom. Main content area is light; layout uses `resources/views/admin/layout.blade.php`.
+
+**Pages:**
+
+- **Dashboard** (`/admin`) — Two metric cards: total app users count and active subscriptions count (statuses `active`, `trialing`).
+- **Users** (`/admin/users`) — Paginated table of app users: ID, email, first name, last name, email verified, created. Link “View” opens the user detail.
+- **User detail** (`/admin/users/{id}`) — View-only: profile (email, first/last name, email verified, created), settings (currency, language, timezone) if present, and list of subscriptions (plan, status, period end, scans used, cancel at period end). Back link to Users list.
+- **Subscriptions** (`/admin/subscriptions`) — Paginated table of all user subscriptions: ID, user (link to user detail), plan, status, scans used, period end, cancel at period end. Filter by plan (dropdown); “Filter” applies, “All” shows every plan.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
