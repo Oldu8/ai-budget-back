@@ -177,6 +177,7 @@ Mobile App                     Backend API                     Supabase
 | `GET`    | `/api/transactions`             | List transactions (paginated, filters: from, to, type)            |
 | `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
 | `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |
+| `GET`    | `/api/transactions/export`     | CSV export of expenses for date range (query: from, to); Basic/Plus/Premium only |
 | `POST`   | `/api/transactions`             | Create transaction (manual, ManualTransactionController)          |
 | `GET`    | `/api/transactions/{id}`        | Get transaction                                                    |
 | `PUT`    | `/api/transactions/{id}`        | Update transaction                                                  |
@@ -540,6 +541,14 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - `invoice.paid` → reset `used_checks_count` to 0 for new billing cycle
 - `customer.subscription.deleted` → update status to canceled, restrict access
 
+### 5.8. CSV export of expenses
+
+- **Route:** `GET /api/transactions/export?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- **Access:** Only for users with active subscription on Basic, Plus, or Premium plan. If no subscription or plan is Free → 403 "CSV export is not available on your plan."
+- **Query:** `from`, `to` — required, dates, `to >= from`. Max range (e.g. one year) is enforced on the client.
+- **Data:** Confirmed expense transactions in the date range; transaction items whose category is not in the user's disabled list. One CSV row per transaction item.
+- **Response:** Streamed CSV file, `Content-Disposition: attachment; filename="expenses_YYYY-MM-DD_YYYY-MM-DD.csv"`. UTF-8 with BOM. Columns: Date, Category (subcategory label), Amount (in currency units, 2 decimals), Currency (from app_user_settings), Label (item label or empty).
+
 ## 6. Environment Variables
 
 | Variable                | Purpose                                                                               |
@@ -573,6 +582,7 @@ Included:
 - Category visibility: app_user_category_settings, funnel/visibility-questions, visibility-tags, PATCH category-visibility; categories/summary/scan respect disabled list
 - Subscription plans with AI scan limits
 - Stripe integration (checkout, webhooks)
+- CSV export of expenses (GET /api/transactions/export; Basic/Plus/Premium only)
 
 Deferred (post-MVP):
 

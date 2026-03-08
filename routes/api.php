@@ -7,6 +7,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CategoryVisibilityController;
 use App\Http\Controllers\ManualTransactionController;
 use App\Http\Controllers\ScanController;
+use App\Http\Controllers\ExpenseExportController;
 use App\Http\Controllers\TransactionSummaryController;
 
 Route::middleware('throttle:5,1')->group(function () {
@@ -36,6 +37,7 @@ Route::middleware('supabase.auth')->group(function () {
 
     Route::get('/transactions/summary', [TransactionSummaryController::class, 'index']);
     Route::get('/transactions/summary/{category}', [TransactionSummaryController::class, 'show']);
+    Route::get('/transactions/export', [ExpenseExportController::class, 'export']);
 
     Route::get('/transactions', [ManualTransactionController::class, 'index']);
     Route::post('/transactions', [ManualTransactionController::class, 'store']);
