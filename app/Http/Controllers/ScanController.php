@@ -27,6 +27,14 @@ class ScanController extends Controller
         $file = $request->file('image');
         $user = $request->user();
 
+        $subscription = $user->activeSubscription()?->load('plan');
+        if (!$subscription) {
+            return response()->json(['message' => 'Subscription required to scan.'], 403);
+        }
+        if ($subscription->used_checks_count >= $subscription->plan->check_limit) {
+            return response()->json(['message' => 'Scan limit reached for this billing period.'], 403);
+        }
+
         $base64 = base64_encode($file->getContent());
         $mimeType = $file->getMimeType();
 
@@ -71,7 +79,7 @@ class ScanController extends Controller
         $validCategoryIds = $categories->pluck('id')->toArray();
         $fallbackCategoryId = $categories->firstWhere('name', 'finance_other_misc')?->id;
 
-        $transaction = DB::transaction(function () use ($aiResult, $user, $imgPath, $validCategoryIds, $fallbackCategoryId) {
+        $transaction = DB::transaction(function () use ($aiResult, $user, $imgPath, $validCategoryIds, $fallbackCategoryId, $subscription) {
             $transaction = Transaction::create([
                 'app_user_id' => $user->id,
                 'total_amount' => (int) $aiResult['total_amount'],
@@ -96,6 +104,8 @@ class ScanController extends Controller
                     'label' => $item['product'] ?? null,
                 ]);
             }
+
+            $subscription->increment('used_checks_count');
 
             return $transaction;
         });

@@ -36,6 +36,7 @@ description: Project conventions for ai-budget-backend
 ### 6. General
 
 - Always refer to backend-spec.md for the database schema, table naming conventions, and business logic before generating any backend code.
+- When implementing new features or significant changes, update the documentation (e.g. backend-spec.md) so it stays accurate and up to date.
 
 ### 7. COMMENTS FOR COMPLEX LOGIC
 

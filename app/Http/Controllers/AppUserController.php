@@ -14,7 +14,26 @@ class AppUserController extends Controller
         $user = $request->user();
         $user->load('settings');
 
-        return response()->json($user);
+        $subscription = $user->activeSubscription()?->load('plan');
+        $scanUsage = [
+            'scans_remaining' => 0,
+            'scans_limit' => 0,
+            'period_end' => null,
+        ];
+        if ($subscription && $subscription->relationLoaded('plan')) {
+            $limit = $subscription->plan->check_limit;
+            $used = $subscription->used_checks_count;
+            $scanUsage = [
+                'scans_remaining' => max(0, $limit - $used),
+                'scans_limit' => $limit,
+                'period_end' => $subscription->current_period_end?->toIso8601String(),
+            ];
+        }
+
+        return response()->json(array_merge($user->toArray(), [
+            'subscription' => $subscription?->toArray(),
+            'scan_usage' => $scanUsage,
+        ]));
     }
 
     public function update(Request $request): JsonResponse

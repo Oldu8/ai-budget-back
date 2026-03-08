@@ -163,7 +163,7 @@ Mobile App                     Backend API                     Supabase
 
 | Method   | Route              | Action                       |
 | -------- | ------------------ | ---------------------------- |
-| `GET`    | `/api/me`          | Get profile + settings       |
+| `GET`    | `/api/me`          | Get profile, settings, subscription, and scan_usage (scans remaining/limit, period_end) |
 | `PUT`    | `/api/me`          | Update profile               |
 | `DELETE` | `/api/me`          | Soft-delete account          |
 | `GET`    | `/api/me/settings` | Get user settings            |
@@ -458,16 +458,17 @@ ORDER BY iim.date, cp.node_id;
 
 **Flow:**
 
-1. Validate image (ScanRequest: file type, size ≤ 5 MB)
-2. Base64-encode the uploaded file (still in memory)
-3. Upload original to Supabase Storage (private bucket `receipts`, service role key, path: `{userId}/{uuid}.{ext}`)
-4. Fetch all Level 2 categories from DB that are not in the user's `app_user_category_settings` (disabled list); then with('parent').
-5. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (JSON mode)
-6. Validate AI response structure (`is_receipt`, `total_amount`, `date`, `items` must be present)
-7. If `is_receipt = false` → delete image from Storage, return 422
-8. If AI call fails → keep image in Storage (for future retry), return 503 with `img_path`
-9. If valid → create Transaction (`created_by = 'ai'`, `confirmed_at = null`, `type = expense`) + N TransactionItems
-10. Return 201 with unconfirmed transaction (invisible in lists/aggregations until confirmed)
+1. Check scan quota: load user's active subscription (with plan). If no active subscription → 403 "Subscription required to scan." If `used_checks_count >= plan.check_limit` → 403 "Scan limit reached for this billing period." (Done before upload/AI to avoid wasting resources.)
+2. Validate image (ScanRequest: file type, size ≤ 5 MB)
+3. Base64-encode the uploaded file (still in memory)
+4. Upload original to Supabase Storage (private bucket `receipts`, service role key, path: `{userId}/{uuid}.{ext}`)
+5. Fetch all Level 2 categories from DB that are not in the user's `app_user_category_settings` (disabled list); then with('parent').
+6. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (JSON mode)
+7. Validate AI response structure (`is_receipt`, `total_amount`, `date`, `items` must be present)
+8. If `is_receipt = false` → delete image from Storage, return 422
+9. If AI call fails → keep image in Storage (for future retry), return 503 with `img_path`
+10. If valid → in one DB transaction: create Transaction (`created_by = 'ai'`, `confirmed_at = null`, `type = expense`) + N TransactionItems, then increment `user_subscriptions.used_checks_count` for the active subscription.
+11. Return 201 with unconfirmed transaction (invisible in lists/aggregations until confirmed)
 
 **Confirm route:** `POST /api/transactions/{id}/confirm` — sets `confirmed_at = now()`. Only works for AI-created unconfirmed transactions belonging to the current user.
 
@@ -505,7 +506,7 @@ ORDER BY iim.date, cp.node_id;
 - `app/Services/SupabaseStorageService.php` — Supabase Storage REST API (upload, download, delete)
 - `app/Http/Requests/ScanRequest.php` — image validation
 
-**Между шагами 9 и confirm** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
+**Между шагами 10–11 и confirm** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
 
 ### 5.5. Visibility tags and category settings
 
@@ -518,12 +519,20 @@ ORDER BY iim.date, cp.node_id;
 - Funnel: show questions from `/api/funnel/visibility-questions`; on answer "no" for a tag, call `PATCH /api/me/category-visibility` with `{ "visibility_tag": "kids", "enabled": false }`. Settings screen: list tags with toggles from `/api/visibility-tags`, update via same PATCH.
 - Future: per-category toggle = insert/delete single row by `category_id`.
 
-### 5.6. Quota Enforcement
+### 5.6. Scan quota (plan-based limit)
 
-Before calling OpenAI:
+Each plan defines `check_limit` (max AI scans per billing period). The count is stored in `user_subscriptions.used_checks_count` and is incremented after each successful scan (when a transaction is created); it is reset to 0 by the Stripe `invoice.paid` webhook at the start of a new billing cycle.
 
-- Verify `user_subscription.used_checks_count < plan.check_limit`
-- If limit reached → 403 Forbidden with "Limit Exceeded"
+**Before calling OpenAI (in `ScanController::scan()`):**
+
+- Load the user's active subscription (status `active` or `trialing`) with `plan`. If there is no active subscription → 403 with message "Subscription required to scan."
+- If `used_checks_count >= plan.check_limit` → 403 with message "Scan limit reached for this billing period."
+- After successfully creating the transaction and items (inside the same DB transaction), call `$subscription->increment('used_checks_count')`.
+
+**GET /api/me response** includes subscription and scan usage so the client can show remaining scans without a separate endpoint:
+
+- **`subscription`**: The active subscription with nested `plan` (id, type, label, check_limit, etc.), plus `current_period_end`, `used_checks_count`, etc.; or `null` if the user has no active subscription.
+- **`scan_usage`**: Object `{ scans_remaining, scans_limit, period_end }`. If no subscription: `scans_remaining: 0`, `scans_limit: 0`, `period_end: null`. If subscription exists: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = end of current billing period (ISO 8601).
 
 ### 5.7. Stripe Webhook Handling
 
