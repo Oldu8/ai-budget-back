@@ -4,15 +4,36 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * List categories tree. Filtered by user's disabled list, or by ?visibility_tag for funnel preview.
+     */
+    public function index(Request $request): JsonResponse
     {
-        $categories = Category::with('children')
-            ->whereNull('category_id')
-            ->orderBy('label')
-            ->get();
+        if ($request->has('visibility_tag')) {
+            // Funnel preview: return only parents/children that have this tag (no user filter).
+            $tag = $request->query('visibility_tag');
+            $categories = Category::with(['children' => fn ($q) => $q->where('visibility_tag', $tag)])
+                ->whereNull('category_id')
+                ->where(function ($q) use ($tag) {
+                    $q->where('visibility_tag', $tag)
+                        ->orWhereHas('children', fn ($q) => $q->where('visibility_tag', $tag));
+                })
+                ->orderBy('label')
+                ->get();
+        } else {
+            // Normal list: exclude categories that the user has disabled (app_user_category_settings).
+            $user = $request->user();
+            $disabledIds = $user->disabledCategorySettings()->pluck('category_id')->all();
+            $categories = Category::with(['children' => fn ($q) => empty($disabledIds) ? $q : $q->whereNotIn('id', $disabledIds)])
+                ->whereNull('category_id')
+                ->when(!empty($disabledIds), fn ($q) => $q->whereNotIn('id', $disabledIds))
+                ->orderBy('label')
+                ->get();
+        }
 
         $data = $categories->map(fn (Category $c) => [
             'id' => $c->id,

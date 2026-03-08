@@ -53,7 +53,7 @@ return [
         'label' => 'Housing',
         'visibility_tag' => null,
     ],
-    ['key' => 'housing_rent', 'parent_key' => 'housing', 'label' => 'Rent', 'visibility_tag' => null],
+    ['key' => 'housing_rent', 'parent_key' => 'housing', 'label' => 'Rent', 'visibility_tag' => 'rent'],
     ['key' => 'housing_utilities', 'parent_key' => 'housing', 'label' => 'Utilities', 'visibility_tag' => null],
     ['key' => 'housing_furniture', 'parent_key' => 'housing', 'label' => 'Furniture and home goods', 'visibility_tag' => null],
     ['key' => 'housing_repairs', 'parent_key' => 'housing', 'label' => 'Repairs', 'visibility_tag' => null],
@@ -133,6 +133,9 @@ return [
         'visibility_tag' => null,
     ],
     ['key' => 'finance_taxes', 'parent_key' => 'finance_other', 'label' => 'Taxes', 'visibility_tag' => null],
+    ['key' => 'finance_insurance', 'parent_key' => 'finance_other', 'label' => 'Insurance', 'visibility_tag' => 'insurance'],
+    ['key' => 'finance_loans', 'parent_key' => 'finance_other', 'label' => 'Loans', 'visibility_tag' => 'loan'],
+    ['key' => 'finance_mortgage', 'parent_key' => 'finance_other', 'label' => 'Mortgage', 'visibility_tag' => 'mortgage'],
     ['key' => 'finance_fees', 'parent_key' => 'finance_other', 'label' => 'Fees and commissions', 'visibility_tag' => null],
     ['key' => 'finance_other_misc', 'parent_key' => 'finance_other', 'label' => 'Other (misc)', 'visibility_tag' => null],
 ];

@@ -32,8 +32,10 @@ class ScanController extends Controller
 
         $imgPath = $this->storage->upload($file, $user->id);
 
+        $disabledCategoryIds = $user->disabledCategorySettings()->pluck('category_id')->all();
         $categories = Category::whereNotNull('category_id')
             ->with('parent')
+            ->when(!empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('id', $disabledCategoryIds))
             ->get();
 
         try {

@@ -170,7 +170,10 @@ Mobile App                     Backend API                     Supabase
 | `POST`   | `/api/me/settings` | Create settings (onboarding) |
 | `PUT`    | `/api/me/settings` | Update user settings         |
 
-| `GET`    | `/api/categories`               | List categories and subcategories (id, slug, label, children)     |
+| `GET`    | `/api/categories`               | List categories and subcategories (id, slug, label, children); filtered by user's disabled list; optional `?visibility_tag=` for funnel preview     |
+| `GET`    | `/api/funnel/visibility-questions` | List funnel questions per visibility tag (question_key, label, type: boolean)     |
+| `GET`    | `/api/visibility-tags`         | List visibility tags with `enabled` for current user (for settings toggles)     |
+| `PATCH`  | `/api/me/category-visibility`   | Set tag enabled/disabled: body `{ "visibility_tag", "enabled" }` — disabled = add all categories with tag to app_user_category_settings; enabled = delete those rows     |
 | `GET`    | `/api/transactions`             | List transactions (paginated, filters: from, to, type)            |
 | `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
 | `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |
@@ -255,6 +258,14 @@ Mobile App                     Backend API                     Supabase
 
 - `currency`, `language`, `timezone` (IANA format)
 - Timezone is used to calculate correct transaction dates relative to user location
+
+**app_user_category_settings** — per-user disabled categories (visibility).
+
+- `app_user_id` — FK to app_users (cascadeOnDelete)
+- `category_id` — FK to categories (cascadeOnDelete)
+- `visibility_tag` (nullable) — tag of the category at the time it was disabled; used for bulk "enable by tag" (DELETE WHERE visibility_tag = ?)
+- Unique (`app_user_id`, `category_id`)
+- **Semantics:** a row means this category/subcategory is **disabled** (hidden) for this user. No row = enabled. By default all categories are enabled. Disabling by tag inserts one row per category that has that tag; enabling by tag deletes all rows with that `visibility_tag` for the user. Future: per-category toggle = single insert/delete by `category_id`.
 
 ### 4.2. Categories
 
@@ -366,7 +377,7 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 
 **1. Список категорий и подкатегорий**
 
-- **Route:** `GET /api/categories`
+- **Route:** `GET /api/categories`. Optional query `?visibility_tag=X` — return only categories with that tag (for funnel preview; no user filter). Without query — categories are filtered by user's disabled list: any category whose id is in `app_user_category_settings` for the current user is excluded.
 - **Response:** `{ "data": [ { "id", "slug", "label", "children": [ { "id", "slug", "label" } ] } ] }`
 - `slug` = поле `categories.name` из БД. Level 1 (родители) — объекты с массивом `children` (Level 2). Используется как единственный источник id → slug/label для подписей на графиках и в сводках.
 
@@ -392,7 +403,7 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 }
 ```
 
-- `days` — объект «дата → объект category_id → сумма в копейках за день». Все даты в интервале присутствуют (при отсутствии трат — пустой объект).
+- `days` — объект «дата → объект category_id → сумма в копейках за день». Все даты в интервале присутствуют (при отсутствии трат — пустой объект). Only categories not in the user's `app_user_category_settings` are included in aggregation.
 - `meta.totals_by_category` — сумма по каждой категории за период; `meta.grand_total` — общая сумма.
 
 **3. Сводка по подкатегориям одной категории за период**
@@ -450,7 +461,7 @@ ORDER BY iim.date, cp.node_id;
 1. Validate image (ScanRequest: file type, size ≤ 5 MB)
 2. Base64-encode the uploaded file (still in memory)
 3. Upload original to Supabase Storage (private bucket `receipts`, service role key, path: `{userId}/{uuid}.{ext}`)
-4. Fetch all Level 2 categories from DB (`Category::whereNotNull('category_id')->with('parent')`)
+4. Fetch all Level 2 categories from DB that are not in the user's `app_user_category_settings` (disabled list); then with('parent').
 5. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (JSON mode)
 6. Validate AI response structure (`is_receipt`, `total_amount`, `date`, `items` must be present)
 7. If `is_receipt = false` → delete image from Storage, return 422
@@ -496,14 +507,25 @@ ORDER BY iim.date, cp.node_id;
 
 **Между шагами 9 и confirm** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
 
-### 5.5. Quota Enforcement
+### 5.5. Visibility tags and category settings
+
+**Data:** `database/data/visibility_tags.php` — list of tags with labels and funnel question (key, label). Used by `GET /api/funnel/visibility-questions` and `GET /api/visibility-tags`.
+
+**Rules:**
+- Categories (and subcategories) whose id is in `app_user_category_settings` for the user are **hidden**: excluded from `GET /api/categories`, from AI scan category list, and from transaction summary aggregation.
+- **Disable by tag** (e.g. front sends `kids` = false): insert into `app_user_category_settings` one row per category that has `visibility_tag = 'kids'` (with `visibility_tag` stored in the row). **Enable by tag:** delete all rows for that user where `visibility_tag = 'kids'`.
+- **GET /api/visibility-tags** returns each tag with `enabled: true` if the user has no rows with that tag in `app_user_category_settings`; otherwise `enabled: false`.
+- Funnel: show questions from `/api/funnel/visibility-questions`; on answer "no" for a tag, call `PATCH /api/me/category-visibility` with `{ "visibility_tag": "kids", "enabled": false }`. Settings screen: list tags with toggles from `/api/visibility-tags`, update via same PATCH.
+- Future: per-category toggle = insert/delete single row by `category_id`.
+
+### 5.6. Quota Enforcement
 
 Before calling OpenAI:
 
 - Verify `user_subscription.used_checks_count < plan.check_limit`
 - If limit reached → 403 Forbidden with "Limit Exceeded"
 
-### 5.6. Stripe Webhook Handling
+### 5.7. Stripe Webhook Handling
 
 - `checkout.session.completed` → activate new subscription
 - `invoice.paid` → reset `used_checks_count` to 0 for new billing cycle
@@ -539,12 +561,13 @@ Included:
 - Manual transaction CRUD
 - AI receipt scanning (single photo → transaction suggestion → confirm)
 - Category system (static, seeded)
+- Category visibility: app_user_category_settings, funnel/visibility-questions, visibility-tags, PATCH category-visibility; categories/summary/scan respect disabled list
 - Subscription plans with AI scan limits
 - Stripe integration (checkout, webhooks)
 
 Deferred (post-MVP):
 
-- User category personalization (user_category_settings)
+- Per-category (single category_id) toggle in settings (table supports it; API can be extended)
 - Google Sheets export
 - Chat/message history for AI interactions
 - Multi-currency support

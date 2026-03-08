@@ -15,9 +15,11 @@ class TransactionSummaryController extends Controller
 {
     public function index(SummaryRangeRequest $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $userId = $user->id;
         $from = $request->validated('from');
         $to = $request->validated('to');
+        $disabledCategoryIds = $user->disabledCategorySettings()->pluck('category_id')->all();
 
         $rows = Transaction::query()
             ->where('app_user_id', $userId)
@@ -27,6 +29,7 @@ class TransactionSummaryController extends Controller
             ->join('transaction_items', 'transactions.id', '=', 'transaction_items.transaction_id')
             ->join('categories as subcat', 'transaction_items.category_id', '=', 'subcat.id')
             ->whereNotNull('subcat.category_id')
+            ->when(!empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('transaction_items.category_id', $disabledCategoryIds))
             ->selectRaw('transactions.date as date, subcat.category_id as category_id, SUM(transaction_items.amount) as total')
             ->groupBy('transactions.date', 'subcat.category_id')
             ->get();
@@ -79,10 +82,15 @@ class TransactionSummaryController extends Controller
             abort(404, 'Category must be a top-level category.');
         }
 
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $userId = $user->id;
         $from = $request->validated('from');
         $to = $request->validated('to');
+        $disabledCategoryIds = $user->disabledCategorySettings()->pluck('category_id')->all();
         $childIds = $category->children->pluck('id')->all();
+        if (!empty($disabledCategoryIds)) {
+            $childIds = array_values(array_diff($childIds, $disabledCategoryIds));
+        }
 
         if ($childIds === []) {
             $days = $this->emptyDaysForRange($from, $to);

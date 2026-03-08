@@ -36,3 +36,8 @@ description: Project conventions for ai-budget-backend
 ### 6. General
 
 - Always refer to backend-spec.md for the database schema, table naming conventions, and business logic before generating any backend code.
+
+### 7. COMMENTS FOR COMPLEX LOGIC
+
+- For non-trivial methods or functions, add a short description (docblock or inline comment) of what the method does or what a block of code is for.
+- Prefer one line; avoid obvious restatements of the code.

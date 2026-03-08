@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppUserController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CategoryVisibilityController;
 use App\Http\Controllers\ManualTransactionController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TransactionSummaryController;
@@ -25,6 +26,10 @@ Route::middleware('supabase.auth')->group(function () {
     Route::put('/me/settings', [AppUserController::class, 'updateSettings']);
 
     Route::get('/categories', [CategoryController::class, 'index']);
+
+    Route::get('/funnel/visibility-questions', [CategoryVisibilityController::class, 'funnelQuestions']);
+    Route::get('/visibility-tags', [CategoryVisibilityController::class, 'visibilityTags']);
+    Route::patch('/me/category-visibility', [CategoryVisibilityController::class, 'update']);
 
     Route::post('/transactions/scan', [ScanController::class, 'scan']);
     Route::post('/transactions/{transaction}/confirm', [ScanController::class, 'confirm']);

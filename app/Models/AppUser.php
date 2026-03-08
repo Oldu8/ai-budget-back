@@ -59,4 +59,9 @@ class AppUser extends Authenticatable
     {
         return $this->hasMany(Payment::class, 'app_user_id');
     }
+
+    public function disabledCategorySettings(): HasMany
+    {
+        return $this->hasMany(AppUserCategorySetting::class, 'app_user_id');
+    }
 }
