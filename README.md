@@ -56,6 +56,16 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## Seeders (new app setup)
+
+After migrations, run these seeders so the app has required data:
+
+1. **Categories** — `php artisan categories:seed` (from `database/data/categories.php`)
+2. **Plans** — `php artisan plans:seed` (from `database/data/plans.php`)
+3. **Admin user** — `php artisan db:seed --class=AdminUserSeeder` (creates/updates admin for panel)
+
+Optional: `php artisan db:seed` runs `DatabaseSeeder` (PlanSeeder + test User); use if you need the default test user.
+
 ## Admin panel
 
 Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`.

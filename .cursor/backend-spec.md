@@ -309,10 +309,25 @@ Mobile App                     Backend API                     Supabase
 
 **plans** — catalog of subscription tiers (no timestamps).
 
-- `type` — enum: `free`, `basic`, `standard`, `premium`
+- `type` — enum: `free`, `basic`, `plus`, `premium`
 - `payment_price_id` (nullable) — Stripe Price ID (null for free plan)
 - `price` — integer (cents)
+- `label` — display name (e.g. Free, Basic, Plus, Premium)
+- `description` (nullable) — text listing plan features (for UI/table)
 - `check_limit` — max AI scans per billing cycle
+
+**Тарифы (каталог планов)**
+
+Фиксированный порядок тарифов: **Free → Basic → Plus → Premium**. Порядок признаков для описания/UI: AI scans, Manual transactions, History, Categories, Recurring transactions, Analytics, CSV export, прочее.
+
+| Plan    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics              | CSV | Other                |
+| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | ---------------------- | --- | -------------------- |
+| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —                      | —   | —                    |
+| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —                      | yes | —                    |
+| Plus    | $6    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard              | yes | —                    |
+| Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced + AI insights | yes | AI spending insights |
+
+Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `updateOrCreate` by `type` — safe to run multiple times.
 
 **user_subscriptions** — real-time subscription state per user.
 
