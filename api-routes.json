@@ -1,0 +1,284 @@
+{
+  "baseUrl": "/api",
+  "routes": [
+    {
+      "name": "auth.register",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "auth": "public",
+      "description": "Регистрация AppUser через Supabase Auth (proxy).",
+      "body": {
+        "email": "string",
+        "password": "string"
+      }
+    },
+    {
+      "name": "auth.login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": "public",
+      "description": "Логин AppUser через Supabase Auth (proxy).",
+      "body": {
+        "email": "string",
+        "password": "string"
+      }
+    },
+    {
+      "name": "auth.refresh",
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "auth": "public",
+      "description": "Обновление access_token по refresh_token.",
+      "body": {
+        "refresh_token": "string"
+      }
+    },
+    {
+      "name": "auth.logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "auth": "supabase",
+      "description": "Logout текущего AppUser в Supabase.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.show",
+      "method": "GET",
+      "path": "/api/me",
+      "auth": "supabase",
+      "description": "Профиль пользователя + subscription + scan_usage.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.update",
+      "method": "PUT",
+      "path": "/api/me",
+      "auth": "supabase",
+      "description": "Обновление профиля (first_name, last_name).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.destroy",
+      "method": "DELETE",
+      "path": "/api/me",
+      "auth": "supabase",
+      "description": "Soft-delete аккаунта AppUser.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.settings.show",
+      "method": "GET",
+      "path": "/api/me/settings",
+      "auth": "supabase",
+      "description": "Получить настройки пользователя (currency, language, timezone).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.settings.create",
+      "method": "POST",
+      "path": "/api/me/settings",
+      "auth": "supabase",
+      "description": "Создать настройки (онбординг). Ошибка 409 при повторном создании.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.settings.update",
+      "method": "PUT",
+      "path": "/api/me/settings",
+      "auth": "supabase",
+      "description": "Обновить существующие настройки.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "categories.index",
+      "method": "GET",
+      "path": "/api/categories",
+      "auth": "supabase",
+      "description": "Список категорий и подкатегорий с учётом скрытых пользователем.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "query": {
+        "visibility_tag": "string (optional)"
+      }
+    },
+    {
+      "name": "funnel.visibilityQuestions",
+      "method": "GET",
+      "path": "/api/funnel/visibility-questions",
+      "auth": "supabase",
+      "description": "Вопросы для онбординг-фаннела по visibility_tag.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "visibilityTags.index",
+      "method": "GET",
+      "path": "/api/visibility-tags",
+      "auth": "supabase",
+      "description": "Список visibility-тегов с enabled для текущего пользователя.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "me.categoryVisibility.update",
+      "method": "PATCH",
+      "path": "/api/me/category-visibility",
+      "auth": "supabase",
+      "description": "Включить/выключить набор категорий по visibility_tag.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "body": {
+        "visibility_tag": "string",
+        "enabled": "boolean"
+      }
+    },
+    {
+      "name": "transactions.scan",
+      "method": "POST",
+      "path": "/api/transactions/scan",
+      "auth": "supabase",
+      "description": "AI-скан чека: загрузка картинки, возврат предложенной транзакции. Требует активную подписку и свободный лимит сканов.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "body": {
+        "image": "file (jpeg/png)"
+      }
+    },
+    {
+      "name": "transactions.confirm",
+      "method": "POST",
+      "path": "/api/transactions/{transaction}/confirm",
+      "auth": "supabase",
+      "description": "Подтвердить AI-сгенерированную транзакцию (делает её видимой в списках/сводках).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "transactions.index",
+      "method": "GET",
+      "path": "/api/transactions",
+      "auth": "supabase",
+      "description": "Список подтверждённых транзакций текущего пользователя (пагинация и фильтры).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "query": {
+        "from": "YYYY-MM-DD (optional)",
+        "to": "YYYY-MM-DD (optional)",
+        "type": "income|expense (optional)",
+        "per_page": "int (optional, default 20)"
+      }
+    },
+    {
+      "name": "transactions.store",
+      "method": "POST",
+      "path": "/api/transactions",
+      "auth": "supabase",
+      "description": "Создать ручную транзакцию (1 transaction + 1 item).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "body": {
+        "total_amount": "int (в копейках)",
+        "date": "YYYY-MM-DD",
+        "type": "income|expense",
+        "category_id": "int (subcategory, Level 2)"
+      }
+    },
+    {
+      "name": "transactions.show",
+      "method": "GET",
+      "path": "/api/transactions/{transaction}",
+      "auth": "supabase",
+      "description": "Получить одну транзакцию текущего пользователя по id.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "transactions.update",
+      "method": "PUT",
+      "path": "/api/transactions/{transaction}",
+      "auth": "supabase",
+      "description": "Обновить ручную транзакцию (total_amount/date/type/category).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "transactions.destroy",
+      "method": "DELETE",
+      "path": "/api/transactions/{transaction}",
+      "auth": "supabase",
+      "description": "Soft-delete транзакции текущего пользователя.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      }
+    },
+    {
+      "name": "transactions.summary.index",
+      "method": "GET",
+      "path": "/api/transactions/summary",
+      "auth": "supabase",
+      "description": "Сводка трат по категориям (Level 1) за период.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "query": {
+        "from": "YYYY-MM-DD",
+        "to": "YYYY-MM-DD"
+      }
+    },
+    {
+      "name": "transactions.summary.show",
+      "method": "GET",
+      "path": "/api/transactions/summary/{category}",
+      "auth": "supabase",
+      "description": "Сводка трат по подкатегориям выбранной категории за период.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "query": {
+        "from": "YYYY-MM-DD",
+        "to": "YYYY-MM-DD"
+      }
+    },
+    {
+      "name": "transactions.export",
+      "method": "GET",
+      "path": "/api/transactions/export",
+      "auth": "supabase",
+      "description": "CSV-выгрузка трат за период. Только для планов Basic/Plus/Premium.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "query": {
+        "from": "YYYY-MM-DD",
+        "to": "YYYY-MM-DD"
+      },
+      "planRequirement": "Basic|Plus|Premium",
+      "response": "text/csv attachment: expenses_FROM_TO.csv"
+    }
+  ]
+}
+
