@@ -9,6 +9,7 @@ use App\Http\Controllers\ManualTransactionController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ExpenseExportController;
 use App\Http\Controllers\TransactionSummaryController;
+use App\Http\Controllers\RecurringExpenseController;
 
 Route::middleware('throttle:5,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
@@ -44,4 +45,11 @@ Route::middleware('supabase.auth')->group(function () {
     Route::get('/transactions/{transaction}', [ManualTransactionController::class, 'show']);
     Route::put('/transactions/{transaction}', [ManualTransactionController::class, 'update']);
     Route::delete('/transactions/{transaction}', [ManualTransactionController::class, 'destroy']);
+
+    Route::get('/recurring-expenses', [RecurringExpenseController::class, 'index']);
+    Route::post('/recurring-expenses', [RecurringExpenseController::class, 'store']);
+    Route::get('/recurring-expenses/{id}', [RecurringExpenseController::class, 'show']);
+    Route::put('/recurring-expenses/{id}', [RecurringExpenseController::class, 'update']);
+    Route::delete('/recurring-expenses/{id}', [RecurringExpenseController::class, 'destroy']);
+    Route::patch('/recurring-expenses/{id}/toggle', [RecurringExpenseController::class, 'toggle']);
 });
