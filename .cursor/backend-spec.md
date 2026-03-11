@@ -283,18 +283,20 @@ Mobile App                     Backend API                     Supabase
 
 **Seeding categories:** `php artisan categories:seed`. Data: `database/data/categories.php`. Uses `updateOrCreate` by `name` — safe to run multiple times.
 
-### 4.3. Transactions & Transaction Items
+### 4.3. Transactions, Transaction Items & Recurring Expenses
 
 **transactions** — операция / чек (дата, общая сумма, картинка).
 
 - `total_amount` — integer (в копейках, сумма чека)
 - `type` — enum: `income`, `expense`
-- `created_by` — enum: `user`, `ai`
+- `created_by` — enum: `user`, `ai`, `recurring`
 - `raw_ai_data` (JSON, nullable) — полный ответ OpenAI для AI-чеков
 - `confirmed_at` (nullable) — когда транзакция подтверждена
 - `img_path` (nullable) — путь к фото чека в Supabase Storage
+- `recurring_expense_id` (nullable) — FK на `recurring_expenses` (nullOnDelete)
+- `recurring_run_at` (nullable, datetime) — дата/время, для какого запуска правила создана транзакция (используется для защиты от дублей)
 - Soft deletes
-- Indexes: (app_user_id, date), (app_user_id, date, type)
+- Indexes: (app_user_id, date), (app_user_id, date, type), (recurring_expense_id, recurring_run_at)
 
 **transaction_items** — позиции внутри операции (категория, сумма, название).
 
@@ -307,6 +309,7 @@ Mobile App                     Backend API                     Supabase
 **Структура:**
 - **Ручная:** 1 transaction с total_amount, 1 transaction_item с amount = total_amount
 - **AI-чек:** 1 transaction с общей суммой, N transaction_items по категориям
+- **Рекуррентный расход:** 1 transaction с total_amount, 1 transaction_item (amount = total_amount) по одной категории; создаётся по расписанию, всегда с `type = expense`, `created_by = 'recurring'`, `confirmed_at = now()`
 
 **confirmed_at — ключевое поле для видимости транзакции:**
 - **Manual:** устанавливается сразу (`now()`) при создании
@@ -360,6 +363,27 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 **statuses** — normalized dictionary for subscription/payment states (no timestamps).
 
 - Values: `active`, `canceled`, `pending`, `trialing`, `past_due`
+
+**recurring_expenses** — правила для рекуррентных расходов.
+
+- `app_user_id` — FK на app_users (cascadeOnDelete)
+- `category_id` — FK на categories (restrictOnDelete), всегда Level 2 категория
+- `amount` — integer (в копейках), сумма одного списания
+- `label` (nullable) — подпись/описание расхода
+- `starts_at` (datetime) — дата/время старта правила
+- `frequency` — string: `weekly` | `monthly` | `yearly`
+- `interval` — integer, шаг между запусками (по умолчанию 1)
+- `ends_at` (nullable, datetime) — опциональная дата окончания; если null — бесконечно
+- `is_active` — boolean, включает/выключает правило (по умолчанию true)
+- `last_run_at` (nullable, datetime) — когда правило выполнялось в последний раз
+- `next_run_at` (datetime) — запланированное время следующего запуска
+- Soft deletes включены
+
+**Правила:**
+- `category_id` всегда Level 2 (подкатегория, `categories.category_id IS NOT NULL`).
+- Категория не должна быть в `app_user_category_settings` для пользователя (скрытые категории нельзя выбирать).
+- При выключении правила (`is_active = false`) планировщик его не обрабатывает.
+- При включении (`toggle` с false → true) `next_run_at` двигается вперёд до ближайшего будущего запуска.
 
 ## 5. Key Business Rules
 
@@ -415,6 +439,122 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 - **Response:** то же, что в п.2, плюс в начале объект `category: { "id", "slug", "label" }`; в `days` ключи — id подкатегорий (Level 2); в `meta` — `totals_by_subcategory` и `grand_total` (итог по выбранной категории).
 
 **Файлы:** `CategoryController` (index), `TransactionSummaryController` (index, show), `SummaryRangeRequest`, `SummaryResponse` (DTO).
+
+### 5.3. Recurring expenses (rules + scheduler)
+
+**Доступ по тарифу:**
+
+- Рекуррентные расходы доступны только пользователям с активной/пробной подпиской на планах **Plus** или **Premium**.
+- Проверка делается через метод `AppUser::hasRecurringAccess()`:
+  - Берётся `activeSubscription()` (status `active` или `trialing`) с планом.
+  - Разрешены только планы с `plan.type` = `plus` или `premium`.
+  - Если нет подходящей подписки → 403 `"Recurring expenses are not available on your plan."`
+
+**API: правила рекуррентных расходов**
+
+- Все эндпоинты защищены `supabase.auth` и работают только в контексте текущего `AppUser`.
+- **Routes:**
+  - `GET /api/recurring-expenses` — список правил текущего пользователя.
+  - `POST /api/recurring-expenses` — создание правила.
+  - `GET /api/recurring-expenses/{id}` — получить одно правило.
+  - `PUT /api/recurring-expenses/{id}` — обновление правила.
+  - `DELETE /api/recurring-expenses/{id}` — soft-delete правила.
+  - `PATCH /api/recurring-expenses/{id}/toggle` — включить/выключить правило (`is_active`).
+
+**Валидация (Store/UpdateRecurringExpenseRequest):**
+
+- `category_id`:
+  - `required|integer|exists:categories,id` (для создания),
+  - только Level 2 (`categories.category_id IS NOT NULL`),
+  - категория не должна быть в `app_user_category_settings` для текущего пользователя.
+- `amount`: `required|integer|min:1` (или `sometimes` для update).
+- `label`: `nullable|string|max:255`.
+- `starts_at`: `required|date` (или `sometimes` для update).
+- `frequency`: `required|in:weekly,monthly,yearly` (или `sometimes`).
+- `interval`: `integer|min:1` (по умолчанию 1).
+- `ends_at`: `nullable|date|after_or_equal:starts_at`.
+
+**Создание правила (POST /api/recurring-expenses):**
+
+- Использует `StoreRecurringExpenseRequest`.
+- `app_user_id` берётся из `$request->user()->id`.
+- При создании:
+  - `interval` по умолчанию 1.
+  - `next_run_at` = `max(starts_at, now())` — чтобы правило либо стартовало в будущем, либо как можно скорее.
+  - `is_active` = true.
+
+**Обновление (PUT /api/recurring-expenses/{id}):**
+
+- Работает только с правилами текущего пользователя.
+- При изменении `starts_at`/`frequency`/`interval` — пересчитывается `next_run_at` по тому же правилу `max(starts_at, now())`, чтобы не вызвать каскадный запуск задним числом.
+
+**Toggle (PATCH /api/recurring-expenses/{id}/toggle`):**
+
+- Меняет `is_active` на противоположное.
+- При включении (`is_active = true`):
+  - Берёт `next_run_at` (или `starts_at`, если оно не задано; иначе `now()`).
+  - Пока `next_run_at < now()` — двигает его вперёд на один шаг (`interval` в зависимости от `frequency`).
+  - Сохраняет обновлённый `next_run_at`, чтобы следующее списание было в будущем.
+
+**Планировщик (app:run-recurring-expenses):**
+
+- Консольная команда `app:run-recurring-expenses` (`RunRecurringExpensesCommand`).
+- Планируется в `App\Console\Kernel` раз в час:
+
+  - `$schedule->command('app:run-recurring-expenses')->hourly()->withoutOverlapping()->onOneServer();`
+
+- Отбирает правила:
+
+  - `is_active = true`
+  - `next_run_at <= now() + 14 hours` (предварительная фильтрация с учётом максимального UTC+14)
+  - `deleted_at IS NULL` (через SoftDeletes)
+
+- Обработка:
+
+  - Идёт по правилам чанками (`chunkById(100)`), упорядоченным по `next_run_at`.
+  - Для каждого правила:
+    - Открывает DB-транзакцию.
+    - Берёт правило с `lockForUpdate()` по `id`.
+    - Повторно проверяет условия (`is_active`, `next_run_at <= userToday`, `next_run_at <= ends_at`).
+    - Берёт пользователя `appUser` и ещё раз проверяет `hasRecurringAccess()` (если подписка больше не подходит — правило пропускается).
+    - Определяет `userToday` по таймзоне юзера (`app_user_settings.timezone`). Сравнивает `next_run_at` (startOfDay) с `userToday` — если ещё не наступил день, пропускает.
+    - Проверяет `ends_at`: если `next_run_at > ends_at` — пропускает (правило завершено).
+    - Запоминает текущее `runAt = next_run_at` (дата, startOfDay).
+    - Проверяет дубликаты:
+      - Поиск `transactions` с тем же `recurring_expense_id` и `recurring_run_at = runAt`.
+      - Если такая транзакция уже есть — просто двигает правило вперёд (обновляет `last_run_at` и `next_run_at`) и выходит.
+    - Создаёт:
+      - 1 `transaction`:
+        - `app_user_id` = `recurring_expenses.app_user_id`
+        - `total_amount` = `amount`
+        - `date` = `runAt` (дата, `Y-m-d`)
+        - `type` = `expense`
+        - `created_by` = `recurring`
+        - `confirmed_at` = `now()`
+        - `recurring_expense_id` = id правила
+        - `recurring_run_at` = `runAt`
+      - 1 `transaction_item`:
+        - `category_id` = `recurring_expenses.category_id`
+        - `amount` = `recurring_expenses.amount`
+        - `label` = `recurring_expenses.label`
+    - Обновляет правило:
+      - `last_run_at` = `runAt`
+      - `next_run_at` = `runAt`, сдвинутый на один шаг:
+        - `weekly`: `+ interval weeks`
+        - `monthly`: `+ interval months (no overflow)`
+        - `yearly`: `+ interval years`
+
+- **Без бэкфилла:** если правило сильно «просрочено» (несколько периодов подряд не запускалось), при одном проходе команды создаётся только **одна** транзакция, а `next_run_at` сдвигается ровно на один шаг вперёд. Следующий запуск произойдёт уже на следующем цикле планировщика.
+
+**Влияние на списки и сводки:**
+
+- Рекуррентно созданные транзакции:
+  - `type = expense`
+  - `confirmed_at IS NOT NULL`
+  - `transaction_items` с валидной Level 2 категорией.
+- Поэтому они автоматически:
+  - Видны в `GET /api/transactions` (ManualTransactionController@index), если попадают в диапазон дат.
+  - Участвуют в агрегации в `TransactionSummaryController` (обе сводки), т.к. фильтры уже учитывают только `type = expense` и `confirmed_at IS NOT NULL`.
 
 ### 5.3. Агрегация по месяцу и категориям (концепция / legacy SQL)
 

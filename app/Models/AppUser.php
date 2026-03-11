@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PlanType;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -41,6 +42,11 @@ class AppUser extends Authenticatable
         return $this->hasMany(Transaction::class, 'app_user_id');
     }
 
+    public function recurringExpenses(): HasMany
+    {
+        return $this->hasMany(RecurringExpense::class, 'app_user_id');
+    }
+
     public function userSubscriptions(): HasMany
     {
         return $this->hasMany(UserSubscription::class, 'app_user_id');
@@ -63,5 +69,16 @@ class AppUser extends Authenticatable
     public function disabledCategorySettings(): HasMany
     {
         return $this->hasMany(AppUserCategorySetting::class, 'app_user_id');
+    }
+
+    public function hasRecurringAccess(): bool
+    {
+        $subscription = $this->activeSubscription()?->load('plan');
+
+        if (!$subscription || !$subscription->plan) {
+            return false;
+        }
+
+        return in_array($subscription->plan->type, [PlanType::Plus, PlanType::Premium], true);
     }
 }

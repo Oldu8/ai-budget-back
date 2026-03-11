@@ -4,10 +4,10 @@ namespace App\Models;
 
 use App\Enums\TransactionCreatedBy;
 use App\Enums\TransactionType;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
@@ -16,11 +16,13 @@ class Transaction extends Model
     protected $fillable = [
         'app_user_id',
         'total_amount',
+        'recurring_expense_id',
         'date',
         'type',
         'created_by',
         'raw_ai_data',
         'confirmed_at',
+        'recurring_run_at',
         'img_path',
     ];
 
@@ -30,11 +32,17 @@ class Transaction extends Model
         'created_by' => TransactionCreatedBy::class,
         'confirmed_at' => 'datetime',
         'raw_ai_data' => 'array',
+        'recurring_run_at' => 'datetime',
     ];
 
     public function appUser(): BelongsTo
     {
         return $this->belongsTo(AppUser::class, 'app_user_id');
+    }
+
+    public function recurringExpense(): BelongsTo
+    {
+        return $this->belongsTo(RecurringExpense::class);
     }
 
     public function items(): HasMany
