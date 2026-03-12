@@ -8,6 +8,7 @@ use App\Http\Requests\ScanRequest;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Services\FeatureAccessService;
 use App\Services\ScanService;
 use App\Services\SupabaseStorageService;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 class ScanController extends Controller
 {
     public function __construct(
+        private FeatureAccessService $featureAccess,
         private SupabaseStorageService $storage,
         private ScanService $scanner,
     ) {}
@@ -27,13 +29,11 @@ class ScanController extends Controller
         $file = $request->file('image');
         $user = $request->user();
 
-        $subscription = $user->activeSubscription()?->load('plan');
-        if (!$subscription) {
-            return response()->json(['message' => 'Subscription required to scan.'], 403);
+        $result = $this->featureAccess->canUseAiScan($user);
+        if (!$result->allowed) {
+            return response()->json(['message' => $result->message], 403);
         }
-        if ($subscription->used_checks_count >= $subscription->plan->check_limit) {
-            return response()->json(['message' => 'Scan limit reached for this billing period.'], 403);
-        }
+        $subscription = $result->subscription;
 
         $base64 = base64_encode($file->getContent());
         $mimeType = $file->getMimeType();

@@ -20,10 +20,6 @@ class RecurringExpenseController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRecurringAccess()) {
-            return $this->planForbiddenResponse();
-        }
-
         $recurring = $user->recurringExpenses()
             ->with('category')
             ->orderBy('next_run_at')
@@ -35,10 +31,6 @@ class RecurringExpenseController extends Controller
     public function store(StoreRecurringExpenseRequest $request): JsonResponse
     {
         $user = $request->user();
-
-        if (!$user->hasRecurringAccess()) {
-            return $this->planForbiddenResponse();
-        }
 
         $data = $request->validated();
         $interval = (int) ($data['interval'] ?? 1);
@@ -72,10 +64,6 @@ class RecurringExpenseController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRecurringAccess()) {
-            return $this->planForbiddenResponse();
-        }
-
         $recurring = $user->recurringExpenses()
             ->with('category')
             ->findOrFail($id);
@@ -86,10 +74,6 @@ class RecurringExpenseController extends Controller
     public function update(UpdateRecurringExpenseRequest $request, int $id): JsonResponse
     {
         $user = $request->user();
-
-        if (!$user->hasRecurringAccess()) {
-            return $this->planForbiddenResponse();
-        }
 
         $recurring = $user->recurringExpenses()->findOrFail($id);
 
@@ -145,10 +129,6 @@ class RecurringExpenseController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasRecurringAccess()) {
-            return $this->planForbiddenResponse();
-        }
-
         $recurring = $user->recurringExpenses()->findOrFail($id);
         $recurring->delete();
 
@@ -158,10 +138,6 @@ class RecurringExpenseController extends Controller
     public function toggle(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-
-        if (!$user->hasRecurringAccess()) {
-            return $this->planForbiddenResponse();
-        }
 
         $data = $request->validate([
             'is_active' => ['required', 'boolean'],
@@ -179,12 +155,5 @@ class RecurringExpenseController extends Controller
         $recurring->save();
 
         return response()->json($recurring->load('category'));
-    }
-
-    private function planForbiddenResponse(): JsonResponse
-    {
-        return response()->json([
-            'message' => 'Recurring expenses are not available on your plan.',
-        ], 403);
     }
 }
