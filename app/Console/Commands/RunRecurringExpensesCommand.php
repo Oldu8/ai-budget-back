@@ -7,6 +7,7 @@ use App\Enums\TransactionType;
 use App\Models\RecurringExpense;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Services\FeatureAccessService;
 use App\Services\RecurringExpenseSchedulerService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class RunRecurringExpensesCommand extends Command
     protected $description = 'Create transactions for due recurring expenses';
 
     public function __construct(
+        private FeatureAccessService $featureAccess,
         private RecurringExpenseSchedulerService $scheduler,
     ) {
         parent::__construct();
@@ -41,7 +43,7 @@ class RunRecurringExpensesCommand extends Command
                         }
 
                         $user = $lockedRule->appUser;
-                        if (!$user || !$user->hasRecurringAccess()) {
+                        if (!$user || !$this->featureAccess->canAccess($user, 'recurring_expenses')->allowed) {
                             return;
                         }
 

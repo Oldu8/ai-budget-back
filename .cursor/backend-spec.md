@@ -445,7 +445,7 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 **Доступ по тарифу:**
 
 - Рекуррентные расходы доступны только пользователям с активной/пробной подпиской на планах **Plus** или **Premium**.
-- Проверка делается через метод `AppUser::hasRecurringAccess()`:
+- Проверка делается через `FeatureAccessService::canAccess($user, 'recurring_expenses')` (middleware `feature.access:recurring_expenses` на routes).
   - Берётся `activeSubscription()` (status `active` или `trialing`) с планом.
   - Разрешены только планы с `plan.type` = `plus` или `premium`.
   - Если нет подходящей подписки → 403 `"Recurring expenses are not available on your plan."`
@@ -516,7 +516,7 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
     - Открывает DB-транзакцию.
     - Берёт правило с `lockForUpdate()` по `id`.
     - Повторно проверяет условия (`is_active`, `next_run_at <= userToday`, `next_run_at <= ends_at`).
-    - Берёт пользователя `appUser` и ещё раз проверяет `hasRecurringAccess()` (если подписка больше не подходит — правило пропускается).
+    - Берёт пользователя `appUser` и ещё раз проверяет `FeatureAccessService::canAccess($user, 'recurring_expenses')` (если подписка больше не подходит — правило пропускается).
     - Определяет `userToday` по таймзоне юзера (`app_user_settings.timezone`). Сравнивает `next_run_at` (startOfDay) с `userToday` — если ещё не наступил день, пропускает.
     - Проверяет `ends_at`: если `next_run_at > ends_at` — пропускает (правило завершено).
     - Запоминает текущее `runAt = next_run_at` (дата, startOfDay).
@@ -599,7 +599,7 @@ ORDER BY iim.date, cp.node_id;
 
 **Flow:**
 
-1. Check scan quota: load user's active subscription (with plan). If no active subscription → 403 "Subscription required to scan." If `used_checks_count >= plan.check_limit` → 403 "Scan limit reached for this billing period." (Done before upload/AI to avoid wasting resources.)
+1. Check scan quota via `FeatureAccessService::canUseAiScan($user)`: load user's active subscription (with plan). If no active subscription → 403 "Subscription required to scan." If `used_checks_count >= plan.check_limit` → 403 "Scan limit reached for this billing period." (Done before upload/AI to avoid wasting resources.)
 2. Validate image (ScanRequest: file type, size ≤ 5 MB)
 3. Base64-encode the uploaded file (still in memory)
 4. Upload original to Supabase Storage (private bucket `receipts`, service role key, path: `{userId}/{uuid}.{ext}`)
@@ -684,7 +684,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 ### 5.8. CSV export of expenses
 
 - **Route:** `GET /api/transactions/export?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- **Access:** Only for users with active subscription on Basic, Plus, or Premium plan. If no subscription or plan is Free → 403 "CSV export is not available on your plan."
+- **Access:** Enforced by `feature.access:csv_export` middleware via `FeatureAccessService`. Only for users with active subscription on Basic, Plus, or Premium plan. If no subscription or plan is Free → 403 "CSV export is not available on your plan."
 - **Query:** `from`, `to` — required, dates, `to >= from`. Max range (e.g. one year) is enforced on the client.
 - **Data:** Confirmed expense transactions in the date range; transaction items whose category is not in the user's disabled list. One CSV row per transaction item.
 - **Response:** Streamed CSV file, `Content-Disposition: attachment; filename="expenses_YYYY-MM-DD_YYYY-MM-DD.csv"`. UTF-8 with BOM. Columns: Date, Category (subcategory label), Amount (in currency units, 2 decimals), Currency (from app_user_settings), Label (item label or empty).

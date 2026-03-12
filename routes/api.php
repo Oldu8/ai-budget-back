@@ -38,7 +38,8 @@ Route::middleware('supabase.auth')->group(function () {
 
     Route::get('/transactions/summary', [TransactionSummaryController::class, 'index']);
     Route::get('/transactions/summary/{category}', [TransactionSummaryController::class, 'show']);
-    Route::get('/transactions/export', [ExpenseExportController::class, 'export']);
+    Route::get('/transactions/export', [ExpenseExportController::class, 'export'])
+        ->middleware('feature.access:csv_export');
 
     Route::get('/transactions', [ManualTransactionController::class, 'index']);
     Route::post('/transactions', [ManualTransactionController::class, 'store']);
@@ -46,10 +47,12 @@ Route::middleware('supabase.auth')->group(function () {
     Route::put('/transactions/{transaction}', [ManualTransactionController::class, 'update']);
     Route::delete('/transactions/{transaction}', [ManualTransactionController::class, 'destroy']);
 
-    Route::get('/recurring-expenses', [RecurringExpenseController::class, 'index']);
-    Route::post('/recurring-expenses', [RecurringExpenseController::class, 'store']);
-    Route::get('/recurring-expenses/{id}', [RecurringExpenseController::class, 'show']);
-    Route::put('/recurring-expenses/{id}', [RecurringExpenseController::class, 'update']);
-    Route::delete('/recurring-expenses/{id}', [RecurringExpenseController::class, 'destroy']);
-    Route::patch('/recurring-expenses/{id}/toggle', [RecurringExpenseController::class, 'toggle']);
+    Route::middleware('feature.access:recurring_expenses')->group(function () {
+        Route::get('/recurring-expenses', [RecurringExpenseController::class, 'index']);
+        Route::post('/recurring-expenses', [RecurringExpenseController::class, 'store']);
+        Route::get('/recurring-expenses/{id}', [RecurringExpenseController::class, 'show']);
+        Route::put('/recurring-expenses/{id}', [RecurringExpenseController::class, 'update']);
+        Route::delete('/recurring-expenses/{id}', [RecurringExpenseController::class, 'destroy']);
+        Route::patch('/recurring-expenses/{id}/toggle', [RecurringExpenseController::class, 'toggle']);
+    });
 });

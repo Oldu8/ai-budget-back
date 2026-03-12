@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PlanType;
 use App\Enums\TransactionType;
 use App\Http\Requests\SummaryRangeRequest;
 use App\Models\Transaction;
@@ -10,16 +9,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * CSV export of expenses for a date range. Available only for Basic/Plus/Premium plans.
+ * Access enforced by feature.access:csv_export middleware.
  */
 class ExpenseExportController extends Controller
 {
     public function export(SummaryRangeRequest $request): Response
     {
         $user = $request->user();
-        $subscription = $user->activeSubscription()?->load('plan');
-        if (!$subscription || $subscription->plan->type === PlanType::Free) {
-            return response()->json(['message' => 'CSV export is not available on your plan.'], 403);
-        }
 
         $from = $request->validated('from');
         $to = $request->validated('to');
