@@ -43,6 +43,7 @@ RUN apk add --no-cache \
     libzip \
     icu-libs \
     oniguruma \
+    postgresql-dev \
     && docker-php-ext-install \
     pdo \
     pdo_pgsql \
