@@ -58,7 +58,13 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 ## Seeders (new app setup)
 
-After migrations, run these seeders so the app has required data:
+After migrations, run all initial seeders in one command:
+
+```bash
+php artisan app:seed-initial
+```
+
+This runs categories, plans, and admin user seeders. Or run individually:
 
 1. **Categories** — `php artisan categories:seed` (from `database/data/categories.php`)
 2. **Plans** — `php artisan plans:seed` (from `database/data/plans.php`)
@@ -82,6 +88,14 @@ Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`
 - **Users** (`/admin/users`) — Paginated table of app users: ID, email, first name, last name, email verified, created. Link “View” opens the user detail.
 - **User detail** (`/admin/users/{id}`) — View-only: profile (email, first/last name, email verified, created), settings (currency, language, timezone) if present, and list of subscriptions (plan, status, period end, scans used, cancel at period end). Back link to Users list.
 - **Subscriptions** (`/admin/subscriptions`) — Paginated table of all user subscriptions: ID, user (link to user detail), plan, status, scans used, period end, cancel at period end. Filter by plan (dropdown); “Filter” applies, “All” shows every plan.
+
+## Deployment (Railway)
+
+1. Connect the repo to [Railway](https://railway.app) (New Project → Deploy from GitHub).
+2. Add variables in the Web service (Variables tab): `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL`, `DB_CONNECTION=pgsql`, `DB_URL` (from Supabase), `SUPABASE_*`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`.
+3. Set Pre-deploy Command: `php artisan migrate --force && php artisan app:seed-initial`
+4. Generate domain in Networking.
+5. Add Cron service: same repo, Start Command `php artisan schedule:work`, copy Variables from Web.
 
 ## License
 
