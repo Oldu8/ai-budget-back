@@ -33,17 +33,16 @@ COPY . .
 RUN composer dump-autoload --optimize --no-dev
 
 # ============================================
-# Stage 3: Production image
+# Stage 3: Production image (Debian for reliable extension build)
 # ============================================
-FROM php:8.2-cli-alpine
+FROM php:8.2-cli-slim
 
 # Install PHP extensions for Laravel + PostgreSQL
-RUN apk add --no-cache \
-    libpq \
-    libzip \
-    icu-libs \
-    oniguruma \
-    postgresql-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    libzip-dev \
+    libicu-dev \
+    libonig-dev \
     && docker-php-ext-install \
     pdo \
     pdo_pgsql \
@@ -52,7 +51,8 @@ RUN apk add --no-cache \
     intl \
     zip \
     bcmath \
-    opcache
+    opcache \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy application from composer stage
 COPY --from=composer /app /app
