@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'supabase.auth' => \App\Http\Middleware\SupabaseAuthViaServiceRole::class,
             'feature.access' => \App\Http\Middleware\EnsureFeatureAccess::class,
+            'api.key' => \App\Http\Middleware\EnsureApiKey::class,
+        ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\EnsureApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -51,4 +51,6 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'api_secret' => env('API_SECRET', ''),
+
 ];

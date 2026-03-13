@@ -1,5 +1,8 @@
 {
   "baseUrl": "/api",
+  "commonHeaders": {
+    "X-API-Key": "Required when API_SECRET is set on backend. Value = API_SECRET from env. For server-side calls (cron, webhooks) only — do not store in client apps."
+  },
   "routes": [
     {
       "name": "auth.register",

@@ -92,7 +92,7 @@ Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`
 ## Deployment (Railway)
 
 1. Connect the repo to [Railway](https://railway.app) (New Project → Deploy from GitHub).
-2. Add variables in the Web service (Variables tab): `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL`, `DB_CONNECTION=pgsql`, `DB_URL` (from Supabase), `SUPABASE_*`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`.
+2. Add variables in the Web service (Variables tab): `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL`, `DB_CONNECTION=pgsql`, `DB_URL` (from Supabase), `SUPABASE_*`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`. Optional: `API_SECRET` — if set, all `/api/*` requests must include header `X-API-Key: <API_SECRET>` (restricts access to your app only).
 3. Set Pre-deploy Command: `php artisan migrate --force && php artisan app:seed-initial`
 4. Generate domain in Networking.
 5. Add Cron service: same repo, Start Command `php artisan schedule:work`, copy Variables from Web.

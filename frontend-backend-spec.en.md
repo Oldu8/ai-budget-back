@@ -139,7 +139,20 @@ Frontend:
 
 ## 3. Authentication and tokens
 
-### 3.1. Flows
+### 3.1. API key (optional)
+
+When the backend has `API_SECRET` set, **all** requests to `/api/*` must include the header:
+
+```http
+X-API-Key: <API_SECRET>
+```
+
+- Used for server-side calls (cron, webhooks) — the secret is stored in env on the server.
+- **Do not store** in mobile/web client — the secret can be extracted from the app.
+
+If `API_SECRET` is not set, the header is not required.
+
+### 3.2. Auth flows
 
 Auth is proxied through the backend. The client **never** calls Supabase Auth directly:
 
@@ -154,7 +167,7 @@ All protected endpoints require:
 Authorization: Bearer <access_token>
 ```
 
-### 3.2. Client behavior
+### 3.3. Client behavior
 
 - Store `access_token` and `refresh_token` in secure storage (SecureStorage / Keychain).
 - On 401 from a protected endpoint:
