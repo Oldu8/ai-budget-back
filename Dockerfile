@@ -66,5 +66,6 @@ WORKDIR /app
 # Railway uses PORT env (default 8080)
 EXPOSE 8080
 
-# Storage link, cache, and serve (needs .env at runtime from Railway)
-CMD ["sh", "-c", "php artisan storage:link 2>/dev/null || true && php artisan config:cache && php artisan route:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+# Storage link, cache (non-fatal so server starts even if DB not ready), then serve
+# Required Railway env vars: APP_KEY, DATABASE_URL (or DB_*), SUPABASE_*
+CMD ["sh", "-c", "php artisan storage:link 2>/dev/null || true; php artisan config:cache 2>/dev/null || true; php artisan route:cache 2>/dev/null || true; exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
