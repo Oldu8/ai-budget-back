@@ -89,10 +89,34 @@ Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`
 - **User detail** (`/admin/users/{id}`) — View-only: profile (email, first/last name, email verified, created), settings (currency, language, timezone) if present, and list of subscriptions (plan, status, period end, scans used, cancel at period end). Back link to Users list.
 - **Subscriptions** (`/admin/subscriptions`) — Paginated table of all user subscriptions: ID, user (link to user detail), plan, status, scans used, period end, cancel at period end. Filter by plan (dropdown); “Filter” applies, “All” shows every plan.
 
+## Docker (local development)
+
+Run the app locally with Docker:
+
+1. **Prerequisites:** Docker Desktop (Windows/Mac) or Docker + Docker Compose (Linux).
+
+2. **Create `.env.docker`** — copy from `.env.example` and adjust:
+   - `APP_URL=http://localhost:8080`
+   - `DB_HOST=host.docker.internal` (if PostgreSQL runs on your host)
+   - Or use your cloud DB credentials as-is.
+
+3. **Build and run:**
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Access:** http://localhost:8080
+
+5. **Stop:** `Ctrl+C` or `docker compose down`
+
+**Note:** `docker-compose.yml` is for local use only. Railway deploys from the Dockerfile directly and ignores docker-compose.
+
 ## Deployment (Railway)
 
 1. Connect the repo to [Railway](https://railway.app) (New Project → Deploy from GitHub).
 2. Add variables in the Web service (Variables tab): `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL`, `DB_CONNECTION=pgsql`, `DB_URL` (from Supabase), `SUPABASE_*`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`. Optional: `API_SECRET` — if set, all `/api/*` requests must include header `X-API-Key: <API_SECRET>` (restricts access to your app only).
+
+   **Admin styles not loading?** Set `APP_URL` to your full Railway URL (e.g. `https://ai-budget-back-production.up.railway.app`) with no trailing slash. The app trusts proxies so asset URLs use the correct scheme.
 3. Set Pre-deploy Command: `php artisan migrate --force && php artisan app:seed-initial`
 4. Generate domain in Networking.
 5. Add Cron service: same repo, Start Command `php artisan schedule:work`, copy Variables from Web.
