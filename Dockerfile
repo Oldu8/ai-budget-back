@@ -66,6 +66,5 @@ WORKDIR /app
 # Railway uses PORT env (default 8080)
 EXPOSE 8080
 
-# Storage link, cache (non-fatal so server starts even if DB not ready), then serve
-# Required Railway env vars: APP_KEY, DATABASE_URL (or DB_*), SUPABASE_*
-CMD ["sh", "-c", "echo 'Starting...' && php artisan storage:link 2>/dev/null || true; php artisan config:cache 2>/dev/null || true; php artisan route:cache 2>/dev/null || true; echo 'Starting server on port '${PORT:-8080}; exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+# /health.php served directly by PHP (no Laravel) — for Railway healthcheck
+CMD ["sh", "-c", "exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
