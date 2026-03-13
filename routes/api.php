@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+
+// Healthcheck for Railway — no session, no DB, always 200
+Route::get('/health', fn () => response('OK', 200));
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppUserController;
 use App\Http\Controllers\CategoryController;
