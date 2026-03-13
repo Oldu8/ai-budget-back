@@ -35,7 +35,7 @@ RUN composer dump-autoload --optimize --no-dev
 # ============================================
 # Stage 3: Production image (Debian for reliable extension build)
 # ============================================
-FROM php:8.2-cli
+FROM php:8.4-cli
 
 # Install PHP extensions for Laravel + PostgreSQL
 RUN apt-get update && apt-get install -y --no-install-recommends \
