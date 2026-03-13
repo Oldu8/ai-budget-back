@@ -4,5 +4,6 @@ builder = "DOCKERFILE"
 [deploy]
 healthcheckPath = "/health.php"
 healthcheckTimeout = 100
+preDeployCommand = "php artisan migrate --force && php artisan app:seed-initial"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

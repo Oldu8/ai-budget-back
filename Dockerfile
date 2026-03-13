@@ -67,4 +67,4 @@ WORKDIR /app
 EXPOSE 8080
 
 # /health.php served directly by PHP (no Laravel) — for Railway healthcheck
-CMD ["sh", "-c", "exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+CMD ["sh", "-c", "php artisan config:cache && php artisan route:cache && exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
