@@ -121,6 +121,16 @@ Run the app locally with Docker:
 4. Generate domain in Networking.
 5. Add Cron service: same repo, Start Command `php artisan schedule:work`, copy Variables from Web.
 
+## Supabase Email Limits
+
+The built-in Supabase SMTP limits **~3 emails/hour** — for demos only. For production:
+
+1. **Supabase Dashboard** → Project Settings → Auth → **SMTP Settings**
+2. Enable custom SMTP and add credentials (Resend, SendGrid, AWS SES, etc.)
+3. After that, rate limits are configurable in Auth → Rate Limits
+
+**Free-tier SMTP providers:** Resend (3K emails/month free), SendGrid, Mailgun.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

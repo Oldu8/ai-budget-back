@@ -1,0 +1,11 @@
+# Hot reload: монтирует исходники, отключает кэш. Используется автоматически при docker compose up.
+services:
+  app:
+    volumes:
+      - ./app:/app/app
+      - ./routes:/app/routes
+      - ./config:/app/config
+      - ./database:/app/database
+      - ./resources/views:/app/resources/views
+      - ./bootstrap/app.php:/app/bootstrap/app.php
+    command: sh -c "php artisan serve --host=0.0.0.0 --port=$${PORT:-8080}"

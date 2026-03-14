@@ -24,12 +24,23 @@ class AuthController extends Controller
         ]);
 
         if ($response->failed()) {
-            return response()->json([
-                'message' => $response->json('msg', 'Registration failed'),
-            ], $response->status());
+            $message = $this->supabaseErrorMessage($response, 'Registration failed');
+            $status = $response->status();
+            $context = ['email' => $validated['email'], 'status' => $status, 'response' => $response->json()];
+            if (ErrorNotifier::isCritical($status)) {
+                ErrorNotifier::notify('Register: Supabase rejected', $message, $context);
+            }
+            return response()->json(['message' => $message], $status);
         }
 
         $data = $response->json();
+
+        if (!isset($data['user'])) {
+            $msg = $this->supabaseErrorMessageFromArray($data, 'Invalid Supabase response');
+            Log::error('Register: Supabase response missing user', ['response' => $data]);
+            ErrorNotifier::notify('Register: invalid Supabase response', $msg, ['response' => $data]);
+            return response()->json(['message' => $msg], 500);
+        }
 
         try {
             $appUser = AppUser::firstOrCreate(
@@ -50,7 +61,7 @@ class AuthController extends Controller
             ], 201);
         } catch (\Throwable $e) {
             $context = [
-                'email' => $data['user']['email'] ?? null,
+                'email' => ($data['user'] ?? [])['email'] ?? $validated['email'] ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ];
@@ -78,9 +89,8 @@ class AuthController extends Controller
         ]);
 
         if ($response->failed()) {
-            return response()->json([
-                'message' => $response->json('error_description', 'Invalid credentials'),
-            ], 401);
+            $message = $this->supabaseErrorMessage($response, 'Invalid credentials');
+            return response()->json(['message' => $message], $response->status());
         }
 
         $data = $response->json();
@@ -159,5 +169,32 @@ class AuthController extends Controller
             'apiKey' => config('services.supabase.anon_key'),
             'Content-Type' => 'application/json',
         ])->post($url . $path, $body);
+    }
+
+    /** Supabase returns msg (old API) or message (new API). Maps common codes to user-friendly text. */
+    private function supabaseErrorMessage(\Illuminate\Http\Client\Response $response, string $fallback): string
+    {
+        $data = $response->json();
+        return $this->supabaseErrorMessageFromArray($data, $fallback);
+    }
+
+    private function supabaseErrorMessageFromArray(?array $data, string $fallback): string
+    {
+        if (!$data) {
+            return $fallback;
+        }
+        $text = $data['message'] ?? $data['msg'] ?? $data['error_description'] ?? null;
+        $code = (string) ($data['code'] ?? $data['error'] ?? '');
+        $textLower = strtolower($text ?? '');
+
+        $userFriendly = match (true) {
+            str_contains($code, 'user_already') || str_contains($textLower, 'already registered') => 'This email is already registered. Try logging in.',
+            str_contains($code, 'rate_limit') || str_contains($textLower, 'rate limit') => 'Too many registration attempts. Please try again in an hour.',
+            str_contains($code, 'weak_password') || str_contains($textLower, 'weak password') => 'Password is too weak. Use at least 6 characters.',
+            str_contains($code, 'invalid_credentials') || str_contains($textLower, 'invalid') => 'Invalid email or password.',
+            default => $text ?? $fallback,
+        };
+
+        return $userFriendly ?: $fallback;
     }
 }
