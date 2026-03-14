@@ -6,6 +6,7 @@ use App\Models\AppUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -29,22 +30,35 @@ class AuthController extends Controller
 
         $data = $response->json();
 
-        $appUser = AppUser::firstOrCreate(
-            ['supabase_user_id' => $data['user']['id']],
-            ['email' => $data['user']['email']],
-        );
+        try {
+            $appUser = AppUser::firstOrCreate(
+                ['supabase_user_id' => $data['user']['id']],
+                ['email' => $data['user']['email']],
+            );
 
-        $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
-        if ($emailConfirmedAt && !$appUser->email_verified_at) {
-            $appUser->email_verified_at = $emailConfirmedAt;
-            $appUser->save();
+            $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
+            if ($emailConfirmedAt && !$appUser->email_verified_at) {
+                $appUser->email_verified_at = $emailConfirmedAt;
+                $appUser->save();
+            }
+
+            return response()->json([
+                'access_token' => $data['access_token'],
+                'refresh_token' => $data['refresh_token'],
+                'user' => $appUser,
+            ], 201);
+        } catch (\Throwable $e) {
+            Log::error('Register failed after Supabase signup', [
+                'email' => $data['user']['email'] ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Registration failed',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
-
-        return response()->json([
-            'access_token' => $data['access_token'],
-            'refresh_token' => $data['refresh_token'],
-            'user' => $appUser,
-        ], 201);
     }
 
     public function login(Request $request): JsonResponse
