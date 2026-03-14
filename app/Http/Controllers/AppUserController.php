@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AppUserSettingsRequest;
+use App\Http\Requests\UpdateMeRequest;
 use App\Models\AppUserSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,15 +37,10 @@ class AppUserController extends Controller
         ]));
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(UpdateMeRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'first_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
-
         $user = $request->user();
-        $user->update($validated);
+        $user->update($request->validated());
 
         return response()->json($user);
     }

@@ -68,7 +68,8 @@ This runs categories, plans, and admin user seeders. Or run individually:
 
 1. **Categories** — `php artisan categories:seed` (from `database/data/categories.php`)
 2. **Plans** — `php artisan plans:seed` (from `database/data/plans.php`)
-3. **Admin user** — `php artisan db:seed --class=AdminUserSeeder` (creates/updates admin for panel)
+3. **Visibility questions** — `php artisan visibility-questions:seed` (funnel questions into `visibility_questions` table)
+4. **Admin user** — `php artisan db:seed --class=AdminUserSeeder` (creates/updates admin for panel)
 
 Optional: `php artisan db:seed` runs `DatabaseSeeder` (PlanSeeder + test User); use if you need the default test user.
 
@@ -80,14 +81,15 @@ Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`
 - Create/update admin user: `php artisan db:seed --class=AdminUserSeeder` (email: oldu2002@gmail.com).
 - Open `/admin` and sign in with that email and `ADMIN_PASSWORD`.
 
-**UI:** Left sidebar (dark) with branding **Anton**, search field, navigation (Dashboard, Users, Subscriptions) with icons, and Logout at the bottom. Main content area is light; layout uses `resources/views/admin/layout.blade.php`.
+**UI:** Left sidebar (dark) with branding **Anton**, search field, navigation (Dashboard, Users, Subscriptions, Funnel questions) with icons, and Logout at the bottom. Main content area is light; layout uses `resources/views/admin/layout.blade.php`.
 
 **Pages:**
 
 - **Dashboard** (`/admin`) — Two metric cards: total app users count and active subscriptions count (statuses `active`, `trialing`).
 - **Users** (`/admin/users`) — Paginated table of app users: ID, email, first name, last name, email verified, created. Link “View” opens the user detail.
 - **User detail** (`/admin/users/{id}`) — View-only: profile (email, first/last name, email verified, created), settings (currency, language, timezone) if present, and list of subscriptions (plan, status, period end, scans used, cancel at period end). Back link to Users list.
-- **Subscriptions** (`/admin/subscriptions`) — Paginated table of all user subscriptions: ID, user (link to user detail), plan, status, scans used, period end, cancel at period end. Filter by plan (dropdown); “Filter” applies, “All” shows every plan.
+- **Subscriptions** (`/admin/subscriptions`) — Paginated table of all user subscriptions: ID, user (link to user detail), plan, status, scans used, period end, cancel at period end. Filter by plan (dropdown); "Filter" applies, "All" shows every plan.
+- **Funnel questions** (`/admin/visibility-questions`) — List of visibility questions from `visibility_questions` table (order, visibility_tag, question_key, translation_key).“Filter” applies, “All” shows every plan.
 
 ## Docker (local development)
 

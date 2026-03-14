@@ -171,8 +171,8 @@ Mobile App                     Backend API                     Supabase
 | `PUT`    | `/api/me/settings` | Update user settings         |
 
 | `GET`    | `/api/categories`               | List categories and subcategories (id, slug, label, children); filtered by user's disabled list; optional `?visibility_tag=` for funnel preview     |
-| `GET`    | `/api/funnel/visibility-questions` | List funnel questions per visibility tag (question_key, label, type: boolean)     |
-| `GET`    | `/api/visibility-tags`         | List visibility tags with `enabled` for current user (for settings toggles)     |
+| `GET`    | `/api/funnel/visibility-questions` | List funnel questions per visibility tag (visibility_tag, question_key, type, order, translation_key). Frontend uses `t(translation_key + '.title')`, `t(translation_key + '.description')` for i18n.     |
+| `GET`    | `/api/visibility-tags`         | List visibility tags with `enabled`, `translation_key` for current user (for settings toggles). Frontend uses `t(translation_key)` for i18n.     |
 | `PATCH`  | `/api/me/category-visibility`   | Set tag enabled/disabled: body `{ "visibility_tag", "enabled" }` — disabled = add all categories with tag to app_user_category_settings; enabled = delete those rows     |
 | `GET`    | `/api/transactions`             | List transactions (paginated, filters: from, to, type)            |
 | `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
@@ -651,7 +651,7 @@ ORDER BY iim.date, cp.node_id;
 
 ### 5.5. Visibility tags and category settings
 
-**Data:** `database/data/visibility_tags.php` — list of tags with labels and funnel question (key, label). Used by `GET /api/funnel/visibility-questions` and `GET /api/visibility-tags`.
+**Data:** Table `visibility_questions` — list of visibility questions (visibility_tag, question_key, type, order, translation_key, is_active). Seeded by `php artisan visibility-questions:seed`. Backend provides structure only; frontend handles translation via i18n. Used by `GET /api/funnel/visibility-questions` and `GET /api/visibility-tags`.
 
 **Rules:**
 - Categories (and subcategories) whose id is in `app_user_category_settings` for the user are **hidden**: excluded from `GET /api/categories`, from AI scan category list, and from transaction summary aggregation.
