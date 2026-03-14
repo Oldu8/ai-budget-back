@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppUser;
+use App\Services\ErrorNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -48,11 +49,14 @@ class AuthController extends Controller
                 'user' => $appUser,
             ], 201);
         } catch (\Throwable $e) {
-            Log::error('Register failed after Supabase signup', [
+            $context = [
                 'email' => $data['user']['email'] ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-            ]);
+            ];
+            Log::error('Register failed after Supabase signup', $context);
+            file_put_contents('php://stderr', "[Register Error] {$e->getMessage()}\n{$e->getTraceAsString()}\n");
+            ErrorNotifier::notify('Register failed', $e->getMessage(), $context);
 
             return response()->json([
                 'message' => 'Registration failed',
