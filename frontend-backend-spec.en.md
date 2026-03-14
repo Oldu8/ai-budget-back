@@ -70,8 +70,8 @@ Frontend:
 Frontend:
 
 - Visibility settings via:
-  - `GET /api/funnel/visibility-questions`
-  - `GET /api/visibility-tags`
+  - `GET /api/funnel/visibility-questions` — returns `visibility_tag`, `question_key`, `type`, `order`, `translation_key`. Use `t(translation_key + '.title')`, `t(translation_key + '.description')` for i18n.
+  - `GET /api/visibility-tags` — returns `visibility_tag`, `enabled`, `translation_key`. Use `t(translation_key)` for i18n.
   - `PATCH /api/me/category-visibility` with `{ visibility_tag, enabled }`.
 - In the UI you can simply show enabled categories: the backend already filters disabled ones out.
 
@@ -198,8 +198,8 @@ Frontend:
 ### 4.2. Categories and visibility funnel
 
 - `GET /api/categories` — category tree (with disabled categories filtered out).
-- `GET /api/funnel/visibility-questions` — questions per `visibility_tag` for onboarding.
-- `GET /api/visibility-tags` — list of tags with `enabled` flag for current user.
+- `GET /api/funnel/visibility-questions` — questions per `visibility_tag` (visibility_tag, question_key, type, order, translation_key). Frontend uses i18n: `t(translation_key + '.title')`, `t(translation_key + '.description')`.
+- `GET /api/visibility-tags` — list of tags with `enabled`, `translation_key`. Frontend uses `t(translation_key)` for toggle labels.
 - `PATCH /api/me/category-visibility` — enable / disable groups of categories by tag.
 
 Frontend:

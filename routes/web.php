@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AppUserController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SubscriptionController;
+use App\Http\Controllers\Admin\VisibilityQuestionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,4 +21,5 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
     Route::get('/users', [AppUserController::class, 'index'])->name('users.index');
     Route::get('/users/{id}', [AppUserController::class, 'show'])->name('users.show');
     Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::get('/visibility-questions', [VisibilityQuestionController::class, 'index'])->name('visibility-questions.index');
 });
