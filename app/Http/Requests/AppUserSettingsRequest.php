@@ -11,10 +11,24 @@ class AppUserSettingsRequest extends FormRequest
     {
         $sometimes = $this->isMethod('PUT');
 
+        $baseRules = ['required', 'string', 'filled', 'min:1'];
+
         return [
-            'currency' => array_merge($sometimes ? ['sometimes'] : [], ['required', 'string', Rule::in($this->allowedCurrencies())]),
-            'language' => array_merge($sometimes ? ['sometimes'] : [], ['required', 'string', Rule::in($this->allowedLanguages())]),
-            'timezone' => array_merge($sometimes ? ['sometimes'] : [], ['required', 'string', Rule::in($this->allowedTimezones())]),
+            'currency' => array_merge(
+                $sometimes ? ['sometimes'] : [],
+                $baseRules,
+                [Rule::in($this->allowedCurrencies())]
+            ),
+            'language' => array_merge(
+                $sometimes ? ['sometimes'] : [],
+                $baseRules,
+                [Rule::in($this->allowedLanguages())]
+            ),
+            'timezone' => array_merge(
+                $sometimes ? ['sometimes'] : [],
+                $baseRules,
+                [Rule::in($this->allowedTimezones())]
+            ),
         ];
     }
 
