@@ -87,7 +87,12 @@ class AppUserController extends Controller
             return response()->json(['message' => 'Settings not configured'], 404);
         }
 
-        $settings->update($request->validated());
+        $data = $request->validated();
+
+        // Never overwrite with null or empty - only update fields with valid values
+        $safeData = array_filter($data, fn ($value) => $value !== null && $value !== '');
+
+        $settings->update($safeData);
 
         return response()->json($settings);
     }
