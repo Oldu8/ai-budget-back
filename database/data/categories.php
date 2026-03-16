@@ -72,12 +72,57 @@ return [
     [
         'key' => 'communication',
         'parent_key' => null,
-        'label' => 'Communication and internet',
+        'label' => 'Communication',
         'visibility_tag' => null,
     ],
     ['key' => 'communication_mobile', 'parent_key' => 'communication', 'label' => 'Mobile phone', 'visibility_tag' => null],
-    ['key' => 'communication_internet', 'parent_key' => 'communication', 'label' => 'Internet', 'visibility_tag' => null],
-    ['key' => 'communication_subscriptions', 'parent_key' => 'communication', 'label' => 'Subscriptions and services', 'visibility_tag' => null],
+
+    [
+        'key' => 'internet',
+        'parent_key' => null,
+        'label' => 'Internet',
+        'visibility_tag' => null,
+    ],
+    ['key' => 'internet_mobile', 'parent_key' => 'internet', 'label' => 'Mobile', 'visibility_tag' => null],
+    ['key' => 'internet_home', 'parent_key' => 'internet', 'label' => 'Home internet', 'visibility_tag' => null],
+
+    [
+        'key' => 'subscriptions',
+        'parent_key' => null,
+        'label' => 'Subscriptions',
+        'visibility_tag' => null,
+    ],
+    ['key' => 'subscriptions_streaming', 'parent_key' => 'subscriptions', 'label' => 'Streaming', 'visibility_tag' => null],
+    ['key' => 'subscriptions_apps', 'parent_key' => 'subscriptions', 'label' => 'Apps and services', 'visibility_tag' => null],
+
+    [
+        'key' => 'fitness',
+        'parent_key' => null,
+        'label' => 'Fitness',
+        'visibility_tag' => null,
+    ],
+    ['key' => 'fitness_gym', 'parent_key' => 'fitness', 'label' => 'Gym membership', 'visibility_tag' => null],
+    ['key' => 'fitness_trainer', 'parent_key' => 'fitness', 'label' => 'Trainer', 'visibility_tag' => null],
+    ['key' => 'fitness_sports', 'parent_key' => 'fitness', 'label' => 'Sports activities', 'visibility_tag' => null],
+
+    [
+        'key' => 'smoking',
+        'parent_key' => null,
+        'label' => 'Smoking',
+        'visibility_tag' => null,
+    ],
+    ['key' => 'smoking_cigarettes', 'parent_key' => 'smoking', 'label' => 'Cigarettes', 'visibility_tag' => null],
+    ['key' => 'smoking_vape', 'parent_key' => 'smoking', 'label' => 'Vape', 'visibility_tag' => null],
+
+    [
+        'key' => 'pets',
+        'parent_key' => null,
+        'label' => 'Pets',
+        'visibility_tag' => null,
+    ],
+    ['key' => 'pets_food', 'parent_key' => 'pets', 'label' => 'Pet food', 'visibility_tag' => null],
+    ['key' => 'pets_vet', 'parent_key' => 'pets', 'label' => 'Vet', 'visibility_tag' => null],
+    ['key' => 'pets_other', 'parent_key' => 'pets', 'label' => 'Other', 'visibility_tag' => null],
 
     [
         'key' => 'leisure',
