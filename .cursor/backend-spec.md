@@ -1,4 +1,4 @@
-# AI Budget: Backend Technical Specification (v1.4)
+# AI Budget: Backend Technical Specification (v1.5)
 
 ## 1. Project Overview
 
@@ -179,12 +179,17 @@ Mobile App                     Backend API                     Supabase
 | `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |
 | `GET`    | `/api/transactions/export`     | CSV export of expenses for date range (query: from, to); Basic/Plus/Premium only |
 | `POST`   | `/api/transactions`             | Create transaction (manual, ManualTransactionController)          |
-| `GET`    | `/api/transactions/{id}`        | Get transaction                                                    |
+| `GET`    | `/api/transactions/{id}`        | Get transaction — JSON envelope `{ "data": { ... } }` (same shape as scan / receipt update / show) |
 | `PUT`    | `/api/transactions/{id}`        | Update transaction                                                  |
 | `DELETE` | `/api/transactions/{id}`        | Soft-delete transaction                                             |
 
-| `POST`   | `/api/transactions/scan`               | AI scan: upload image, get transaction suggestion (ScanController) |
-| `POST`   | `/api/transactions/{id}/confirm`       | Confirm AI-created transaction (ScanController)                    |
+| `POST`   | `/api/transactions/scan`               | AI scan: upload image; 201 `{ "data": { ... } }` (transaction with `items[].category`) |
+| `PUT`    | `/api/transactions/{id}/update`        | Save edited AI receipt (`date`, `items[]` …) and **confirm** in one request; server recalculates `total_amount`, sets `confirmed_at` |
+| `GET`    | `/api/transactions/{id}/image`         | Receipt preview: `{ "url", "expires_in" }` signed URL (owner, requires `img_path`) |
+
+**Scan / receipt update / show responses** use a stable envelope: `data.id`, `data.type`, `data.created_by`, `data.confirmed_at`, `data.date`, `data.total_amount`, `data.img_path`, `data.raw_ai_data`, `data.items[]` with nested `category` `{ id, slug, label }`.
+
+**Scan errors:** not a receipt or incomplete AI → 422 (incomplete: image deleted from storage, no `img_path` in body). AI transport/parse failure after upload → 503, message suggests trying again (image may remain for ops; no automatic retry endpoint).
 
 ### 3.5. Client Implementation
 
@@ -607,11 +612,11 @@ ORDER BY iim.date, cp.node_id;
 6. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (JSON mode)
 7. Validate AI response structure (`is_receipt`, `total_amount`, `date`, `items` must be present)
 8. If `is_receipt = false` → delete image from Storage, return 422
-9. If AI call fails → keep image in Storage (for future retry), return 503 with `img_path`
+9. If AI call fails → keep image in Storage (ops); return 503 **without** `img_path` (no retry endpoint; client uploads again).
 10. If valid → in one DB transaction: create Transaction (`created_by = 'ai'`, `confirmed_at = null`, `type = expense`) + N TransactionItems, then increment `user_subscriptions.used_checks_count` for the active subscription.
-11. Return 201 with unconfirmed transaction (invisible in lists/aggregations until confirmed)
+11. Return 201 with unconfirmed transaction (invisible in lists/aggregations until saved via receipt update)
 
-**Confirm route:** `POST /api/transactions/{id}/confirm` — sets `confirmed_at = now()`. Only works for AI-created unconfirmed transactions belonging to the current user.
+**Receipt update route:** `PUT /api/transactions/{id}/update` — body same as former draft (`date`, `items[]` with optional `id` per line). In **one** DB transaction: sync line items, recalculate `total_amount`, set `confirmed_at = now()`. Only AI-created, unconfirmed transactions; wrong state → 404.
 
 **Key implementation details:**
 
@@ -641,13 +646,13 @@ ORDER BY iim.date, cp.node_id;
 
 **Files:**
 
-- `app/Http/Controllers/ScanController.php` — scan() and confirm() actions
+- `app/Http/Controllers/ScanController.php` — scan(), updateReceipt(), image()
 - `app/Services/ScanService.php` — OpenAI API call orchestration
 - `app/Services/Scan/ScanPromptBuilder.php` — prompt construction and category grouping
-- `app/Services/SupabaseStorageService.php` — Supabase Storage REST API (upload, download, delete)
+- `app/Services/SupabaseStorageService.php` — Supabase Storage REST API (upload, delete, signed URLs)
 - `app/Http/Requests/ScanRequest.php` — image validation
 
-**Между шагами 10–11 и confirm** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Это позволяет юзеру отсканировать чек на одном устройстве и подтвердить позже, при этом неподтверждённые данные не влияют на финансовую картину.
+**Между шагами 10–11 и `PUT .../update`** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Подтверждение происходит вместе с финальным сохранением правок одним запросом.
 
 ### 5.5. Visibility tags and category settings
 
@@ -717,7 +722,7 @@ Included:
 - Supabase Auth middleware (mobile users)
 - Laravel Auth (admin users)
 - Manual transaction CRUD
-- AI receipt scanning (single photo → transaction suggestion → confirm)
+- AI receipt scanning (single photo → transaction suggestion → `PUT .../update` to save + confirm)
 - Category system (static, seeded)
 - Category visibility: app_user_category_settings, funnel/visibility-questions, visibility-tags, PATCH category-visibility; categories/summary/scan respect disabled list
 - Subscription plans with AI scan limits

@@ -1,18 +1,18 @@
 <?php
 
+use App\Http\Controllers\AppUserController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CategoryVisibilityController;
+use App\Http\Controllers\ExpenseExportController;
+use App\Http\Controllers\ManualTransactionController;
+use App\Http\Controllers\RecurringExpenseController;
+use App\Http\Controllers\ScanController;
+use App\Http\Controllers\TransactionSummaryController;
 use Illuminate\Support\Facades\Route;
 
 // Healthcheck for Railway — no session, no DB, always 200
 Route::get('/health', fn () => response('OK', 200));
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\AppUserController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\CategoryVisibilityController;
-use App\Http\Controllers\ManualTransactionController;
-use App\Http\Controllers\ScanController;
-use App\Http\Controllers\ExpenseExportController;
-use App\Http\Controllers\TransactionSummaryController;
-use App\Http\Controllers\RecurringExpenseController;
 
 Route::middleware('throttle:5,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
@@ -37,7 +37,8 @@ Route::middleware('supabase.auth')->group(function () {
     Route::patch('/me/category-visibility', [CategoryVisibilityController::class, 'update']);
 
     Route::post('/transactions/scan', [ScanController::class, 'scan']);
-    Route::post('/transactions/{transaction}/confirm', [ScanController::class, 'confirm']);
+    Route::put('/transactions/{transaction}/update', [ScanController::class, 'updateReceipt']);
+    Route::get('/transactions/{transaction}/image', [ScanController::class, 'image']);
 
     Route::get('/transactions/summary', [TransactionSummaryController::class, 'index']);
     Route::get('/transactions/summary/{category}', [TransactionSummaryController::class, 'show']);

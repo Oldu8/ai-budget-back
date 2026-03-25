@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,5 +24,17 @@ class Category extends Model
     public function transactionItems(): HasMany
     {
         return $this->hasMany(TransactionItem::class);
+    }
+
+    /** Leaf (sub)categories available for AI scan and receipt updates: excludes user-disabled categories. */
+    public static function leafCategoriesForUser(AppUser $user): Collection
+    {
+        $disabledIds = $user->disabledCategorySettings()->pluck('category_id')->all();
+
+        return static::query()
+            ->whereNotNull('category_id')
+            ->with('parent')
+            ->when(! empty($disabledIds), fn ($q) => $q->whereNotIn('id', $disabledIds))
+            ->get();
     }
 }
