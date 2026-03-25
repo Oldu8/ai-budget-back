@@ -103,7 +103,7 @@ Rules:
 - AI receipt:
   - 1 `transaction` + N `transaction_items` across categories.
   - `created_by = ai`, `confirmed_at = null` initially.
-  - It only appears in lists / summaries **after** `/transactions/{id}/confirm`.
+  - It only appears in lists / summaries **after** `PUT /transactions/{id}/update` (save + confirm).
 
 Frontend:
 
@@ -234,9 +234,9 @@ Frontend:
   - multipart with `image` (jpeg/png).
   - requires active subscription and free scan quota.
   - returns a draft transaction with categorized items.
-- `POST /api/transactions/{transaction}/confirm`:
-  - confirms AI-generated transaction.
-  - sets `confirmed_at`, after which the transaction appears in history and summaries.
+- `PUT /api/transactions/{transaction}/update`:
+  - saves edited `date` / `items[]` and sets `confirmed_at` in **one** request.
+  - after success the transaction appears in history and summaries.
 
 Frontend:
 
@@ -244,7 +244,7 @@ Frontend:
   - optionally show remaining scans using `scan_usage` from `/api/me`.
 - After scan:
   - show recognized items; allow editing categories / amounts;
-  - on confirmation call `.../confirm`.
+  - on save call `PUT .../update` with final payload.
 
 ### 4.5. Expense summaries (analytics)
 
@@ -309,7 +309,7 @@ If you need more detail:
   - `App/Http/Controllers/CategoryController.php` — `/categories`.
   - `App/Http/Controllers/CategoryVisibilityController.php` — visibility tags and onboarding.
   - `App/Http/Controllers/ManualTransactionController.php` — transaction CRUD.
-  - `App/Http/Controllers/ScanController.php` — AI scan and confirm.
+  - `App/Http/Controllers/ScanController.php` — AI scan and receipt update.
   - `App/Http/Controllers/TransactionSummaryController.php` — expense summaries.
   - `App/Http/Controllers/ExpenseExportController.php` — CSV export.
 - Models:

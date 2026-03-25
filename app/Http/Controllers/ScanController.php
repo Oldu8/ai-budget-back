@@ -5,16 +5,20 @@ namespace App\Http\Controllers;
 use App\Enums\TransactionCreatedBy;
 use App\Enums\TransactionType;
 use App\Http\Requests\ScanRequest;
+use App\Http\Requests\UpdateReceiptTransactionRequest;
+use App\Http\Resources\TransactionResource;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Services\FeatureAccessService;
+use App\Services\ReceiptTransactionService;
 use App\Services\ScanService;
 use App\Services\SupabaseStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ScanController extends Controller
 {
@@ -22,6 +26,7 @@ class ScanController extends Controller
         private FeatureAccessService $featureAccess,
         private SupabaseStorageService $storage,
         private ScanService $scanner,
+        private ReceiptTransactionService $receiptTransactionService,
     ) {}
 
     public function scan(ScanRequest $request): JsonResponse
@@ -30,7 +35,7 @@ class ScanController extends Controller
         $user = $request->user();
 
         $result = $this->featureAccess->canUseAiScan($user);
-        if (!$result->allowed) {
+        if (! $result->allowed) {
             return response()->json(['message' => $result->message], 403);
         }
         $subscription = $result->subscription;
@@ -40,11 +45,7 @@ class ScanController extends Controller
 
         $imgPath = $this->storage->upload($file, $user->id);
 
-        $disabledCategoryIds = $user->disabledCategorySettings()->pluck('category_id')->all();
-        $categories = Category::whereNotNull('category_id')
-            ->with('parent')
-            ->when(!empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('id', $disabledCategoryIds))
-            ->get();
+        $categories = Category::leafCategoriesForUser($user);
 
         try {
             $aiResult = $this->scanner->scan($base64, $mimeType, $categories);
@@ -55,9 +56,9 @@ class ScanController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
+            // Image kept for ops; no retry endpoint — client should upload again.
             return response()->json([
-                'message' => 'AI processing failed. The image has been saved and you can retry later.',
-                'img_path' => $imgPath,
+                'message' => 'AI processing failed. Please try again.',
             ], 503);
         }
 
@@ -70,9 +71,18 @@ class ScanController extends Controller
         }
 
         if (empty($aiResult['total_amount']) || empty($aiResult['date']) || empty($aiResult['items'])) {
+            try {
+                $this->storage->delete($imgPath);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to delete receipt image after incomplete AI response', [
+                    'user_id' => $user->id,
+                    'img_path' => $imgPath,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return response()->json([
-                'message' => 'AI returned incomplete data. Please try again.',
-                'img_path' => $imgPath,
+                'message' => 'AI returned incomplete data. Please try another photo.',
             ], 422);
         }
 
@@ -112,19 +122,37 @@ class ScanController extends Controller
 
         $transaction->load('items.category');
 
-        return response()->json($transaction, 201);
+        return TransactionResource::make($transaction)->response()->setStatusCode(201);
     }
 
-    public function confirm(Request $request, Transaction $transaction): JsonResponse
+    /**
+     * Save edited receipt lines and confirm in one request (atomic).
+     */
+    public function updateReceipt(UpdateReceiptTransactionRequest $request, Transaction $transaction): JsonResponse
     {
         $transaction = $request->user()->transactions()
             ->where('created_by', TransactionCreatedBy::Ai)
             ->whereNull('confirmed_at')
             ->findOrFail($transaction->id);
 
-        $transaction->update(['confirmed_at' => now()]);
-        $transaction->load('items.category');
+        $updated = $this->receiptTransactionService->saveAndConfirm($transaction, $request->validated());
 
-        return response()->json($transaction);
+        return TransactionResource::make($updated)->response();
+    }
+
+    /**
+     * Signed URL for private bucket receipt preview (Supabase Storage REST sign endpoint).
+     */
+    public function image(Request $request, Transaction $transaction): JsonResponse
+    {
+        $transaction = $request->user()->transactions()->findOrFail($transaction->id);
+
+        if (! $transaction->img_path) {
+            throw new NotFoundHttpException;
+        }
+
+        $payload = $this->storage->createSignedUrl($transaction->img_path, 300);
+
+        return response()->json($payload);
     }
 }

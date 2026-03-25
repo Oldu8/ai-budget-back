@@ -6,14 +6,15 @@ use App\Enums\TransactionCreatedBy;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
+use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Manual transaction CRUD.
- * For AI-created transactions see future AiReceiptController / POST /api/transactions/from-receipt.
+ * Manual transaction CRUD (user-created entries, confirmed immediately).
+ * AI receipt scan and save flow: {@see \App\Http\Controllers\ScanController}.
  */
 class ManualTransactionController extends Controller
 {
@@ -70,7 +71,7 @@ class ManualTransactionController extends Controller
         $transaction = $request->user()->transactions()->findOrFail($transaction->id);
         $transaction->load('items.category');
 
-        return response()->json($transaction);
+        return TransactionResource::make($transaction)->response();
     }
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction): JsonResponse
