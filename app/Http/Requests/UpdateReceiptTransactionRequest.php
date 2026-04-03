@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\TransactionCreatedBy;
 use App\Models\Category;
 use App\Models\Transaction;
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,8 +15,6 @@ class UpdateReceiptTransactionRequest extends FormRequest
         /** @var Transaction $transaction */
         $transaction = $this->route('transaction');
         $allowed = $this->user()->transactions()
-            ->where('created_by', TransactionCreatedBy::Ai)
-            ->whereNull('confirmed_at')
             ->whereKey($transaction->id)
             ->exists();
 

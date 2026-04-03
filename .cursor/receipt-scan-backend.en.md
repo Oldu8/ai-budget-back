@@ -11,7 +11,7 @@ Receipt scanning is **not** a separate OCR service. The backend uploads the phot
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/api/transactions/scan` | Upload image, run AI, create draft transaction |
-| `PUT` | `/api/transactions/{transaction}/update` | Save edited receipt (`date`, `items[]`) and confirm (`confirmed_at`) in one request |
+| `PUT` | `/api/transactions/{transaction}/update` | Save `date` + `items[]` (sync lines, recalc total); first save on a draft sets `confirmed_at`; edits to confirmed transactions keep existing `confirmed_at` |
 | `GET` | `/api/transactions/{transaction}/image` | Signed URL JSON for receipt preview |
 
 Both routes sit behind **`supabase.auth`** (same as the rest of the authenticated API).
@@ -69,11 +69,11 @@ Both routes sit behind **`supabase.auth`** (same as the rest of the authenticate
    - **`used_checks_count`** on the active subscription is **incremented** once per successful scan.
    - Response: **201** with **`TransactionResource`** (`{ "data": { ... } }`), **`items.category`** loaded.
 
-### Receipt update (`ScanController::updateReceipt`) — `PUT /api/transactions/{transaction}/update`
+### Receipt / line-item update (`ScanController::updateReceipt`) — `PUT /api/transactions/{transaction}/update`
 
-- Same authorization as before: **`created_by` = `ai`**, **`confirmed_at` null**, owner only (else **404**).
+- **Authorization:** transaction must belong to the authenticated user (else **404**). Works for **any** transaction the user owns (AI or manual, draft or already confirmed).
 - Body: **`date`**, **`items[]`** (optional **`id`** per line; full sync semantics; server sums **`total_amount`**).
-- In **one DB transaction**: apply line items, then **`confirmed_at = now()`**.
+- In **one DB transaction**: apply line items; **`confirmed_at`** is set to **now** only when the transaction was still **unconfirmed** (e.g. first save after scan). If **`confirmed_at` was already set**, it is **left unchanged**.
 - Returns **`TransactionResource`** with **`items.category`** loaded.
 
 ---
