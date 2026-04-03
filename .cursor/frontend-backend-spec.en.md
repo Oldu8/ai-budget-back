@@ -235,8 +235,10 @@ Frontend:
   - requires active subscription and free scan quota.
   - returns a draft transaction with categorized items.
 - `PUT /api/transactions/{transaction}/update`:
-  - saves edited `date` / `items[]` and sets `confirmed_at` in **one** request.
-  - after success the transaction appears in history and summaries.
+  - saves edited `date` / `items[]` (full line sync); recalculates `total_amount`.
+  - on **draft** (unconfirmed) transactions: sets `confirmed_at` on first successful save so they appear in history.
+  - on **already confirmed** transactions: updates lines without changing `confirmed_at` (same endpoint for history editing of multi-line expenses).
+- After first confirmation, the transaction appears in history and summaries.
 
 Frontend:
 
@@ -245,6 +247,7 @@ Frontend:
 - After scan:
   - show recognized items; allow editing categories / amounts;
   - on save call `PUT .../update` with final payload.
+- History / edit screens for multi-line transactions can use the same `PUT .../update` with `date` and `items[]`.
 
 ### 4.5. Expense summaries (analytics)
 

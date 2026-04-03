@@ -126,13 +126,11 @@ class ScanController extends Controller
     }
 
     /**
-     * Save edited receipt lines and confirm in one request (atomic).
+     * Sync line items + date for the owner's transaction (draft confirm or history edit).
      */
     public function updateReceipt(UpdateReceiptTransactionRequest $request, Transaction $transaction): JsonResponse
     {
         $transaction = $request->user()->transactions()
-            ->where('created_by', TransactionCreatedBy::Ai)
-            ->whereNull('confirmed_at')
             ->findOrFail($transaction->id);
 
         $updated = $this->receiptTransactionService->saveAndConfirm($transaction, $request->validated());

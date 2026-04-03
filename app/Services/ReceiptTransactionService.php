@@ -9,11 +9,14 @@ use Illuminate\Support\Facades\DB;
 class ReceiptTransactionService
 {
     /**
-     * Apply line items + date, recalculate total, set confirmed_at — single DB transaction.
+     * Apply line items + date, recalculate total. Sets confirmed_at on first confirmation only
+     * (draft); leaves confirmed_at unchanged when editing an already confirmed transaction.
      */
     public function saveAndConfirm(Transaction $transaction, array $validated): Transaction
     {
         return DB::transaction(function () use ($transaction, $validated) {
+            $wasUnconfirmed = $transaction->confirmed_at === null;
+
             $transaction->update(['date' => $validated['date']]);
 
             $incomingIds = collect($validated['items'])->pluck('id')->filter()->values()->all();
@@ -46,10 +49,11 @@ class ReceiptTransactionService
                 }
             }
 
-            $transaction->update([
-                'total_amount' => $total,
-                'confirmed_at' => now(),
-            ]);
+            $payload = ['total_amount' => $total];
+            if ($wasUnconfirmed) {
+                $payload['confirmed_at'] = now();
+            }
+            $transaction->update($payload);
 
             return $transaction->fresh()->load('items.category');
         });
