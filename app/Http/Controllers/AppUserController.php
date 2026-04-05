@@ -15,7 +15,7 @@ class AppUserController extends Controller
         $user = $request->user();
         $user->load('settings');
 
-        $subscription = $user->activeSubscription()?->load('plan');
+        $subscription = $user->activeSubscription()?->load(['plan', 'status']);
         $scanUsage = [
             'scans_remaining' => 0,
             'scans_limit' => 0,
@@ -31,8 +31,15 @@ class AppUserController extends Controller
             ];
         }
 
+        $subscriptionPayload = null;
+        if ($subscription) {
+            $subscriptionPayload = $subscription->toArray();
+            unset($subscriptionPayload['status']);
+        }
+
         return response()->json(array_merge($user->toArray(), [
-            'subscription' => $subscription?->toArray(),
+            'subscription' => $subscriptionPayload,
+            'subscription_status' => $subscription?->status?->name,
             'scan_usage' => $scanUsage,
         ]));
     }

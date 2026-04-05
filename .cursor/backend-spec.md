@@ -163,7 +163,7 @@ Mobile App                     Backend API                     Supabase
 
 | Method   | Route              | Action                       |
 | -------- | ------------------ | ---------------------------- |
-| `GET`    | `/api/me`          | Get profile, settings, subscription, and scan_usage (scans remaining/limit, period_end) |
+| `GET`    | `/api/me`          | Get profile, settings, subscription, `subscription_status`, and scan_usage (scans remaining/limit, period_end) |
 | `PUT`    | `/api/me`          | Update profile               |
 | `DELETE` | `/api/me`          | Soft-delete account          |
 | `GET`    | `/api/me/settings` | Get user settings            |
@@ -368,6 +368,12 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 **statuses** — normalized dictionary for subscription/payment states (no timestamps).
 
 - Values: `active`, `canceled`, `pending`, `trialing`, `past_due`
+- **Semantics (Stripe-aligned; same row may apply to subscriptions or payments):**
+  - **`active`** — subscription is paid and in good standing for the current period; app features that require a plan are available (subject to plan type and quotas).
+  - **`trialing`** — user is in a trial period; treated like active for access where `activeSubscription()` includes both `active` and `trialing`.
+  - **`past_due`** — latest invoice payment failed; subscription may still be retried by the payment provider. Not treated as active in `activeSubscription()` until status is updated back to `active` (or trialing).
+  - **`canceled`** — subscription ended or was canceled; access follows product rules (e.g. until `current_period_end`). Not returned as the current row from `activeSubscription()`.
+  - **`pending`** — subscription or payment not yet fully activated (e.g. awaiting first successful payment).
 
 **recurring_expenses** — правила для рекуррентных расходов.
 
@@ -677,7 +683,8 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 
 **GET /api/me response** includes subscription and scan usage so the client can show remaining scans without a separate endpoint:
 
-- **`subscription`**: The active subscription with nested `plan` (id, type, label, check_limit, etc.), plus `current_period_end`, `used_checks_count`, etc.; or `null` if the user has no active subscription.
+- **`subscription`**: The active subscription with nested `plan` (id, type, label, check_limit, etc.), plus `current_period_end`, `used_checks_count`, etc.; or `null` if the user has no active subscription. (Only subscriptions with status `active` or `trialing` are selected; see `AppUser::activeSubscription()`.)
+- **`subscription_status`**: String — the `statuses.name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no active subscription row.
 - **`scan_usage`**: Object `{ scans_remaining, scans_limit, period_end }`. If no subscription: `scans_remaining: 0`, `scans_limit: 0`, `period_end: null`. If subscription exists: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = end of current billing period (ISO 8601).
 
 ### 5.7. Stripe Webhook Handling

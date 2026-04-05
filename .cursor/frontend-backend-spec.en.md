@@ -120,15 +120,25 @@ Frontend:
 - Table `user_subscriptions`:
   - `app_user_id`
   - `payment_subscription_id` (Stripe)
-  - `status_id` → status (`active`, `trialing`, `canceled`, …)
+  - `status_id` → row in `statuses` (`name` is what the API exposes as a string).
   - `used_checks_count` — how many scans were used in the current period.
   - `current_period_end` — end of billing period.
+
+**Subscription / payment status names** (dictionary `statuses`; Stripe-aligned):
+
+- **`active`** — paid and in good standing for the current period; plan features apply (within plan limits).
+- **`trialing`** — trial period; the backend treats this like `active` for “current subscription” (`activeSubscription()` includes both).
+- **`past_due`** — last invoice payment failed; the provider may retry. Not included in `activeSubscription()` until status returns to `active` or `trialing`.
+- **`canceled`** — subscription ended or canceled; access may last until `current_period_end` depending on product rules. Not returned as the current row from `activeSubscription()`.
+- **`pending`** — not fully active yet (e.g. awaiting first successful payment).
 
 Frontend:
 
 - `/api/me` returns:
-  - `subscription` — active subscription with nested `plan` (or null).
+  - `subscription` — the **active** subscription with nested `plan` (or `null`). Only rows whose status is `active` or `trialing` are selected.
+  - `subscription_status` — string, the status `name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no such subscription.
   - `scan_usage` — `{ scans_remaining, scans_limit, period_end }`.
+- Use `subscription.plan.label` (and related plan fields) plus `subscription_status` for subscription UI (badges, “Manage plan” screens).
 - For AI scans the client should:
   - show remaining scans using `scan_usage`,
   - handle 403 errors:
@@ -183,7 +193,7 @@ This is a feature-oriented view (more friendly than raw route listing in `api-ro
 
 ### 4.1. Profile and settings
 
-- `GET /api/me` — profile + active subscription + `scan_usage`.
+- `GET /api/me` — profile + active subscription + `subscription_status` + `scan_usage`.
 - `POST /api/me/settings` — create settings during onboarding (once).
 - `PUT /api/me/settings` — update language / currency / timezone.
 
@@ -193,7 +203,7 @@ Frontend:
   - call `POST /api/me/settings`,
   - store settings in app state.
 - On app start:
-  - call `GET /api/me` to load profile, subscription, limits, and settings.
+  - call `GET /api/me` to load profile, subscription, `subscription_status`, limits, and settings.
 
 ### 4.2. Categories and visibility funnel
 
@@ -308,7 +318,7 @@ If you need more detail:
 - Machine-readable API route list — `api-routes.json` (importable on the frontend as a reference).
 - Key controllers:
   - `App/Http/Controllers/AuthController.php` — register / login / refresh / logout.
-  - `App/Http/Controllers/AppUserController.php` — `/me`, `/me/settings`, subscription, `scan_usage`.
+  - `App/Http/Controllers/AppUserController.php` — `/me`, `/me/settings`, subscription, `subscription_status`, `scan_usage`.
   - `App/Http/Controllers/CategoryController.php` — `/categories`.
   - `App/Http/Controllers/CategoryVisibilityController.php` — visibility tags and onboarding.
   - `App/Http/Controllers/ManualTransactionController.php` — transaction CRUD.
