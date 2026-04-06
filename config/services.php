@@ -54,6 +54,20 @@ return [
     'stripe' => [
         'secret' => env('STRIPE_SECRET_KEY'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'prices' => [
+            'basic' => [
+                'eur' => env('STRIPE_BASIC_PRICE_EUR'),
+                'usd' => env('STRIPE_BASIC_PRICE_USD'),
+            ],
+            'plus' => [
+                'eur' => env('STRIPE_PLUS_PRICE_EUR'),
+                'usd' => env('STRIPE_PLUS_PRICE_USD'),
+            ],
+            'premium' => [
+                'eur' => env('STRIPE_PREMIUM_PRICE_EUR'),
+                'usd' => env('STRIPE_PREMIUM_PRICE_USD'),
+            ],
+        ],
     ],
 
     'api_secret' => env('API_SECRET', ''),

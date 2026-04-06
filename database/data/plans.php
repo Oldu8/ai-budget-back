@@ -23,7 +23,7 @@ return [
     [
         'type' => 'plus',
         'label' => 'Plus',
-        'price' => 600,
+        'price' => 500,
         'check_limit' => 500,
         'description' => "AI scans: 500/month\nManual transactions: unlimited\nHistory: unlimited\nCustom categories\nRecurring transactions\nAnalytics dashboard\nCSV export",
     ],

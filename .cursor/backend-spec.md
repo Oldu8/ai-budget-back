@@ -344,7 +344,7 @@ Mobile App                     Backend API                     Supabase
 | ------- | ----- | -------- | ------ | --------- | ---------- | --------- | ---------------------- | --- | -------------------- |
 | Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —                      | —   | —                    |
 | Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —                      | yes | —                    |
-| Plus    | $6    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard              | yes | —                    |
+| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard              | yes | —                    |
 | Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced + AI insights | yes | AI spending insights |
 
 Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `updateOrCreate` by `type` — safe to run multiple times.
@@ -713,8 +713,11 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 | `OPENAI_API_KEY`        | OpenAI API key для AI scan                                                            |
 | `SUPABASE_STORAGE_BUCKET` | Supabase Storage bucket name (default: `receipts`)                                  |
 | `OPENAI_REQUEST_TIMEOUT`| OpenAI request timeout in seconds (default: 60)                                       |
-| `STRIPE_SECRET_KEY`     | Stripe secret key (отложено)                                                          |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (отложено)                                              |
+| `STRIPE_SECRET_KEY`     | Stripe secret key                                                                   |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret                                                       |
+| `STRIPE_BASIC_PRICE_EUR` / `STRIPE_BASIC_PRICE_USD` | Stripe Price IDs для плана Basic (EUR / USD)                    |
+| `STRIPE_PLUS_PRICE_EUR` / `STRIPE_PLUS_PRICE_USD`   | Stripe Price IDs для плана Plus (EUR / USD)                   |
+| `STRIPE_PREMIUM_PRICE_EUR` / `STRIPE_PREMIUM_PRICE_USD` | Stripe Price IDs для плана Premium (EUR / USD)            |
 
 **Supabase keys:**
 
