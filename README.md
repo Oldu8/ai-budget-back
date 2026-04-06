@@ -64,14 +64,15 @@ After migrations, run all initial seeders in one command:
 php artisan app:seed-initial
 ```
 
-This runs categories, plans, and admin user seeders. Or run individually:
+This runs statuses, categories, plans, visibility questions, and admin user seeders. Or run individually:
 
-1. **Categories** — `php artisan categories:seed` (from `database/data/categories.php`)
-2. **Plans** — `php artisan plans:seed` (from `database/data/plans.php`)
-3. **Visibility questions** — `php artisan visibility-questions:seed` (funnel questions into `visibility_questions` table)
-4. **Admin user** — `php artisan db:seed --class=AdminUserSeeder` (creates/updates admin for panel)
+1. **Statuses** — `php artisan statuses:seed` (subscription/payment states: `database/data/statuses.php`)
+2. **Categories** — `php artisan categories:seed` (from `database/data/categories.php`)
+3. **Plans** — `php artisan plans:seed` (from `database/data/plans.php`)
+4. **Visibility questions** — `php artisan visibility-questions:seed` (funnel questions into `visibility_questions` table)
+5. **Admin user** — `php artisan db:seed --class=AdminUserSeeder` (creates/updates admin for panel)
 
-Optional: `php artisan db:seed` runs `DatabaseSeeder` (PlanSeeder + test User); use if you need the default test user.
+Optional: `php artisan db:seed` runs `DatabaseSeeder` (StatusSeeder + PlanSeeder + test User); use if you need the default test user.
 
 ## Admin panel
 

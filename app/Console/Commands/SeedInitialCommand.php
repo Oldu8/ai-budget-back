@@ -8,12 +8,13 @@ class SeedInitialCommand extends Command
 {
     protected $signature = 'app:seed-initial';
 
-    protected $description = 'Run all initial seeders: categories, plans, visibility questions, admin user';
+    protected $description = 'Run all initial seeders: statuses, categories, plans, visibility questions, admin user';
 
     public function handle(): int
     {
         $this->info('Running initial seeders...');
 
+        $this->call('statuses:seed');
         $this->call('categories:seed');
         $this->call('plans:seed');
         $this->call('visibility-questions:seed');
