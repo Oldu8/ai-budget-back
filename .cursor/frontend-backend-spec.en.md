@@ -135,15 +135,37 @@ Frontend:
 Frontend:
 
 - `/api/me` returns:
-  - `subscription` — the **active** subscription with nested `plan` (or `null`). Only rows whose status is `active` or `trialing` are selected.
+  - `subscription` — the **active** subscription with nested `plan` (or `null`). Only rows whose status is `active` or `trialing` are selected. Every user always has at least a free subscription (auto-created on register/login).
   - `subscription_status` — string, the status `name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no such subscription.
-  - `scan_usage` — `{ scans_remaining, scans_limit, period_end }`.
+  - `scan_usage` — `{ scans_remaining, scans_limit, period_end }`. For free plan `period_end` is `null` (no expiration).
 - Use `subscription.plan.label` (and related plan fields) plus `subscription_status` for subscription UI (badges, “Manage plan” screens).
 - For AI scans the client should:
   - show remaining scans using `scan_usage`,
   - handle 403 errors:
     - `Subscription required to scan.`
     - `Scan limit reached for this billing period.`
+
+### 2.6. Stripe: Checkout, Portal, Plans
+
+**Plans list** (`GET /api/plans`):
+- Returns all plans with currency-aware pricing: `type`, `label`, `price` (cents), `currency`, `price_id` (Stripe, null for free), `check_limit`, `description`.
+- Use for the paywall / subscription selection UI.
+
+**Checkout** (`POST /api/stripe/checkout`):
+- Body: `{ "plan_type": "basic"|"plus"|"premium" }`.
+- Response: `{ "checkout_url": "https://checkout.stripe.com/..." }`.
+- Frontend opens this URL in a browser (not WebView). After completion Stripe redirects to the configured deep link.
+- **Important:** The redirect to `success_url` is **not** confirmation of subscription activation. After returning from Checkout, the app **must** refetch `GET /api/me` to read the actual subscription state (updated by backend webhooks).
+
+**Customer Portal** (`POST /api/stripe/portal`):
+- Response: `{ "portal_url": "https://billing.stripe.com/..." }`.
+- Opens a Stripe-hosted page where the user can manage payment methods, cancel, or change subscription.
+- Requires that the user has gone through Checkout at least once (has a Stripe Customer). Returns 400 if not: `{ "message": "No billing account found. Please subscribe to a plan first." }`.
+- After returning from Portal, refetch `GET /api/me`.
+
+**Webhook** (`POST /api/stripe/webhook`):
+- Not called by the frontend. Stripe sends events here to keep subscription state in sync.
+- The backend DB (and thus `/api/me`) is the frontend's source of truth, not the Checkout/Portal redirect.
 
 ---
 

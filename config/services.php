@@ -53,7 +53,10 @@ return [
 
     'stripe' => [
         'secret' => env('STRIPE_SECRET_KEY'),
+        'public_key' => env('STRIPE_PUBLIC_KEY'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'success_url' => env('STRIPE_SUCCESS_URL', 'https://example.com/payment/success'),
+        'cancel_url' => env('STRIPE_CANCEL_URL', 'https://example.com/payment/cancel'),
         'prices' => [
             'basic' => [
                 'eur' => env('STRIPE_BASIC_PRICE_EUR'),

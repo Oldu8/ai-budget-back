@@ -6,13 +6,20 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CategoryVisibilityController;
 use App\Http\Controllers\ExpenseExportController;
 use App\Http\Controllers\ManualTransactionController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\ScanController;
+use App\Http\Controllers\StripeController;
 use App\Http\Controllers\TransactionSummaryController;
+use App\Http\Middleware\EnsureApiKey;
 use Illuminate\Support\Facades\Route;
 
 // Healthcheck for Railway — no session, no DB, always 200
 Route::get('/health', fn () => response('OK', 200));
+
+// Stripe webhook — no JWT, no API key; authenticated solely by Stripe signature
+Route::post('/stripe/webhook', [StripeController::class, 'webhook'])
+    ->withoutMiddleware(EnsureApiKey::class);
 
 Route::middleware('throttle:5,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
@@ -31,6 +38,7 @@ Route::middleware('supabase.auth')->group(function () {
     Route::put('/me/settings', [AppUserController::class, 'updateSettings']);
 
     Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/plans', [PlanController::class, 'index']);
 
     Route::get('/funnel/visibility-questions', [CategoryVisibilityController::class, 'funnelQuestions']);
     Route::get('/visibility-tags', [CategoryVisibilityController::class, 'visibilityTags']);
@@ -59,4 +67,7 @@ Route::middleware('supabase.auth')->group(function () {
         Route::delete('/recurring-expenses/{id}', [RecurringExpenseController::class, 'destroy']);
         Route::patch('/recurring-expenses/{id}/toggle', [RecurringExpenseController::class, 'toggle']);
     });
+
+    Route::post('/stripe/checkout', [StripeController::class, 'checkout']);
+    Route::post('/stripe/portal', [StripeController::class, 'portal']);
 });
