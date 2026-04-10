@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppUser;
+use App\Services\EnsureDefaultSubscriptionService;
 use App\Services\ErrorNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private EnsureDefaultSubscriptionService $ensureDefaultSubscription,
+    ) {}
+
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -30,15 +35,17 @@ class AuthController extends Controller
             if (ErrorNotifier::isCritical($status)) {
                 ErrorNotifier::notify('Register: Supabase rejected', $message, $context);
             }
+
             return response()->json(['message' => $message], $status);
         }
 
         $data = $response->json();
 
-        if (!isset($data['user'])) {
+        if (! isset($data['user'])) {
             $msg = $this->supabaseErrorMessageFromArray($data, 'Invalid Supabase response');
             Log::error('Register: Supabase response missing user', ['response' => $data]);
             ErrorNotifier::notify('Register: invalid Supabase response', $msg, ['response' => $data]);
+
             return response()->json(['message' => $msg], 500);
         }
 
@@ -49,10 +56,12 @@ class AuthController extends Controller
             );
 
             $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
-            if ($emailConfirmedAt && !$appUser->email_verified_at) {
+            if ($emailConfirmedAt && ! $appUser->email_verified_at) {
                 $appUser->email_verified_at = $emailConfirmedAt;
                 $appUser->save();
             }
+
+            $this->ensureDefaultSubscription->ensureFreeSubscription($appUser);
 
             return response()->json([
                 'access_token' => $data['access_token'],
@@ -90,6 +99,7 @@ class AuthController extends Controller
 
         if ($response->failed()) {
             $message = $this->supabaseErrorMessage($response, 'Invalid credentials');
+
             return response()->json(['message' => $message], $response->status());
         }
 
@@ -101,10 +111,12 @@ class AuthController extends Controller
         );
 
         $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
-        if ($emailConfirmedAt && !$appUser->email_verified_at) {
+        if ($emailConfirmedAt && ! $appUser->email_verified_at) {
             $appUser->email_verified_at = $emailConfirmedAt;
             $appUser->save();
         }
+
+        $this->ensureDefaultSubscription->ensureFreeSubscription($appUser);
 
         $appUser->load('settings');
 
@@ -143,16 +155,16 @@ class AuthController extends Controller
     {
         $token = substr($request->header('Authorization', ''), 7);
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['message' => 'No token provided'], 400);
         }
 
         $url = rtrim(config('services.supabase.url'), '/');
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $token,
+            'Authorization' => 'Bearer '.$token,
             'apiKey' => config('services.supabase.service_role'),
-        ])->post($url . '/auth/v1/logout');
+        ])->post($url.'/auth/v1/logout');
 
         if ($response->failed()) {
             return response()->json(['message' => 'Logout failed'], $response->status());
@@ -168,19 +180,20 @@ class AuthController extends Controller
         return Http::withHeaders([
             'apiKey' => config('services.supabase.anon_key'),
             'Content-Type' => 'application/json',
-        ])->post($url . $path, $body);
+        ])->post($url.$path, $body);
     }
 
     /** Supabase returns msg (old API) or message (new API). Maps common codes to user-friendly text. */
     private function supabaseErrorMessage(\Illuminate\Http\Client\Response $response, string $fallback): string
     {
         $data = $response->json();
+
         return $this->supabaseErrorMessageFromArray($data, $fallback);
     }
 
     private function supabaseErrorMessageFromArray(?array $data, string $fallback): string
     {
-        if (!$data) {
+        if (! $data) {
             return $fallback;
         }
         $text = $data['message'] ?? $data['msg'] ?? $data['error_description'] ?? null;

@@ -186,6 +186,15 @@ Mobile App                     Backend API                     Supabase
 | `POST`   | `/api/transactions/scan`               | AI scan: upload image; 201 `{ "data": { ... } }` (transaction with `items[].category`) |
 | `PUT`    | `/api/transactions/{id}/update`        | Save edited AI receipt (`date`, `items[]` …) and **confirm** in one request; server recalculates `total_amount`, sets `confirmed_at` |
 | `GET`    | `/api/transactions/{id}/image`         | Receipt preview: `{ "url", "expires_in" }` signed URL (owner, requires `img_path`) |
+| `GET`    | `/api/plans`                           | List all plans with currency-aware pricing for frontend paywall |
+| `POST`   | `/api/stripe/checkout`                 | Create Stripe Checkout Session; body `{ plan_type }` → `{ checkout_url }` |
+| `POST`   | `/api/stripe/portal`                   | Create Stripe Customer Portal Session → `{ portal_url }` |
+
+**No auth (Stripe signature only):**
+
+| Method | Route                  | Action                                         |
+| ------ | ---------------------- | ---------------------------------------------- |
+| `POST` | `/api/stripe/webhook`  | Stripe webhook endpoint (verified by signature) |
 
 **Scan / receipt update / show responses** use a stable envelope: `data.id`, `data.type`, `data.created_by`, `data.confirmed_at`, `data.date`, `data.total_amount`, `data.img_path`, `data.raw_ai_data`, `data.items[]` with nested `category` `{ id, slug, label }`.
 
@@ -687,11 +696,39 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - **`subscription_status`**: String — the `statuses.name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no active subscription row.
 - **`scan_usage`**: Object `{ scans_remaining, scans_limit, period_end }`. If no subscription: `scans_remaining: 0`, `scans_limit: 0`, `period_end: null`. If subscription exists: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = end of current billing period (ISO 8601).
 
-### 5.7. Stripe Webhook Handling
+### 5.7. Stripe Integration (StripeController)
 
-- `checkout.session.completed` → activate new subscription
-- `invoice.paid` → reset `used_checks_count` to 0 for new billing cycle
-- `customer.subscription.deleted` → update status to canceled, restrict access
+**Checkout** (`POST /api/stripe/checkout`):
+- Accepts `{ plan_type: "basic"|"plus"|"premium" }`. Rejects `free`.
+- Gets or creates Stripe Customer (saves `payment_customer_id` on `app_users`).
+- Resolves `price_id` from user's currency (`app_user_settings.currency`, default `usd`) via `config('services.stripe.prices')`, fallback to USD.
+- Creates `Stripe\Checkout\Session` with `mode: subscription`, `client_reference_id`, metadata (`app_user_id`, `plan_type`, `currency`).
+- Returns `{ checkout_url }`.
+
+**Customer Portal** (`POST /api/stripe/portal`):
+- Requires existing `payment_customer_id`; returns 400 if missing.
+- Creates `Stripe\BillingPortal\Session` and returns `{ portal_url }`.
+
+**Webhook** (`POST /api/stripe/webhook`):
+- Outside auth middleware; verified solely by Stripe signature (`STRIPE_WEBHOOK_SECRET`).
+- All handlers are **idempotent** (upsert by `payment_subscription_id` / `payment_invoice_id`).
+- Webhooks are the **single source of truth** for subscription state.
+- Events handled:
+  - `checkout.session.completed` — logs traceability data (session ID, customer, metadata). Not authoritative for subscription activation.
+  - `customer.subscription.created` — upserts `user_subscriptions` (plan, status, period end, usage = 0). Cancels local free subscription.
+  - `customer.subscription.updated` — updates status, period end, cancel_at_period_end, plan if price changed.
+  - `customer.subscription.deleted` — sets status to `canceled`, creates fallback free subscription via `EnsureDefaultSubscriptionService`.
+  - `invoice.paid` — creates/updates `payments` record. Recovers subscription from `past_due`/`pending` to `active`. Resets `used_checks_count` only on renewal (`billing_reason = subscription_cycle`).
+  - `invoice.payment_failed` — sets subscription status to `past_due`.
+- Missing AppUser for a customer ID is logged and reported via `ErrorNotifier`, webhook returns 200 without throwing.
+
+**Free Plan Auto-Creation** (`EnsureDefaultSubscriptionService`):
+- Called in `AuthController::register()` and `login()` after user creation/lookup.
+- Ensures every user has an active subscription. If no active subscription exists, creates a local-only free subscription (`payment_subscription_id = null`, `current_period_end = null`, `used_checks_count = 0`).
+- Free plan is local-only — no Stripe Product/Price. When paid subscription activates, free is canceled. When paid is deleted, free is re-created with fresh usage.
+
+**Plans** (`GET /api/plans`):
+- Returns all plans ordered Free → Basic → Plus → Premium with currency-aware `price_id` from config.
 
 ### 5.8. CSV export of expenses
 
@@ -714,7 +751,10 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 | `SUPABASE_STORAGE_BUCKET` | Supabase Storage bucket name (default: `receipts`)                                  |
 | `OPENAI_REQUEST_TIMEOUT`| OpenAI request timeout in seconds (default: 60)                                       |
 | `STRIPE_SECRET_KEY`     | Stripe secret key                                                                   |
+| `STRIPE_PUBLIC_KEY`     | Stripe publishable key (for frontend if needed)                                     |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret                                                       |
+| `STRIPE_SUCCESS_URL`    | Redirect URL after successful checkout (deep link for mobile)                        |
+| `STRIPE_CANCEL_URL`     | Redirect URL after canceled checkout (deep link for mobile)                          |
 | `STRIPE_BASIC_PRICE_EUR` / `STRIPE_BASIC_PRICE_USD` | Stripe Price IDs для плана Basic (EUR / USD)                    |
 | `STRIPE_PLUS_PRICE_EUR` / `STRIPE_PLUS_PRICE_USD`   | Stripe Price IDs для плана Plus (EUR / USD)                   |
 | `STRIPE_PREMIUM_PRICE_EUR` / `STRIPE_PREMIUM_PRICE_USD` | Stripe Price IDs для плана Premium (EUR / USD)            |
