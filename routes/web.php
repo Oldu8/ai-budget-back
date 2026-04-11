@@ -11,6 +11,10 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Stripe Checkout redirect targets (override with STRIPE_SUCCESS_URL / STRIPE_CANCEL_URL)
+Route::view('/stripe/checkout/success', 'stripe.checkout-success');
+Route::view('/stripe/checkout/cancel', 'stripe.checkout-cancel');
+
 // Admin login (guest only)
 Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/admin/login', [AuthController::class, 'login']);

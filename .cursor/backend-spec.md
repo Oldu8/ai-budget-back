@@ -753,8 +753,8 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 | `STRIPE_SECRET_KEY`     | Stripe secret key                                                                   |
 | `STRIPE_PUBLIC_KEY`     | Stripe publishable key (for frontend if needed)                                     |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret                                                       |
-| `STRIPE_SUCCESS_URL`    | Redirect URL after successful checkout (deep link for mobile)                        |
-| `STRIPE_CANCEL_URL`     | Redirect URL after canceled checkout (deep link for mobile)                          |
+| `STRIPE_SUCCESS_URL`    | Redirect after successful checkout; if unset, defaults to `{APP_URL}/stripe/checkout/success` (public test page) |
+| `STRIPE_CANCEL_URL`     | Redirect after canceled checkout; if unset, defaults to `{APP_URL}/stripe/checkout/cancel` (public test page)   |
 | `STRIPE_BASIC_PRICE_EUR` / `STRIPE_BASIC_PRICE_USD` | Stripe Price IDs для плана Basic (EUR / USD)                    |
 | `STRIPE_PLUS_PRICE_EUR` / `STRIPE_PLUS_PRICE_USD`   | Stripe Price IDs для плана Plus (EUR / USD)                   |
 | `STRIPE_PREMIUM_PRICE_EUR` / `STRIPE_PREMIUM_PRICE_USD` | Stripe Price IDs для плана Premium (EUR / USD)            |
