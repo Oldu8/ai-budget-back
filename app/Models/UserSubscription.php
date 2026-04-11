@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -25,8 +26,15 @@ class UserSubscription extends Model
         'trial_start' => 'datetime',
         'trial_end' => 'datetime',
         'current_period_end' => 'datetime',
-        'cancel_at_period_end' => 'boolean',
     ];
+
+    /** PG boolean + Eloquent `boolean` cast bind as 0/1; use accessor only (writes use explicit SQL bool in StripeController). */
+    protected function cancelAtPeriodEnd(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value) => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+        );
+    }
 
     public function appUser(): BelongsTo
     {

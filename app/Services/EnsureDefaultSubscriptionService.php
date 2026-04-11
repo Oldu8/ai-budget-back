@@ -22,7 +22,7 @@ class EnsureDefaultSubscriptionService
 
             $hasActive = UserSubscription::query()
                 ->where('app_user_id', $user->id)
-                ->whereHas('status', fn($q) => $q->whereIn('name', ['active', 'trialing']))
+                ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing']))
                 ->exists();
 
             if ($hasActive) {
@@ -32,8 +32,8 @@ class EnsureDefaultSubscriptionService
             $existingFreeActive = UserSubscription::query()
                 ->where('app_user_id', $user->id)
                 ->whereNull('payment_subscription_id')
-                ->whereHas('plan', fn($q) => $q->where('type', PlanType::Free->value))
-                ->whereHas('status', fn($q) => $q->where('name', 'active'))
+                ->whereHas('plan', fn ($q) => $q->where('type', PlanType::Free->value))
+                ->whereHas('status', fn ($q) => $q->where('name', 'active'))
                 ->lockForUpdate()
                 ->exists();
 
@@ -55,7 +55,7 @@ class EnsureDefaultSubscriptionService
                 'payment_subscription_id' => null,
                 'used_checks_count' => 0,
                 'current_period_end' => null,
-                'cancel_at_period_end' => false,
+                'cancel_at_period_end' => DB::raw('false'),
             ]);
         });
     }

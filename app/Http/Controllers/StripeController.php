@@ -14,6 +14,7 @@ use App\Services\ErrorNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Stripe\BillingPortal\Session as PortalSession;
@@ -305,7 +306,7 @@ class StripeController extends Controller
                 'plan_id' => $plan->id,
                 'status_id' => $statusId,
                 'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.created'),
-                'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
+                'cancel_at_period_end' => DB::raw($this->stripeBool($subscription->cancel_at_period_end) ? 'true' : 'false'),
                 'used_checks_count' => 0,
                 'trial_start' => $this->carbonFromStripeTimestamp($subscription->trial_start),
                 'trial_end' => $this->carbonFromStripeTimestamp($subscription->trial_end),
@@ -342,7 +343,7 @@ class StripeController extends Controller
         $updates = [
             'status_id' => $statusId,
             'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.updated'),
-            'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
+            'cancel_at_period_end' => DB::raw($this->stripeBool($subscription->cancel_at_period_end) ? 'true' : 'false'),
         ];
 
         $newPriceId = $subscription->items->data[0]->price->id ?? null;
