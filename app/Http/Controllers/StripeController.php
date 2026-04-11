@@ -305,7 +305,7 @@ class StripeController extends Controller
                 'plan_id' => $plan->id,
                 'status_id' => $statusId,
                 'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.created'),
-                'cancel_at_period_end' => $subscription->cancel_at_period_end,
+                'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
                 'used_checks_count' => 0,
                 'trial_start' => $this->carbonFromStripeTimestamp($subscription->trial_start),
                 'trial_end' => $this->carbonFromStripeTimestamp($subscription->trial_end),
@@ -342,7 +342,7 @@ class StripeController extends Controller
         $updates = [
             'status_id' => $statusId,
             'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.updated'),
-            'cancel_at_period_end' => $subscription->cancel_at_period_end,
+            'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
         ];
 
         $newPriceId = $subscription->items->data[0]->price->id ?? null;
@@ -512,6 +512,22 @@ class StripeController extends Controller
     // ──────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────
+
+    /** Stripe JSON sometimes encodes booleans as 0/1; PostgreSQL expects real booleans. */
+    private function stripeBool(mixed $value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_int($value) || is_float($value)) {
+            return ((int) $value) !== 0;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
 
     /** Stripe Subscription timestamps can be null on some events/API shapes; never pass null into Carbon. */
     private function carbonFromStripeTimestamp(int|string|float|null $timestamp): ?Carbon
