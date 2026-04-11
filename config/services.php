@@ -37,7 +37,14 @@ return [
     ],
 
     'discord' => [
-        'webhook_url' => env('DISCORD_WEBHOOK_URL'),
+        /** Critical errors / Stripe issues — #error-logs */
+        'errors_webhook_url' => env('DISCORD_ERRORS_WEBHOOK_URL', env('DISCORD_WEBHOOK_URL')),
+        /** New AppUser signups — #new-users */
+        'registrations_webhook_url' => env('DISCORD_REGISTRATIONS_WEBHOOK_URL'),
+        /** Paid subscription started / canceled — #payment-info */
+        'payments_webhook_url' => env('DISCORD_PAYMENTS_WEBHOOK_URL'),
+        /** When true, registration messages include full email; otherwise only app_user_id + email domain */
+        'registration_include_email' => filter_var(env('DISCORD_REGISTRATION_INCLUDE_EMAIL', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'supabase' => [
