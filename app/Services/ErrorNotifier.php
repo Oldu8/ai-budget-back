@@ -22,14 +22,14 @@ class ErrorNotifier
 
     public static function notify(string $title, string $message, array $context = []): void
     {
-        $discordUrl = config('services.discord.webhook_url');
+        $discordUrl = config('services.discord.errors_webhook_url');
         $slackUrl = config('services.slack.webhook_url');
 
         $fullMessage = $message;
-        if (!empty($context)) {
-            $fullMessage .= "\n\n" . json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if (! empty($context)) {
+            $fullMessage .= "\n\n".json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         }
-        $truncated = strlen($fullMessage) > 1900 ? substr($fullMessage, 0, 1900) . '…' : $fullMessage;
+        $truncated = strlen($fullMessage) > 1900 ? substr($fullMessage, 0, 1900).'…' : $fullMessage;
 
         if ($discordUrl) {
             Http::timeout(5)->post($discordUrl, [

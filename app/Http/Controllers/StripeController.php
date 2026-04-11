@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Models\Status;
 use App\Models\StripeCheckoutLog;
 use App\Models\UserSubscription;
+use App\Services\DiscordNotifier;
 use App\Services\EnsureDefaultSubscriptionService;
 use App\Services\ErrorNotifier;
 use Illuminate\Http\JsonResponse;
@@ -314,6 +315,15 @@ class StripeController extends Controller
         );
 
         $this->cancelFreeSubscription($user);
+
+        DiscordNotifier::payment(
+            'Subscription started',
+            sprintf('User `%d` — **%s** (`%s`)', $user->id, $plan->label, $plan->type->value),
+            [
+                'payment_subscription_id' => $subscription->id,
+                'stripe_customer_id' => is_string($subscription->customer) ? $subscription->customer : $subscription->customer?->id,
+            ],
+        );
     }
 
     // ──────────────────────────────────────────────
@@ -397,11 +407,19 @@ class StripeController extends Controller
             return;
         }
 
+        $local->load('plan');
+        $planLabel = $local->plan?->label ?? $local->plan?->type?->value ?? '?';
+
         $local->update(['status_id' => $canceledId]);
 
         $user = $local->appUser;
         if ($user) {
             $this->ensureDefaultSubscription->ensureFreeSubscription($user);
+            DiscordNotifier::payment(
+                'Subscription canceled',
+                sprintf('User `%d` — was **%s**', $user->id, $planLabel),
+                ['payment_subscription_id' => $subscription->id],
+            );
         }
     }
 

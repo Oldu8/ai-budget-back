@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppUser;
+use App\Services\DiscordNotifier;
 use App\Services\EnsureDefaultSubscriptionService;
 use App\Services\ErrorNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -62,6 +64,8 @@ class AuthController extends Controller
             }
 
             $this->ensureDefaultSubscription->ensureFreeSubscription($appUser);
+
+            $this->notifyDiscordRegistration($appUser);
 
             return response()->json([
                 'access_token' => $data['access_token'],
@@ -171,6 +175,21 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Logged out']);
+    }
+
+    /** Discord #new-users — minimal PII unless DISCORD_REGISTRATION_INCLUDE_EMAIL=true */
+    private function notifyDiscordRegistration(AppUser $appUser): void
+    {
+        $lines = ['`app_user_id`: '.$appUser->id];
+        if (config('services.discord.registration_include_email')) {
+            if ($appUser->email) {
+                $lines[] = $appUser->email;
+            }
+        } elseif ($appUser->email && str_contains($appUser->email, '@')) {
+            $lines[] = '`domain`: `@'.Str::after($appUser->email, '@').'`';
+        }
+
+        DiscordNotifier::registration('New user registered', implode("\n", $lines));
     }
 
     private function supabasePost(string $path, array $body): \Illuminate\Http\Client\Response

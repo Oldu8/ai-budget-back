@@ -758,6 +758,10 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 | `STRIPE_BASIC_PRICE_EUR` / `STRIPE_BASIC_PRICE_USD` | Stripe Price IDs для плана Basic (EUR / USD)                    |
 | `STRIPE_PLUS_PRICE_EUR` / `STRIPE_PLUS_PRICE_USD`   | Stripe Price IDs для плана Plus (EUR / USD)                   |
 | `STRIPE_PREMIUM_PRICE_EUR` / `STRIPE_PREMIUM_PRICE_USD` | Stripe Price IDs для плана Premium (EUR / USD)            |
+| `DISCORD_ERRORS_WEBHOOK_URL` | Ошибки / Stripe issues → `#error-logs` (fallback: `DISCORD_WEBHOOK_URL`) |
+| `DISCORD_REGISTRATIONS_WEBHOOK_URL` | Успешная регистрация → `#new-users` |
+| `DISCORD_PAYMENTS_WEBHOOK_URL` | Старт платной подписки / отмена подписки → `#payment-info` (не продления) |
+| `DISCORD_REGISTRATION_INCLUDE_EMAIL` | `true` — в сообщении о регистрации полный email; иначе только `app_user_id` + домен |
 
 **Supabase keys:**
 
