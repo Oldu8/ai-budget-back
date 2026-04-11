@@ -1,0 +1,24 @@
+{
+  "object": {
+    "id": "cs_test_a1N1CwlhPVhl3VzYcYV3jkAcQLZhh3lVGzLiJhY9rBhRJzVb5rAILj0GWu",
+    "object": "checkout.session",
+    "cancel_url": "https://ai-budget-back-production.up.railway.app/stripe/checkout/cancel",
+    "client_reference_id": "8",
+    "created": 1775914880,
+    "currency": "eur",
+    "customer": "cus_UJf6von1UPm5Mv",
+    "invoice": "in_1TL1nNPoFogaNyVdvnnWX2J9",
+    "livemode": false,
+    "metadata": {
+      "app_user_id": "8",
+      "currency": "eur",
+      "plan_type": "basic"
+    },
+    "mode": "subscription",
+    "payment_status": "paid",
+    "status": "complete",
+    "subscription": "sub_1TL1nQPoFogaNyVdjZDHNZiz",
+    "success_url": "https://ai-budget-back-production.up.railway.app/stripe/checkout/success"
+  },
+  "previous_attributes": null
+}

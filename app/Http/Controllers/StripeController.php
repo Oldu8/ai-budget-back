@@ -20,7 +20,9 @@ use Stripe\BillingPortal\Session as PortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\Customer;
 use Stripe\Exception\SignatureVerificationException;
+use Stripe\Invoice;
 use Stripe\Stripe;
+use Stripe\Subscription as StripeSubscription;
 use Stripe\Webhook;
 
 class StripeController extends Controller
@@ -302,11 +304,11 @@ class StripeController extends Controller
                 'app_user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'status_id' => $statusId,
-                'current_period_end' => Carbon::createFromTimestamp($subscription->current_period_end),
+                'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.created'),
                 'cancel_at_period_end' => $subscription->cancel_at_period_end,
                 'used_checks_count' => 0,
-                'trial_start' => $subscription->trial_start ? Carbon::createFromTimestamp($subscription->trial_start) : null,
-                'trial_end' => $subscription->trial_end ? Carbon::createFromTimestamp($subscription->trial_end) : null,
+                'trial_start' => $this->carbonFromStripeTimestamp($subscription->trial_start),
+                'trial_end' => $this->carbonFromStripeTimestamp($subscription->trial_end),
             ],
         );
 
@@ -339,7 +341,7 @@ class StripeController extends Controller
 
         $updates = [
             'status_id' => $statusId,
-            'current_period_end' => Carbon::createFromTimestamp($subscription->current_period_end),
+            'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.updated'),
             'cancel_at_period_end' => $subscription->cancel_at_period_end,
         ];
 
@@ -406,13 +408,14 @@ class StripeController extends Controller
     // invoice.paid — payment record + status recovery
     // ──────────────────────────────────────────────
 
-    private function onInvoicePaid(\Stripe\Invoice $invoice): void
+    private function onInvoicePaid(Invoice $invoice): void
     {
-        if (! $invoice->subscription) {
+        $subscriptionId = $this->stripeInvoiceSubscriptionId($invoice);
+        if ($subscriptionId === null) {
             return;
         }
 
-        $local = UserSubscription::where('payment_subscription_id', $invoice->subscription)->first();
+        $local = UserSubscription::where('payment_subscription_id', $subscriptionId)->first();
         $appUserId = $local?->app_user_id;
 
         if (! $appUserId) {
@@ -441,13 +444,13 @@ class StripeController extends Controller
         if (! $local) {
             $context = [
                 'invoice_id' => $invoice->id,
-                'stripe_subscription_id' => $invoice->subscription,
+                'stripe_subscription_id' => $subscriptionId,
                 'stripe_customer_id' => $invoice->customer,
             ];
             Log::warning('Stripe: invoice.paid — no local user_subscriptions row for subscription', $context);
             ErrorNotifier::notify(
                 'Stripe: invoice.paid — subscription not in DB',
-                "No UserSubscription with payment_subscription_id = {$invoice->subscription}",
+                "No UserSubscription with payment_subscription_id = {$subscriptionId}",
                 $context,
             );
 
@@ -458,7 +461,7 @@ class StripeController extends Controller
         if (in_array($statusName, ['past_due', 'pending'], true)) {
             $activeId = $this->requireStatusId('active', [
                 'invoice_id' => $invoice->id,
-                'payment_subscription_id' => $invoice->subscription,
+                'payment_subscription_id' => $subscriptionId,
                 'handler' => 'invoice.paid_recovery',
             ]);
             if ($activeId !== null) {
@@ -475,18 +478,19 @@ class StripeController extends Controller
     // invoice.payment_failed
     // ──────────────────────────────────────────────
 
-    private function onInvoicePaymentFailed(\Stripe\Invoice $invoice): void
+    private function onInvoicePaymentFailed(Invoice $invoice): void
     {
-        if (! $invoice->subscription) {
+        $subscriptionId = $this->stripeInvoiceSubscriptionId($invoice);
+        if ($subscriptionId === null) {
             return;
         }
 
-        $local = UserSubscription::where('payment_subscription_id', $invoice->subscription)->first();
+        $local = UserSubscription::where('payment_subscription_id', $subscriptionId)->first();
 
         if (! $local) {
             Log::warning('Stripe: invoice.payment_failed — no local user_subscriptions row for subscription', [
                 'invoice_id' => $invoice->id,
-                'stripe_subscription_id' => $invoice->subscription,
+                'stripe_subscription_id' => $subscriptionId,
                 'stripe_customer_id' => $invoice->customer,
             ]);
 
@@ -495,7 +499,7 @@ class StripeController extends Controller
 
         $pastDueId = $this->requireStatusId('past_due', [
             'invoice_id' => $invoice->id,
-            'payment_subscription_id' => $invoice->subscription,
+            'payment_subscription_id' => $subscriptionId,
             'handler' => 'invoice.payment_failed',
         ]);
         if ($pastDueId === null) {
@@ -508,6 +512,102 @@ class StripeController extends Controller
     // ──────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────
+
+    /** Stripe Subscription timestamps can be null on some events/API shapes; never pass null into Carbon. */
+    private function carbonFromStripeTimestamp(int|string|float|null $timestamp): ?Carbon
+    {
+        if ($timestamp === null) {
+            return null;
+        }
+
+        return Carbon::createFromTimestamp($timestamp);
+    }
+
+    /**
+     * End of current billing period from Stripe. With `billing_mode.type = flexible`, the root
+     * Subscription object may omit `current_period_end`; it appears on `items.data[0].current_period_end`
+     * (see docs/stripe-webhook-samples/customer.subscription.created.json).
+     */
+    private function resolveSubscriptionCurrentPeriodEnd(StripeSubscription $subscription, string $eventId, string $handler): ?Carbon
+    {
+        $fromRoot = $this->carbonFromStripeTimestamp($subscription->current_period_end);
+        if ($fromRoot !== null) {
+            return $fromRoot;
+        }
+
+        $items = $subscription->items->data ?? [];
+        if ($items !== [] && isset($items[0]->current_period_end)) {
+            $fromItem = $this->carbonFromStripeTimestamp($items[0]->current_period_end);
+            if ($fromItem !== null) {
+                return $fromItem;
+            }
+        }
+
+        try {
+            $fresh = StripeSubscription::retrieve($subscription->id);
+            $fromApi = $this->carbonFromStripeTimestamp($fresh->current_period_end);
+            if ($fromApi !== null) {
+                return $fromApi;
+            }
+            $freshItems = $fresh->items->data ?? [];
+            if ($freshItems !== [] && isset($freshItems[0]->current_period_end)) {
+                $fromFreshItem = $this->carbonFromStripeTimestamp($freshItems[0]->current_period_end);
+                if ($fromFreshItem !== null) {
+                    return $fromFreshItem;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Stripe: Subscription::retrieve failed while resolving current_period_end', [
+                'payment_subscription_id' => $subscription->id,
+                'event_id' => $eventId,
+                'handler' => $handler,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        Log::warning('Stripe: current_period_end missing on webhook and after Subscription retrieve', [
+            'payment_subscription_id' => $subscription->id,
+            'stripe_status' => $subscription->status,
+            'event_id' => $eventId,
+            'handler' => $handler,
+        ]);
+
+        return null;
+    }
+
+    /**
+     * Subscription id on invoices: classic API exposes `subscription`; newer payloads nest it under
+     * `parent.subscription_details.subscription` (see docs/stripe-webhook-samples/invoice.paid.json).
+     */
+    private function stripeInvoiceSubscriptionId(Invoice $invoice): ?string
+    {
+        if ($invoice->subscription) {
+            return is_string($invoice->subscription) ? $invoice->subscription : $invoice->subscription->id;
+        }
+
+        $parent = $invoice->parent ?? null;
+        if ($parent !== null) {
+            $details = $parent->subscription_details ?? null;
+            if ($details !== null && ! empty($details->subscription)) {
+                $sid = $details->subscription;
+
+                return is_string($sid) ? $sid : $sid->id;
+            }
+        }
+
+        foreach ($invoice->lines->data ?? [] as $line) {
+            $lineParent = $line->parent ?? null;
+            if ($lineParent === null || ($lineParent->type ?? '') !== 'subscription_item_details') {
+                continue;
+            }
+            $sid = $lineParent->subscription_item_details->subscription ?? null;
+            if (is_string($sid)) {
+                return $sid;
+            }
+        }
+
+        return null;
+    }
 
     /** Find the AppUser by Stripe customer ID. Logs + notifies if not found instead of throwing. */
     private function resolveUserFromSubscription(\Stripe\Subscription $subscription, string $eventId, string $eventType): ?AppUser
@@ -610,7 +710,7 @@ class StripeController extends Controller
     {
         return $user->userSubscriptions()
             ->whereNotNull('payment_subscription_id')
-            ->whereHas('status', fn($q) => $q->whereIn('name', ['active', 'trialing']))
+            ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing']))
             ->exists();
     }
 
@@ -644,8 +744,8 @@ class StripeController extends Controller
 
         $user->userSubscriptions()
             ->whereNull('payment_subscription_id')
-            ->whereHas('status', fn($q) => $q->whereIn('name', ['active', 'trialing']))
-            ->whereHas('plan', fn($q) => $q->where('type', PlanType::Free->value))
+            ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing']))
+            ->whereHas('plan', fn ($q) => $q->where('type', PlanType::Free->value))
             ->update(['status_id' => $canceledId]);
     }
 }

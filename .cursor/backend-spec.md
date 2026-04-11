@@ -713,12 +713,12 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - Outside auth middleware; verified solely by Stripe signature (`STRIPE_WEBHOOK_SECRET`).
 - All handlers are **idempotent** (upsert by `payment_subscription_id` / `payment_invoice_id`).
 - Webhooks are the **single source of truth** for subscription state.
-- Events handled:
+- Events handled (see `docs/stripe-webhook-samples/` for real payload shapes):
   - `checkout.session.completed` — logs traceability data (session ID, customer, metadata). Not authoritative for subscription activation.
-  - `customer.subscription.created` — upserts `user_subscriptions` (plan, status, period end, usage = 0). Cancels local free subscription.
+  - `customer.subscription.created` — upserts `user_subscriptions` (plan, status, period end, usage = 0). Cancels local free subscription. With Stripe **flexible billing**, root `current_period_end` may be absent; period is read from `items.data[0].current_period_end` (and API retrieve as fallback).
   - `customer.subscription.updated` — updates status, period end, cancel_at_period_end, plan if price changed.
   - `customer.subscription.deleted` — sets status to `canceled`, creates fallback free subscription via `EnsureDefaultSubscriptionService`.
-  - `invoice.paid` — creates/updates `payments` record. Recovers subscription from `past_due`/`pending` to `active`. Resets `used_checks_count` only on renewal (`billing_reason = subscription_cycle`).
+  - `invoice.paid` — creates/updates `payments` record. Subscription id is taken from `subscription`, or `parent.subscription_details.subscription`, or line `parent.subscription_item_details.subscription` when the top-level `subscription` field is missing. Recovers subscription from `past_due`/`pending` to `active`. Resets `used_checks_count` only on renewal (`billing_reason = subscription_cycle`).
   - `invoice.payment_failed` — sets subscription status to `past_due`.
 - Missing AppUser for a customer ID is logged and reported via `ErrorNotifier`, webhook returns 200 without throwing.
 

@@ -1,0 +1,53 @@
+{
+  "object": {
+    "id": "sub_1TL1nQPoFogaNyVdjZDHNZiz",
+    "object": "subscription",
+    "application": null,
+    "billing_cycle_anchor": 1775914917,
+    "billing_mode": {
+      "flexible": {
+        "proration_discounts": "included"
+      },
+      "type": "flexible",
+      "updated_at": 1775914880
+    },
+    "cancel_at_period_end": false,
+    "collection_method": "charge_automatically",
+    "created": 1775914917,
+    "currency": "eur",
+    "customer": "cus_UJf6von1UPm5Mv",
+    "items": {
+      "object": "list",
+      "data": [
+        {
+          "id": "si_UJf70hiJNonuOO",
+          "object": "subscription_item",
+          "current_period_end": 1778506917,
+          "current_period_start": 1775914917,
+          "price": {
+            "id": "price_1TJIipPoFogaNyVd0SfSYLza",
+            "object": "price",
+            "currency": "eur",
+            "product": "prod_UHsTgUDADJyZrT",
+            "recurring": {
+              "interval": "month",
+              "interval_count": 1
+            },
+            "unit_amount": 300
+          },
+          "quantity": 1,
+          "subscription": "sub_1TL1nQPoFogaNyVdjZDHNZiz"
+        }
+      ],
+      "has_more": false,
+      "total_count": 1
+    },
+    "latest_invoice": "in_1TL1nNPoFogaNyVdvnnWX2J9",
+    "livemode": false,
+    "metadata": {},
+    "status": "active",
+    "trial_end": null,
+    "trial_start": null
+  },
+  "previous_attributes": null
+}

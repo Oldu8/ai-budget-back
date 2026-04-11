@@ -1,0 +1,70 @@
+{
+  "object": {
+    "id": "in_1TL1nNPoFogaNyVdvnnWX2J9",
+    "object": "invoice",
+    "account_country": "ES",
+    "amount_due": 300,
+    "amount_paid": 300,
+    "amount_remaining": 0,
+    "billing_reason": "subscription_create",
+    "collection_method": "charge_automatically",
+    "created": 1775914917,
+    "currency": "eur",
+    "customer": "cus_UJf6von1UPm5Mv",
+    "customer_email": "crypto.oldu@gmail.com",
+    "lines": {
+      "object": "list",
+      "data": [
+        {
+          "id": "il_1TL1nNPoFogaNyVdrCrGKjG4",
+          "object": "line_item",
+          "amount": 300,
+          "currency": "eur",
+          "invoice": "in_1TL1nNPoFogaNyVdvnnWX2J9",
+          "parent": {
+            "invoice_item_details": null,
+            "subscription_item_details": {
+              "subscription": "sub_1TL1nQPoFogaNyVdjZDHNZiz",
+              "subscription_item": "si_UJf70hiJNonuOO"
+            },
+            "type": "subscription_item_details"
+          },
+          "period": {
+            "end": 1778506917,
+            "start": 1775914917
+          },
+          "pricing": {
+            "price_details": {
+              "price": "price_1TJIipPoFogaNyVd0SfSYLza",
+              "product": "prod_UHsTgUDADJyZrT"
+            },
+            "type": "price_details"
+          },
+          "quantity": 1
+        }
+      ],
+      "has_more": false,
+      "total_count": 1
+    },
+    "livemode": false,
+    "metadata": {},
+    "parent": {
+      "quote_details": null,
+      "subscription_details": {
+        "metadata": {},
+        "subscription": "sub_1TL1nQPoFogaNyVdjZDHNZiz"
+      },
+      "type": "subscription_details"
+    },
+    "period_end": 1775914917,
+    "period_start": 1775914917,
+    "status": "paid",
+    "status_transitions": {
+      "finalized_at": 1775914917,
+      "paid_at": 1775914918
+    },
+    "subtotal": 300,
+    "total": 300
+  },
+  "previous_attributes": null
+}
