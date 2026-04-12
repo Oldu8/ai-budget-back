@@ -7,6 +7,7 @@ use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Http\Resources\TransactionResource;
+use App\Models\AppUser;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +23,9 @@ class ManualTransactionController extends Controller
     {
         $filters = $request->validated();
 
-        $query = $request->user()->transactions()
+        /** @var AppUser $user */
+        $user = $request->user();
+        $query = $user->transactions()
             ->whereNotNull('confirmed_at')
             ->with('items.category')
             ->orderByDesc('date')
@@ -45,9 +48,11 @@ class ManualTransactionController extends Controller
 
     public function store(StoreTransactionRequest $request): JsonResponse
     {
+        /** @var AppUser $user */
+        $user = $request->user();
         $totalAmount = $request->validated('total_amount');
         $transaction = Transaction::create([
-            'app_user_id' => $request->user()->id,
+            'app_user_id' => $user->id,
             'total_amount' => $totalAmount,
             'date' => $request->validated('date'),
             'type' => $request->validated('type'),
@@ -76,6 +81,7 @@ class ManualTransactionController extends Controller
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction): JsonResponse
     {
+        /** @var Transaction $transaction */
         $transaction = $request->user()->transactions()->findOrFail($transaction->id);
 
         $validated = $request->validated();

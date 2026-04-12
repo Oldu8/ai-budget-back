@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\AccessGuard;
 
 use App\Models\Plan;
@@ -20,6 +22,7 @@ readonly class FeatureAccessResult
         public ?string $period_end = null,
     ) {}
 
+    /** @param array<string, mixed> $extra */
     public static function allowed(?UserSubscription $subscription, ?Plan $plan, array $extra = []): self
     {
         return new self(

@@ -15,7 +15,6 @@ use App\Services\ErrorNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Stripe\BillingPortal\Session as PortalSession;
@@ -56,7 +55,7 @@ class StripeController extends Controller
             ], 409);
         }
 
-        $currency = strtolower($user->settings?->currency ?? 'usd');
+        $currency = strtolower($user->settings?->currency ?? 'usd'); // @phpstan-ignore nullsafe.neverNull
         $priceId = config("services.stripe.prices.{$planType}.{$currency}")
             ?? config("services.stripe.prices.{$planType}.usd");
 
@@ -75,8 +74,8 @@ class StripeController extends Controller
                 'success_url' => config('services.stripe.success_url'),
                 'cancel_url' => config('services.stripe.cancel_url'),
                 'metadata' => [
-                    'app_user_id' => $user->id,
-                    'plan_type' => $planType,
+                    'app_user_id' => (string) $user->id,
+                    'plan_type' => (string) $planType,
                     'currency' => $currency,
                 ],
             ]);
@@ -176,15 +175,40 @@ class StripeController extends Controller
 
     private function handleEvent(\Stripe\Event $event): void
     {
-        match ($event->type) {
-            'checkout.session.completed' => $this->onCheckoutSessionCompleted($event->data->object),
-            'customer.subscription.created' => $this->onSubscriptionCreated($event->data->object, $event->id),
-            'customer.subscription.updated' => $this->onSubscriptionUpdated($event->data->object, $event->id),
-            'customer.subscription.deleted' => $this->onSubscriptionDeleted($event->data->object, $event->id),
-            'invoice.paid' => $this->onInvoicePaid($event->data->object),
-            'invoice.payment_failed' => $this->onInvoicePaymentFailed($event->data->object),
-            default => null,
-        };
+        $object = $event->data->object;
+
+        switch ($event->type) {
+            case 'checkout.session.completed':
+                if ($object instanceof \Stripe\Checkout\Session) {
+                    $this->onCheckoutSessionCompleted($object);
+                }
+                break;
+            case 'customer.subscription.created':
+                if ($object instanceof \Stripe\Subscription) {
+                    $this->onSubscriptionCreated($object, $event->id);
+                }
+                break;
+            case 'customer.subscription.updated':
+                if ($object instanceof \Stripe\Subscription) {
+                    $this->onSubscriptionUpdated($object, $event->id);
+                }
+                break;
+            case 'customer.subscription.deleted':
+                if ($object instanceof \Stripe\Subscription) {
+                    $this->onSubscriptionDeleted($object, $event->id);
+                }
+                break;
+            case 'invoice.paid':
+                if ($object instanceof \Stripe\Invoice) {
+                    $this->onInvoicePaid($object);
+                }
+                break;
+            case 'invoice.payment_failed':
+                if ($object instanceof \Stripe\Invoice) {
+                    $this->onInvoicePaymentFailed($object);
+                }
+                break;
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -307,7 +331,7 @@ class StripeController extends Controller
                 'plan_id' => $plan->id,
                 'status_id' => $statusId,
                 'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.created'),
-                'cancel_at_period_end' => DB::raw($this->stripeBool($subscription->cancel_at_period_end) ? 'true' : 'false'),
+                'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
                 'used_checks_count' => 0,
                 'trial_start' => $this->carbonFromStripeTimestamp($subscription->trial_start),
                 'trial_end' => $this->carbonFromStripeTimestamp($subscription->trial_end),
@@ -321,7 +345,7 @@ class StripeController extends Controller
             sprintf('User `%d` — **%s** (`%s`)', $user->id, $plan->label, $plan->type->value),
             [
                 'payment_subscription_id' => $subscription->id,
-                'stripe_customer_id' => is_string($subscription->customer) ? $subscription->customer : $subscription->customer?->id,
+                'stripe_customer_id' => is_string($subscription->customer) ? $subscription->customer : $subscription->customer->id,
             ],
         );
     }
@@ -353,7 +377,7 @@ class StripeController extends Controller
         $updates = [
             'status_id' => $statusId,
             'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.updated'),
-            'cancel_at_period_end' => DB::raw($this->stripeBool($subscription->cancel_at_period_end) ? 'true' : 'false'),
+            'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
         ];
 
         $newPriceId = $subscription->items->data[0]->price->id ?? null;
@@ -408,7 +432,7 @@ class StripeController extends Controller
         }
 
         $local->load('plan');
-        $planLabel = $local->plan?->label ?? $local->plan?->type?->value ?? '?';
+        $planLabel = $local->plan->label ?? $local->plan->type->value ?? '?';
 
         $local->update(['status_id' => $canceledId]);
 
@@ -549,9 +573,9 @@ class StripeController extends Controller
     }
 
     /** Stripe Subscription timestamps can be null on some events/API shapes; never pass null into Carbon. */
-    private function carbonFromStripeTimestamp(int|string|float|null $timestamp): ?Carbon
+    private function carbonFromStripeTimestamp(mixed $timestamp): ?Carbon
     {
-        if ($timestamp === null) {
+        if ($timestamp === null || ! (is_int($timestamp) || is_float($timestamp) || is_string($timestamp))) {
             return null;
         }
 
@@ -565,14 +589,14 @@ class StripeController extends Controller
      */
     private function resolveSubscriptionCurrentPeriodEnd(StripeSubscription $subscription, string $eventId, string $handler): ?Carbon
     {
-        $fromRoot = $this->carbonFromStripeTimestamp($subscription->current_period_end);
+        $fromRoot = $this->carbonFromStripeTimestamp($subscription['current_period_end']);
         if ($fromRoot !== null) {
             return $fromRoot;
         }
 
         $items = $subscription->items->data ?? [];
-        if ($items !== [] && isset($items[0]->current_period_end)) {
-            $fromItem = $this->carbonFromStripeTimestamp($items[0]->current_period_end);
+        if ($items !== [] && isset($items[0]['current_period_end'])) {
+            $fromItem = $this->carbonFromStripeTimestamp($items[0]['current_period_end']);
             if ($fromItem !== null) {
                 return $fromItem;
             }
@@ -580,13 +604,13 @@ class StripeController extends Controller
 
         try {
             $fresh = StripeSubscription::retrieve($subscription->id);
-            $fromApi = $this->carbonFromStripeTimestamp($fresh->current_period_end);
+            $fromApi = $this->carbonFromStripeTimestamp($fresh['current_period_end']);
             if ($fromApi !== null) {
                 return $fromApi;
             }
             $freshItems = $fresh->items->data ?? [];
-            if ($freshItems !== [] && isset($freshItems[0]->current_period_end)) {
-                $fromFreshItem = $this->carbonFromStripeTimestamp($freshItems[0]->current_period_end);
+            if ($freshItems !== [] && isset($freshItems[0]['current_period_end'])) {
+                $fromFreshItem = $this->carbonFromStripeTimestamp($freshItems[0]['current_period_end']);
                 if ($fromFreshItem !== null) {
                     return $fromFreshItem;
                 }
@@ -616,8 +640,9 @@ class StripeController extends Controller
      */
     private function stripeInvoiceSubscriptionId(Invoice $invoice): ?string
     {
-        if ($invoice->subscription) {
-            return is_string($invoice->subscription) ? $invoice->subscription : $invoice->subscription->id;
+        $invoiceSubscription = $invoice['subscription'];
+        if ($invoiceSubscription) {
+            return is_string($invoiceSubscription) ? $invoiceSubscription : $invoiceSubscription->id;
         }
 
         $parent = $invoice->parent ?? null;
@@ -758,7 +783,7 @@ class StripeController extends Controller
 
         $customer = Customer::create([
             'email' => $user->email,
-            'metadata' => ['app_user_id' => $user->id],
+            'metadata' => ['app_user_id' => (string) $user->id],
         ]);
 
         $user->update(['payment_customer_id' => $customer->id]);

@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Transaction */
 class TransactionResource extends JsonResource
 {
     public static $wrap = 'data';
@@ -19,7 +21,7 @@ class TransactionResource extends JsonResource
             'type' => $this->type->value,
             'created_by' => $this->created_by->value,
             'confirmed_at' => $this->confirmed_at?->toIso8601String(),
-            'date' => $this->date?->format('Y-m-d'),
+            'date' => $this->date->format('Y-m-d'),
             'total_amount' => $this->total_amount,
             'img_path' => $this->img_path,
             'raw_ai_data' => $this->raw_ai_data,

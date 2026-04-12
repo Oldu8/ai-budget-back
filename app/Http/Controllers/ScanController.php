@@ -7,6 +7,7 @@ use App\Enums\TransactionType;
 use App\Http\Requests\ScanRequest;
 use App\Http\Requests\UpdateReceiptTransactionRequest;
 use App\Http\Resources\TransactionResource;
+use App\Models\AppUser;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
@@ -32,6 +33,7 @@ class ScanController extends Controller
     public function scan(ScanRequest $request): JsonResponse
     {
         $file = $request->file('image');
+        /** @var AppUser $user */
         $user = $request->user();
 
         $result = $this->featureAccess->canUseAiScan($user);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\AppUser;
@@ -7,7 +9,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\AccessGuard\FeatureAccessResult;
 use Illuminate\Support\Facades\Config;
 
-class FeatureAccessService
+final class FeatureAccessService
 {
     public function canAccess(AppUser $user, string $feature): FeatureAccessResult
     {

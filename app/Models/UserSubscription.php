@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UserSubscription extends Model
+final class UserSubscription extends Model
 {
     protected $table = 'user_subscriptions';
 
@@ -28,7 +30,7 @@ class UserSubscription extends Model
         'current_period_end' => 'datetime',
     ];
 
-    /** PG boolean + Eloquent `boolean` cast bind as 0/1; use accessor only (writes use explicit SQL bool in StripeController). */
+    /** PG returns 't'/'f' strings; normalize to PHP bool. */
     protected function cancelAtPeriodEnd(): Attribute
     {
         return Attribute::make(
@@ -36,16 +38,19 @@ class UserSubscription extends Model
         );
     }
 
+    /** @return BelongsTo<AppUser, $this> */
     public function appUser(): BelongsTo
     {
         return $this->belongsTo(AppUser::class, 'app_user_id');
     }
 
+    /** @return BelongsTo<Plan, $this> */
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
     }
 
+    /** @return BelongsTo<Status, $this> */
     public function status(): BelongsTo
     {
         return $this->belongsTo(Status::class, 'status_id');

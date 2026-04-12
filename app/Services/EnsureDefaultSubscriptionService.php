@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Enums\PlanType;
@@ -9,7 +11,7 @@ use App\Models\Status;
 use App\Models\UserSubscription;
 use Illuminate\Support\Facades\DB;
 
-class EnsureDefaultSubscriptionService
+final class EnsureDefaultSubscriptionService
 {
     /**
      * ensure free subscription if no active subscription exists at all
@@ -55,7 +57,7 @@ class EnsureDefaultSubscriptionService
                 'payment_subscription_id' => null,
                 'used_checks_count' => 0,
                 'current_period_end' => null,
-                'cancel_at_period_end' => DB::raw('false'),
+                'cancel_at_period_end' => false,
             ]);
         });
     }

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class AppUserSettings extends Model
+final class AppUserSettings extends Model
 {
     public $timestamps = false;
 
@@ -18,6 +20,7 @@ class AppUserSettings extends Model
         'timezone',
     ];
 
+    /** @return BelongsTo<AppUser, $this> */
     public function appUser(): BelongsTo
     {
         return $this->belongsTo(AppUser::class, 'app_user_id');

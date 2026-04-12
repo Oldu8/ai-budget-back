@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\TransactionType;
 use App\Http\Requests\SummaryRangeRequest;
+use App\Models\AppUser;
 use App\Models\Transaction;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -15,12 +16,13 @@ class ExpenseExportController extends Controller
 {
     public function export(SummaryRangeRequest $request): Response
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $from = $request->validated('from');
         $to = $request->validated('to');
         $user->load('settings');
-        $currency = $user->settings?->currency ?? '';
+        $currency = $user->settings?->currency ?? ''; // @phpstan-ignore nullsafe.neverNull
 
         $disabledCategoryIds = $user->disabledCategorySettings()->pluck('category_id')->all();
 

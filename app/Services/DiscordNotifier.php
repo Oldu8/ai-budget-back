@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
@@ -9,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  * Non-error Discord webhooks (registrations, payments). Each URL targets a channel via Discord's webhook UI.
  * Errors stay on {@see ErrorNotifier}.
  */
-class DiscordNotifier
+final class DiscordNotifier
 {
     /** Green embed — #new-users style */
     public static function registration(string $title, string $description, array $context = []): void

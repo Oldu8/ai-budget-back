@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\Http;
  *
  * Do NOT use for: 4xx client errors (wrong password, user exists, validation).
  */
-class ErrorNotifier
+final class ErrorNotifier
 {
     /** Only 5xx and 429 are worth notifying — real issues, not user mistakes. */
     public static function isCritical(int $httpStatus): bool

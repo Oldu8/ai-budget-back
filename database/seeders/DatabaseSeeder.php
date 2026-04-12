@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -12,17 +11,15 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     * For admin user creation use: php artisan app:seed-initial
      */
     public function run(): void
     {
-        $this->call(StatusSeeder::class);
-        $this->call(PlanSeeder::class);
-
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            StatusSeeder::class,
+            PlanSeeder::class,
+            CategorySeeder::class,
+            VisibilityQuestionSeeder::class,
         ]);
     }
 }

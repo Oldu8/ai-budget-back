@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Services\Scan\ScanPromptBuilder;
@@ -7,7 +9,7 @@ use Illuminate\Support\Collection;
 use OpenAI\Laravel\Facades\OpenAI;
 use RuntimeException;
 
-class ScanService
+final class ScanService
 {
     public function __construct(
         private ScanPromptBuilder $promptBuilder,

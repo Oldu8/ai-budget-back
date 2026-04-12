@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\PlanType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Plan extends Model
+final class Plan extends Model
 {
     public $timestamps = false;
 
@@ -23,6 +25,7 @@ class Plan extends Model
         'type' => PlanType::class,
     ];
 
+    /** @return HasMany<UserSubscription, $this> */
     public function userSubscriptions(): HasMany
     {
         return $this->hasMany(UserSubscription::class);
