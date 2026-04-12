@@ -7,7 +7,6 @@ namespace Tests\Feature;
 use App\Enums\PlanType;
 use App\Models\AppUser;
 use App\Models\Plan;
-use App\Models\Status;
 use App\Models\UserSubscription;
 use App\Services\FeatureAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,7 +27,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_denied_when_no_subscription(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
 
         $result = $this->service->canAccess($user, 'ai_scan');
 
@@ -38,7 +37,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_free_plan_can_access_ai_scan_within_quota(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $plan = $this->makePlan(PlanType::Free, checkLimit: 5);
         $this->subscribe($user, $plan, usedChecks: 0);
 
@@ -51,7 +50,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_ai_scan_denied_when_quota_exceeded(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $plan = $this->makePlan(PlanType::Free, checkLimit: 5);
         $this->subscribe($user, $plan, usedChecks: 5);
 
@@ -63,7 +62,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_free_plan_denied_for_recurring_expenses(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $this->subscribe($user, $this->makePlan(PlanType::Free));
 
         $result = $this->service->canAccess($user, 'recurring_expenses');
@@ -74,7 +73,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_plus_plan_can_access_recurring_expenses(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $this->subscribe($user, $this->makePlan(PlanType::Plus));
 
         $result = $this->service->canAccess($user, 'recurring_expenses');
@@ -84,7 +83,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_free_plan_denied_for_csv_export(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $this->subscribe($user, $this->makePlan(PlanType::Free));
 
         $result = $this->service->canAccess($user, 'csv_export');
@@ -95,7 +94,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_basic_plan_can_access_csv_export(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $this->subscribe($user, $this->makePlan(PlanType::Basic));
 
         $result = $this->service->canAccess($user, 'csv_export');
@@ -105,7 +104,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_premium_plan_has_access_to_all_features(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $this->subscribe($user, $this->makePlan(PlanType::Premium, checkLimit: 100), usedChecks: 0);
 
         $this->assertTrue($this->service->canAccess($user, 'ai_scan')->allowed);
@@ -115,7 +114,7 @@ class FeatureAccessServiceTest extends TestCase
 
     public function test_unknown_feature_is_denied(): void
     {
-        $user = $this->makeUser();
+        $user = $this->makeAppUser();
         $this->subscribe($user, $this->makePlan(PlanType::Premium));
 
         $result = $this->service->canAccess($user, 'nonexistent_feature');
@@ -123,35 +122,4 @@ class FeatureAccessServiceTest extends TestCase
         $this->assertFalse($result->allowed);
     }
 
-    private function makeUser(): AppUser
-    {
-        return AppUser::create([
-            'supabase_user_id' => Str::uuid()->toString(),
-            'email' => Str::random(8) . '@test.com',
-        ]);
-    }
-
-    private function makePlan(PlanType $type, int $checkLimit = 10): Plan
-    {
-        return Plan::create([
-            'type' => $type,
-            'price' => 0,
-            'label' => $type->value,
-            'check_limit' => $checkLimit,
-        ]);
-    }
-
-    private function subscribe(AppUser $user, Plan $plan, int $usedChecks = 0): UserSubscription
-    {
-        $status = Status::firstOrCreate(['name' => 'active']);
-
-        return UserSubscription::create([
-            'app_user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'status_id' => $status->id,
-            'used_checks_count' => $usedChecks,
-            'current_period_end' => now()->addMonth(),
-            'cancel_at_period_end' => false,
-        ]);
-    }
 }

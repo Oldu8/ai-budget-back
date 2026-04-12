@@ -6,7 +6,6 @@ namespace Tests\Feature;
 
 use App\Enums\PlanType;
 use App\Models\AppUser;
-use App\Models\Category;
 use App\Models\Plan;
 use App\Models\RecurringExpense;
 use App\Models\Status;
@@ -222,17 +221,4 @@ class RunRecurringExpensesCommandTest extends TestCase
         return $user;
     }
 
-    private function makeCategory(): Category
-    {
-        $parent = Category::create([
-            'name' => 'Expenses',
-            'label' => 'Expenses',
-        ]);
-
-        return Category::create([
-            'name' => 'Subscriptions',
-            'label' => 'Subscriptions',
-            'category_id' => $parent->id,
-        ]);
-    }
 }
