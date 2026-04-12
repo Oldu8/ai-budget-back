@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppUser;
 use App\Http\Requests\StoreRecurringExpenseRequest;
 use App\Http\Requests\UpdateRecurringExpenseRequest;
 use App\Models\RecurringExpense;
@@ -18,6 +19,7 @@ class RecurringExpenseController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $recurring = $user->recurringExpenses()
@@ -30,12 +32,13 @@ class RecurringExpenseController extends Controller
 
     public function store(StoreRecurringExpenseRequest $request): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $data = $request->validated();
         $interval = (int) ($data['interval'] ?? 1);
 
-        $timezone = $user->settings?->timezone ?? config('app.timezone');
+        $timezone = $user->settings?->timezone ?? config('app.timezone'); // @phpstan-ignore nullsafe.neverNull
         $startsAt = Carbon::parse($data['starts_at'], $timezone)->startOfDay();
         $endsAt = isset($data['ends_at'])
             ? Carbon::parse($data['ends_at'], $timezone)->startOfDay()
@@ -62,6 +65,7 @@ class RecurringExpenseController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $recurring = $user->recurringExpenses()
@@ -73,13 +77,14 @@ class RecurringExpenseController extends Controller
 
     public function update(UpdateRecurringExpenseRequest $request, int $id): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $recurring = $user->recurringExpenses()->findOrFail($id);
 
         $data = $request->validated();
 
-        $timezone = $user->settings?->timezone ?? config('app.timezone');
+        $timezone = $user->settings?->timezone ?? config('app.timezone'); // @phpstan-ignore nullsafe.neverNull
 
         $startsAt = array_key_exists('starts_at', $data)
             ? Carbon::parse($data['starts_at'], $timezone)->startOfDay()
@@ -127,6 +132,7 @@ class RecurringExpenseController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $recurring = $user->recurringExpenses()->findOrFail($id);
@@ -137,6 +143,7 @@ class RecurringExpenseController extends Controller
 
     public function toggle(Request $request, int $id): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         $data = $request->validate([
@@ -148,7 +155,7 @@ class RecurringExpenseController extends Controller
         $recurring->is_active = (bool) $data['is_active'];
 
         if ($recurring->is_active) {
-            $timezone = $user->settings?->timezone ?? config('app.timezone');
+            $timezone = $user->settings?->timezone ?? config('app.timezone'); // @phpstan-ignore nullsafe.neverNull
             $this->scheduler->normalizeNextRunAtOnEnable($recurring, now($timezone));
         }
 

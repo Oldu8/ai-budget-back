@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    phpVersion: 80400
+    paths:
+        - app
+
+    level: 5
+
+    treatPhpDocTypesAsCertain: false

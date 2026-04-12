@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\VisibilityQuestion;
 
-class VisibilityQuestionService
+final class VisibilityQuestionService
 {
     /**
      * Load from DB, sort by order, return funnel questions (boolean type only).

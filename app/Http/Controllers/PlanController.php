@@ -11,7 +11,7 @@ class PlanController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $currency = strtolower($user->settings?->currency ?? 'usd');
+        $currency = strtolower($user->settings?->currency ?? 'usd'); // @phpstan-ignore nullsafe.neverNull
         $prices = config('services.stripe.prices', []);
 
         $plans = Plan::orderByRaw("CASE type WHEN 'free' THEN 0 WHEN 'basic' THEN 1 WHEN 'plus' THEN 2 WHEN 'premium' THEN 3 END")

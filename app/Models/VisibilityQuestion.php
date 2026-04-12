@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class VisibilityQuestion extends Model
+final class VisibilityQuestion extends Model
 {
     protected $fillable = [
         'visibility_tag',

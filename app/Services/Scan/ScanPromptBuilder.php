@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Scan;
 
 use Illuminate\Support\Collection;
 
-class ScanPromptBuilder
+final class ScanPromptBuilder
 {
     public function build(Collection $categories): string
     {
@@ -39,7 +41,7 @@ PROMPT;
         $grouped = [];
 
         foreach ($categories as $category) {
-            $parentLabel = $category->parent?->label ?? 'Other';
+            $parentLabel = $category->parent->label ?? 'Other';
             $grouped[$parentLabel][] = [
                 'id' => $category->id,
                 'label' => $category->label,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AppUserSettingsRequest;
 use App\Http\Requests\UpdateMeRequest;
+use App\Models\AppUser;
 use App\Models\AppUserSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ class AppUserController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
         $user->load('settings');
 
@@ -46,6 +48,7 @@ class AppUserController extends Controller
 
     public function update(UpdateMeRequest $request): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
         $user->update($request->validated());
 
@@ -72,6 +75,7 @@ class AppUserController extends Controller
 
     public function createSettings(AppUserSettingsRequest $request): JsonResponse
     {
+        /** @var AppUser $user */
         $user = $request->user();
 
         if ($user->settings) {

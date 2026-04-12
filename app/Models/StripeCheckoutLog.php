@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class StripeCheckoutLog extends Model
+final class StripeCheckoutLog extends Model
 {
     protected $fillable = [
         'stripe_checkout_session_id',
@@ -15,6 +17,7 @@ class StripeCheckoutLog extends Model
         'currency',
     ];
 
+    /** @return BelongsTo<AppUser, $this> */
     public function appUser(): BelongsTo
     {
         return $this->belongsTo(AppUser::class, 'app_user_id');

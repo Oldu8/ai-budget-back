@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Payment extends Model
+final class Payment extends Model
 {
     protected $fillable = [
         'app_user_id',
@@ -15,11 +17,13 @@ class Payment extends Model
         'amount',
     ];
 
+    /** @return BelongsTo<AppUser, $this> */
     public function appUser(): BelongsTo
     {
         return $this->belongsTo(AppUser::class, 'app_user_id');
     }
 
+    /** @return BelongsTo<Status, $this> */
     public function status(): BelongsTo
     {
         return $this->belongsTo(Status::class, 'status_id');

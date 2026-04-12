@@ -47,7 +47,7 @@ class RunRecurringExpensesCommand extends Command
                             return;
                         }
 
-                        $timezone = $user->settings?->timezone ?? config('app.timezone');
+                        $timezone = $user->settings?->timezone ?? config('app.timezone'); // @phpstan-ignore nullsafe.neverNull
                         $userToday = now($timezone)->startOfDay();
 
                         $nextDate = $lockedRule->next_run_at->copy()->startOfDay();

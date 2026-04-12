@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use Illuminate\Support\Facades\DB;
 
-class ReceiptTransactionService
+final class ReceiptTransactionService
 {
     /**
      * Apply line items + date, recalculate total. Sets confirmed_at on first confirmation only

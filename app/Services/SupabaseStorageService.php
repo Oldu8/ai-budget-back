@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
@@ -7,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-class SupabaseStorageService
+final class SupabaseStorageService
 {
     private string $url;
 

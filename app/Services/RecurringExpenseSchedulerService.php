@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\RecurringExpense;
 use Carbon\Carbon;
 
-class RecurringExpenseSchedulerService
+final class RecurringExpenseSchedulerService
 {
     public function calculateInitialNextRunAt(Carbon $startsAt, string $frequency, int $interval, Carbon $now): Carbon
     {
