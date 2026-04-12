@@ -30,7 +30,7 @@ final class UserSubscription extends Model
         'current_period_end' => 'datetime',
     ];
 
-    /** PG boolean + Eloquent `boolean` cast bind as 0/1; use accessor only (writes use explicit SQL bool in StripeController). */
+    /** PG returns 't'/'f' strings; normalize to PHP bool. */
     protected function cancelAtPeriodEnd(): Attribute
     {
         return Attribute::make(
