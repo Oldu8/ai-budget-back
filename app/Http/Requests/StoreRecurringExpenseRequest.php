@@ -25,12 +25,12 @@ class StoreRecurringExpenseRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $user = $this->user();
-            if (!$user) {
+            if (! $user) {
                 return;
             }
 
             $categoryId = (int) $this->input('category_id');
-            if (!$categoryId) {
+            if (! $categoryId) {
                 return;
             }
 
@@ -38,8 +38,9 @@ class StoreRecurringExpenseRequest extends FormRequest
                 ->whereNotNull('category_id')
                 ->exists();
 
-            if (!$isLevelTwo) {
+            if (! $isLevelTwo) {
                 $validator->errors()->add('category_id', 'Category must be a Level 2 category.');
+
                 return;
             }
 
@@ -53,4 +54,3 @@ class StoreRecurringExpenseRequest extends FormRequest
         });
     }
 }
-

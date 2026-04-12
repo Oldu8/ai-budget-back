@@ -40,7 +40,7 @@ final class VisibilityQuestionService
             ->values()
             ->map(fn (VisibilityQuestion $q) => [
                 'visibility_tag' => $q->visibility_tag,
-                'translation_key' => 'onboarding.tags.' . $q->visibility_tag,
+                'translation_key' => 'onboarding.tags.'.$q->visibility_tag,
             ])
             ->all();
     }

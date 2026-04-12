@@ -78,5 +78,4 @@ final class AppUser extends Authenticatable
     {
         return $this->hasMany(AppUserCategorySetting::class, 'app_user_id');
     }
-
 }

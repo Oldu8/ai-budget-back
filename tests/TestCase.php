@@ -11,7 +11,6 @@ use App\Models\Status;
 use App\Models\UserSubscription;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Str;
-use Illuminate\Testing\TestResponse;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -30,7 +29,7 @@ abstract class TestCase extends BaseTestCase
     {
         return AppUser::create([
             'supabase_user_id' => Str::uuid()->toString(),
-            'email' => Str::random(8) . '@test.com',
+            'email' => Str::random(8).'@test.com',
         ]);
     }
 

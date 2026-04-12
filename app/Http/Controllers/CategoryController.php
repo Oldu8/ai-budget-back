@@ -30,7 +30,7 @@ class CategoryController extends Controller
             $disabledIds = $user->disabledCategorySettings()->pluck('category_id')->all();
             $categories = Category::with(['children' => fn ($q) => empty($disabledIds) ? $q : $q->whereNotIn('id', $disabledIds)])
                 ->whereNull('category_id')
-                ->when(!empty($disabledIds), fn ($q) => $q->whereNotIn('id', $disabledIds))
+                ->when(! empty($disabledIds), fn ($q) => $q->whereNotIn('id', $disabledIds))
                 ->orderBy('label')
                 ->get();
         }

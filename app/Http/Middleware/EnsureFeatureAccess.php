@@ -17,12 +17,12 @@ class EnsureFeatureAccess
     public function handle(Request $request, Closure $next, string $feature): Response
     {
         $user = $request->user();
-        if (!$user instanceof AppUser) {
+        if (! $user instanceof AppUser) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
         $result = $this->featureAccess->canAccess($user, $feature);
-        if (!$result->allowed) {
+        if (! $result->allowed) {
             return response()->json(['message' => $result->message ?? 'Access denied.'], 403);
         }
 

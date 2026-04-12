@@ -29,7 +29,7 @@ class TransactionSummaryController extends Controller
             ->join('transaction_items', 'transactions.id', '=', 'transaction_items.transaction_id')
             ->join('categories as subcat', 'transaction_items.category_id', '=', 'subcat.id')
             ->whereNotNull('subcat.category_id')
-            ->when(!empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('transaction_items.category_id', $disabledCategoryIds))
+            ->when(! empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('transaction_items.category_id', $disabledCategoryIds))
             ->selectRaw('transactions.date as date, subcat.category_id as category_id, SUM(transaction_items.amount) as total')
             ->groupBy('transactions.date', 'subcat.category_id')
             ->get();
@@ -88,7 +88,7 @@ class TransactionSummaryController extends Controller
         $to = $request->validated('to');
         $disabledCategoryIds = $user->disabledCategorySettings()->pluck('category_id')->all();
         $childIds = $category->children->pluck('id')->all();
-        if (!empty($disabledCategoryIds)) {
+        if (! empty($disabledCategoryIds)) {
             $childIds = array_values(array_diff($childIds, $disabledCategoryIds));
         }
 
@@ -105,6 +105,7 @@ class TransactionSummaryController extends Controller
                 days: $days,
                 meta: ['totals_by_subcategory' => [], 'grand_total' => 0],
             );
+
             return response()->json($response->toArray());
         }
 
@@ -171,6 +172,7 @@ class TransactionSummaryController extends Controller
         foreach ($period as $date) {
             $days[$date->format('Y-m-d')] = [];
         }
+
         return $days;
     }
 }

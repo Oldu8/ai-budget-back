@@ -48,7 +48,7 @@ final class ScanService
         $parsed = json_decode($content, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new RuntimeException('Failed to parse OpenAI response as JSON: ' . json_last_error_msg());
+            throw new RuntimeException('Failed to parse OpenAI response as JSON: '.json_last_error_msg());
         }
 
         return $parsed;

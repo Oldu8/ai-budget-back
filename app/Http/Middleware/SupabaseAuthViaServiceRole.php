@@ -14,7 +14,7 @@ class SupabaseAuthViaServiceRole
     {
         $authHeader = $request->header('Authorization');
 
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        if (! $authHeader || ! str_starts_with($authHeader, 'Bearer ')) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -23,15 +23,15 @@ class SupabaseAuthViaServiceRole
         $supabaseUrl = rtrim(config('services.supabase.url'), '/');
         $serviceRoleKey = config('services.supabase.service_role');
 
-        if (!$supabaseUrl || !$serviceRoleKey) {
+        if (! $supabaseUrl || ! $serviceRoleKey) {
             return response()->json(['message' => 'Server auth misconfigured'], 500);
         }
 
         // запрос к Supabase /auth/v1/user
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $accessToken,
-            'apiKey'        => $serviceRoleKey,
-        ])->get($supabaseUrl . '/auth/v1/user');
+            'Authorization' => 'Bearer '.$accessToken,
+            'apiKey' => $serviceRoleKey,
+        ])->get($supabaseUrl.'/auth/v1/user');
 
         if ($response->failed()) {
             return response()->json(['message' => 'Invalid or expired token'], 401);
@@ -43,7 +43,7 @@ class SupabaseAuthViaServiceRole
         $email = $userData['email'] ?? null;
         $emailConfirmedAt = $userData['email_confirmed_at'] ?? null;
 
-        if (!$supabaseUserId || !$email) {
+        if (! $supabaseUserId || ! $email) {
             return response()->json(['message' => 'Invalid user data'], 401);
         }
 
@@ -58,7 +58,7 @@ class SupabaseAuthViaServiceRole
             $user->email = $email;
         }
 
-        if ($emailConfirmedAt && !$user->email_verified_at) {
+        if ($emailConfirmedAt && ! $user->email_verified_at) {
             $user->email_verified_at = $emailConfirmedAt;
         }
 

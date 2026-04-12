@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppUser;
 use App\Http\Requests\StoreRecurringExpenseRequest;
 use App\Http\Requests\UpdateRecurringExpenseRequest;
+use App\Models\AppUser;
 use App\Models\RecurringExpense;
 use App\Services\RecurringExpenseSchedulerService;
 use Carbon\Carbon;

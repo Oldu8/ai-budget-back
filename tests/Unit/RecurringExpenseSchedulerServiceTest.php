@@ -16,7 +16,7 @@ class RecurringExpenseSchedulerServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new RecurringExpenseSchedulerService();
+        $this->service = new RecurringExpenseSchedulerService;
     }
 
     // ── calculateInitialNextRunAt ─────────────────────────────────────────────
