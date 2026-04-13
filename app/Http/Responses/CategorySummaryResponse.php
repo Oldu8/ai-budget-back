@@ -13,8 +13,7 @@ class CategorySummaryResponse
         public readonly array $days,
         /** @var array{totals_by_subcategory: array<string, int>, grand_total: int} */
         public readonly array $meta,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

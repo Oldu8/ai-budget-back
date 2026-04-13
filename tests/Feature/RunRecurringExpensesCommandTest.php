@@ -169,7 +169,7 @@ class RunRecurringExpensesCommandTest extends TestCase
     {
         $user = AppUser::create([
             'supabase_user_id' => Str::uuid()->toString(),
-            'email' => Str::random(8) . '@test.com',
+            'email' => Str::random(8).'@test.com',
         ]);
 
         $plan = Plan::create([
@@ -197,7 +197,7 @@ class RunRecurringExpensesCommandTest extends TestCase
     {
         $user = AppUser::create([
             'supabase_user_id' => Str::uuid()->toString(),
-            'email' => Str::random(8) . '@test.com',
+            'email' => Str::random(8).'@test.com',
         ]);
 
         $plan = Plan::create([
@@ -220,5 +220,4 @@ class RunRecurringExpensesCommandTest extends TestCase
 
         return $user;
     }
-
 }

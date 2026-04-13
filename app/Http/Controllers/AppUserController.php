@@ -66,7 +66,7 @@ class AppUserController extends Controller
     {
         $settings = $request->user()->settings;
 
-        if (!$settings) {
+        if (! $settings) {
             return response()->json(['message' => 'Settings not configured'], 404);
         }
 
@@ -94,7 +94,7 @@ class AppUserController extends Controller
     {
         $settings = $request->user()->settings;
 
-        if (!$settings) {
+        if (! $settings) {
             return response()->json(['message' => 'Settings not configured'], 404);
         }
 

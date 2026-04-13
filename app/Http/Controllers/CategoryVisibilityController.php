@@ -38,7 +38,7 @@ class CategoryVisibilityController extends Controller
 
         $data = array_map(fn (array $row) => [
             'visibility_tag' => $row['visibility_tag'],
-            'enabled' => !isset($disabledTags[$row['visibility_tag']]),
+            'enabled' => ! isset($disabledTags[$row['visibility_tag']]),
             'translation_key' => $row['translation_key'],
         ], $tagsConfig);
 

@@ -38,6 +38,7 @@ final class RecurringExpenseSchedulerService
 
         if ($rule->next_run_at === null) {
             $rule->next_run_at = $this->calculateInitialNextRunAt($startsAt, $rule->frequency, $interval, $now);
+
             return;
         }
 
@@ -51,4 +52,3 @@ final class RecurringExpenseSchedulerService
         $rule->next_run_at = $next;
     }
 }
-

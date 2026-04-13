@@ -38,12 +38,12 @@ class RunRecurringExpensesCommand extends Command
                             ->lockForUpdate()
                             ->first();
 
-                        if (!$lockedRule || !$lockedRule->is_active || $lockedRule->next_run_at === null) {
+                        if (! $lockedRule || ! $lockedRule->is_active || $lockedRule->next_run_at === null) {
                             return;
                         }
 
                         $user = $lockedRule->appUser;
-                        if (!$user || !$this->featureAccess->canAccess($user, 'recurring_expenses')->allowed) {
+                        if (! $user || ! $this->featureAccess->canAccess($user, 'recurring_expenses')->allowed) {
                             return;
                         }
 

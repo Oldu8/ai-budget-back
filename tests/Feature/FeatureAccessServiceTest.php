@@ -5,12 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\PlanType;
-use App\Models\AppUser;
-use App\Models\Plan;
-use App\Models\UserSubscription;
 use App\Services\FeatureAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class FeatureAccessServiceTest extends TestCase
@@ -22,7 +18,7 @@ class FeatureAccessServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new FeatureAccessService();
+        $this->service = new FeatureAccessService;
     }
 
     public function test_denied_when_no_subscription(): void
@@ -121,5 +117,4 @@ class FeatureAccessServiceTest extends TestCase
 
         $this->assertFalse($result->allowed);
     }
-
 }

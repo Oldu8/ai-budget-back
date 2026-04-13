@@ -34,7 +34,7 @@ class ExpenseExportController extends Controller
             ->join('transaction_items', 'transactions.id', '=', 'transaction_items.transaction_id')
             ->join('categories', 'transaction_items.category_id', '=', 'categories.id')
             ->whereNotNull('categories.category_id')
-            ->when(!empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('transaction_items.category_id', $disabledCategoryIds))
+            ->when(! empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('transaction_items.category_id', $disabledCategoryIds))
             ->select(
                 'transactions.date',
                 'categories.label as category_label',
