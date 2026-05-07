@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Enums\TransactionType;
 use App\Models\AppUser;
+use App\Models\AppUserSettings;
 use App\Models\Transaction;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,11 @@ final class AnalyticsDashboardService
 
         $overviewDiff = $this->diffMeta($totalSpent, $previousMonthTotal);
 
-        $currency = strtoupper($user->settings?->currency ?? 'usd');
+        $currency = strtoupper(
+            $user->settings instanceof AppUserSettings
+                ? ($user->settings->currency ?? 'usd')
+                : 'usd'
+        );
 
         $categoriesPayload = $totalSpent === 0 ? [] : $this->buildCategories(
             $currentL1,
@@ -136,18 +141,26 @@ final class AnalyticsDashboardService
                 'parent.label as parent_label',
                 DB::raw('SUM(transaction_items.amount) as total'),
             ])
+            ->toBase()
             ->get();
 
         return $rows
-            ->keyBy(fn ($row): int => (int) $row->subcategory_id)
-            ->map(fn ($row): array => [
-                'amount' => (int) $row->total,
-                'slug' => (string) $row->sub_slug,
-                'label' => (string) $row->sub_label,
-                'parent_id' => (int) $row->parent_id,
-                'parent_slug' => (string) $row->parent_slug,
-                'parent_label' => (string) $row->parent_label,
-            ])
+            ->mapWithKeys(function (object $row): array {
+                /** @var array<string, mixed> $r */
+                $r = (array) $row;
+                $id = (int) $r['subcategory_id'];
+
+                return [
+                    $id => [
+                        'amount' => (int) $r['total'],
+                        'slug' => (string) $r['sub_slug'],
+                        'label' => (string) $r['sub_label'],
+                        'parent_id' => (int) $r['parent_id'],
+                        'parent_slug' => (string) $r['parent_slug'],
+                        'parent_label' => (string) $r['parent_label'],
+                    ],
+                ];
+            })
             ->all();
     }
 
