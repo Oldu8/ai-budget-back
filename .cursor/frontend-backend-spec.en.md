@@ -137,7 +137,7 @@ Frontend:
 Frontend:
 
 - `/api/me` returns:
-  - `subscription` — the **active** subscription with nested `plan` (or `null`). Only rows whose status is `active` or `trialing` are selected. Every user always has at least a free subscription (auto-created on register/login).
+  - `subscription` — the **active** subscription with nested `plan` (or `null`). Only rows whose status is `active` or `trialing` are selected. Users who completed **`POST /api/auth/register`** get a **free** subscription auto-created on register and on **successful login** (`EnsureDefaultSubscriptionService`); if data is inconsistent, `subscription` can be `null`.
   - `subscription_status` — string, the status `name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no such subscription.
   - `scan_usage` — `{ scans_remaining, scans_limit, period_end }`. For free plan `period_end` is `null` (no expiration).
 - Use `subscription.plan.label` (and related plan fields) plus `subscription_status` for subscription UI (badges, “Manage plan” screens).
@@ -192,7 +192,7 @@ If `API_SECRET` is not set, the header is not required.
 Auth is proxied through the backend. The client **never** calls Supabase Auth directly:
 
 - Register: `POST /api/auth/register` → 201 `{ access_token, refresh_token, user }`.
-- Login: `POST /api/auth/login` → 200 `{ access_token, refresh_token, user + settings }`.
+- Login: `POST /api/auth/login` → 200 `{ access_token, refresh_token, user + settings }` when a local `AppUser` already exists (normally after register). **401** with `message` if Supabase password is wrong **or** if the Supabase user has never been registered through this API (no `app_users` row) — client must register first; login **does not** create `app_users`.
 - Refresh: `POST /api/auth/refresh` → new tokens.
 - Logout: `POST /api/auth/logout` with `Authorization: Bearer <token>`.
 
@@ -284,9 +284,9 @@ Frontend:
   - on save call `PUT .../update` with final payload.
 - History / edit screens for multi-line transactions can use the same `PUT .../update` with `date` and `items[]`.
 
-### 4.5. Expense summaries (analytics)
+### 4.5. Expense summaries (by date range)
 
-Summaries of expenses over a date range:
+Summaries of expenses over an arbitrary date range (all plans):
 
 - `GET /api/transactions/summary?from&to` — by Level 1 categories.
   - `days`: map `YYYY-MM-DD` → `{ category_id: total_amount_in_cents }`.
@@ -300,7 +300,21 @@ Frontend:
   - combine `days` with `/api/categories` to resolve labels,
   - convert amounts to currency units (`amount / 100`).
 
-### 4.6. CSV export of expenses (Dynamic CSV export)
+### 4.6. Analytics dashboard (Plus / Premium — calendar month)
+
+**Different from §4.5:** this is a **single calendar month** view with **automatic previous-month comparison**, richer `overview`, per–Level-1 `categories` with nested `subcategories`, and `trends` (mom changes). **Not available on Free or Basic** (`feature.access:analytics_dashboard`).
+
+- **Endpoint:** `GET /api/analytics/dashboard?month=YYYY-MM` (e.g. `2026-05`).
+- **403** on disallowed plans: `Analytics dashboard is not available on your plan.`
+- **Response:** top-level JSON (no `data` envelope): `month`, `currency`, `period` (`from`, `to`, `previous_from`, `previous_to`), `overview`, `categories`, `trends`. Amounts in **cents**. Only **confirmed** expenses; respects disabled categories.
+
+Product copy in [`docs/plans.md`](../docs/plans.md) calls Plus «dashboard» and Premium «advanced analytics»; **the backend currently implements one shared payload** for both plan types.
+
+Frontend:
+
+- Use for the dedicated Analytics screen; keep using `/api/transactions/summary` for custom date ranges on all tiers.
+
+### 4.7. CSV export of expenses (Dynamic CSV export)
 
 Feature for exporting expenses to CSV.
 
@@ -348,7 +362,8 @@ If you need more detail:
   - `App/Http/Controllers/CategoryVisibilityController.php` — visibility tags and onboarding.
   - `App/Http/Controllers/ManualTransactionController.php` — transaction CRUD.
   - `App/Http/Controllers/ScanController.php` — AI scan and receipt update.
-  - `App/Http/Controllers/TransactionSummaryController.php` — expense summaries.
+  - `App/Http/Controllers/TransactionSummaryController.php` — expense summaries (date range).
+  - `App/Http/Controllers/AnalyticsDashboardController.php` — analytics dashboard (month, Plus/Premium).
   - `App/Http/Controllers/ExpenseExportController.php` — CSV export.
 - Models:
   - `App/Models/AppUser.php`, `App/Models/AppUserSettings.php`

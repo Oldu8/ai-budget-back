@@ -1,6 +1,14 @@
-# Backend Validation Rules for Onboarding Flow
+# Backend validation rules — onboarding flow
 
-Copy these rules into your Laravel backend for the onboarding/settings endpoints.
+Reference for onboarding-related validation. The production app implements these in Form Requests / controllers; keep this file aligned when rules change.
+
+## POST /api/auth/login (expectations)
+
+Not FormRequest validation — **business rule** documented for frontend/backends in sync:
+
+- After Supabase `grant_type=password` succeeds, the backend **must** find an existing `AppUser` with the same `supabase_user_id` (row created by `POST /api/auth/register`).
+- If no row exists → **401** JSON: `message` e.g. `This email is not registered. Please sign up before signing in.` — **do not** issue tokens or create `app_users` in the login handler.
+- **Middleware** `supabase.auth` may still use `firstOrCreate` on protected routes when a valid JWT is presented (see `.cursor/backend-spec.md` §3).
 
 ## PUT /api/me (Profile Update)
 

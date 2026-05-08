@@ -109,10 +109,23 @@ class AuthController extends Controller
 
         $data = $response->json();
 
-        $appUser = AppUser::firstOrCreate(
-            ['supabase_user_id' => $data['user']['id']],
-            ['email' => $data['user']['email']],
-        );
+        // Require an app row created via /api/auth/register — do not provision on login
+        // (avoids "silent" accounts when only Supabase auth exists).
+        $appUser = AppUser::query()
+            ->where('supabase_user_id', $data['user']['id'])
+            ->first();
+
+        if (! $appUser) {
+            return response()->json([
+                'message' => 'This email is not registered. Please sign up before signing in.',
+            ], 401);
+        }
+
+        $supabaseEmail = $data['user']['email'] ?? null;
+        if ($supabaseEmail && $appUser->email !== $supabaseEmail) {
+            $appUser->email = $supabaseEmail;
+            $appUser->save();
+        }
 
         $emailConfirmedAt = $data['user']['email_confirmed_at'] ?? null;
         if ($emailConfirmedAt && ! $appUser->email_verified_at) {

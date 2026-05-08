@@ -1,59 +1,59 @@
-# Тарифные планы (ai-budget-backend)
+# Subscription plans (ai-budget-backend)
 
-Единая справка: цены, лимиты, маркетинговое описание, что реально проверяется в коде и где это лежит в репозитории.
+Single reference for prices, limits, marketing copy, what the backend actually enforces, and where it lives in the repo.
 
-## Порядок и идентификаторы
+## Order and identifiers
 
-Фиксированный порядок: **Free → Basic → Plus → Premium**.
+Fixed order: **Free → Basic → Plus → Premium**.
 
-| `type` (enum `PlanType`) | Лейбл (`label`) |
+| `type` (enum `PlanType`) | Label (`label`) |
 | ------------------------ | --------------- |
 | `free`                   | Free            |
 | `basic`                  | Basic           |
 | `plus`                   | Plus            |
 | `premium`                | Premium         |
 
-Платные типы в коде: `PlanType::paidValues()` → `basic`, `plus`, `premium`.
+Paid types in code: `PlanType::paidValues()` → `basic`, `plus`, `premium`.
 
 ---
 
-## Цены и лимиты AI-сканов
+## Prices and AI scan limits
 
-Цены в БД хранятся в **центах** (`plans.price`). Публичные суммы в долларах — для сопоставления со спекой; фактические Stripe ID задаются через env (см. ниже).
+Prices in the database are stored in **cents** (`plans.price`). Reference dollar amounts are for comparison with the spec; actual Stripe Price IDs come from env (see below).
 
-| План    | Цена (реф.) | `price` (центы) | AI scans / период (`check_limit`) |
-| ------- | ----------- | --------------- | --------------------------------- |
-| Free    | $0          | 0               | 20                                |
-| Basic   | $3          | 300             | 200                               |
-| Plus    | $5          | 500             | 500                               |
-| Premium | $10         | 1000            | 2000                              |
+| Plan    | Ref. price | `price` (cents) | AI scans / period (`check_limit`) |
+| ------- | ---------- | --------------- | --------------------------------- |
+| Free    | $0         | 0               | 20                                |
+| Basic   | $3         | 300             | 200                               |
+| Plus    | $5         | 500             | 500                               |
+| Premium | $10        | 1000            | 2000                              |
 
-Источник данных для сидов: `database/data/plans.php`. Команда: `php artisan plans:seed` (идемпотентно через `updateOrCreate` по `type`).
+Seed data source: `database/data/plans.php`. Command: `php artisan plans:seed` (idempotent via `updateOrCreate` on `type`).
 
 ---
 
-## Маркетинговая матрица фич (product / UI)
+## Marketing feature matrix (product / UI)
 
-Ориентир для экранов и таблиц (порядок колонок из спеки): AI scans (фото за сканирование см. ниже), Manual transactions, History, Categories, Recurring, Analytics, CSV, прочее.
+Guide for screens and comparison tables (column order from the spec): AI scans (photos per scan — see below), Manual transactions, History, Categories, Recurring, Analytics, CSV, other.
 
-| План    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics | CSV | Другое                          |
-| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | --------- | --- | ------------------------------- |
-| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —         | —   | 1 фото на скан                  |
-| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —         | yes | 1 фото на скан                  |
-| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard | yes | несколько фото на скан          |
-| Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced  | yes | несколько фото; траты голосом   |
+| Plan    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics | CSV | Other                          |
+| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | --------- | --- | ------------------------------ |
+| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —         | —   | 1 photo per scan               |
+| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —         | yes | 1 photo per scan               |
+| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard | yes | multiple photos per scan       |
+| Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced  | yes | multiple photos; voice expenses |
 
-**Видимость категорий** (выбор групп для показа / скрытия) — базовая возможность для **всех** тарифов, в таблицу не включается; отдельного гейта по подписке нет.
+**Category visibility** (choosing groups to show or hide) is a **base capability on all tiers** — not shown in the table; there is no separate subscription gate.
 
-**AI scan — фото за один сеанс:** Free и Basic — одно изображение; Plus и Premium — несколько изображений (например, многостраничный чек).
+**AI scan — photos per session:** Free and Basic — one image; Plus and Premium — multiple images (e.g. multi-page receipt).
 
-**Premium:** без «AI spending insights»; отличительная фича — **ввод расходов через голосовые сообщения**.
+**Premium:** no “AI spending insights”; the differentiator is **recording expenses via voice messages**.
 
-Часть отличий (история, набор категорий basic vs custom, расширенная аналитика, голос, мультфото) **не вынесена** в отдельные флаги в `config/feature_access.php` — это продуктовое описание и/или логика фронта; уточнять по доменным эндпоинтам и `backend-spec.md`.
+Some differences (history length, basic vs custom categories, “advanced” analytics, voice, multi-photo) are **not** separate flags in `config/feature_access.php` — they are product copy and/or frontend logic; confirm against domain endpoints and `backend-spec.md`.
 
-### Тексты для UI из сидов (`plans.description`)
+### UI copy from seeds (`plans.description`)
 
-Многострочные строки в `database/data/plans.php` (для выдачи в `GET /api/plans`):
+Multi-line strings in `database/data/plans.php` (returned by `GET /api/plans`):
 
 - **Free:** AI scans 20/month (1 photo per scan); Manual unlimited; History 1 month; Basic categories only; Category visibility controls.
 - **Basic:** AI 200/mo (1 photo per scan); Manual unlimited; History unlimited; Custom categories; CSV export; Category visibility controls.
@@ -62,63 +62,71 @@
 
 ---
 
-## Что проверяется на бэкенде (feature access)
+## Backend enforcement (feature access)
 
-Конфиг: `config/feature_access.php`. Сервис: `App\Services\FeatureAccessService`.
+Config: `config/feature_access.php`. Service: `App\Services\FeatureAccessService`.
 
-| Фича (`feature`)     | Планы с доступом           | Квота                                     | Сообщение при отказе (ключ)                                                      |
-| -------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------- |
-| `ai_scan`            | free, basic, plus, premium | да (`used_checks_count` vs `check_limit`) | «Subscription required to scan.» / «Scan limit reached for this billing period.» |
-| `recurring_expenses` | plus, premium              | нет                                       | «Recurring expenses are not available on your plan.»                             |
-| `analytics_dashboard` | plus, premium             | нет                                       | «Analytics dashboard is not available on your plan.»                          |
-| `csv_export`         | basic, plus, premium       | нет                                       | «CSV export is not available on your plan.»                                      |
+| Feature (`feature`)   | Allowed plans              | Quota                                      | Denied message(s)                                                               |
+| --------------------- | -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| `ai_scan`             | free, basic, plus, premium | yes (`used_checks_count` vs `check_limit`) | «Subscription required to scan.» / «Scan limit reached for this billing period.» |
+| `recurring_expenses`  | plus, premium              | no                                         | «Recurring expenses are not available on your plan.»                            |
+| `analytics_dashboard` | plus, premium              | no                                         | «Analytics dashboard is not available on your plan.»                          |
+| `csv_export`          | basic, plus, premium       | no                                         | «CSV export is not available on your plan.»                                   |
 
-**Видимость категорий** (`GET /api/categories`, `PATCH /api/me/category-visibility`, воронка тегов) **не** завязана на `feature_access.php`: доступна всем аутентифицированным пользователям на любом тарифе.
+**Analytics dashboard API:** `GET /api/analytics/dashboard?month=YYYY-MM` (details: `.cursor/backend-spec.md` §5.10). Marketing uses “dashboard” for Plus and “advanced” for Premium; **the current backend has one implementation and one response shape** for both. **Basic** has no access to this endpoint (`allowed_plans`: `plus` and `premium` only).
 
-Активная подписка берётся как у пользователя с планом и статусом, который попадает в `activeSubscription()` (обычно `active` и `trialing` — см. `backend-spec.md` и модель `AppUser`).
+**Category visibility** (`GET /api/categories`, `PATCH /api/me/category-visibility`, tag funnel) is **not** tied to `feature_access.php`: it is available to every authenticated user on any plan.
+
+Active subscription is resolved via `activeSubscription()` (typically statuses `active` and `trialing` — see `backend-spec.md` and `AppUser`).
 
 ---
 
 ## Stripe
 
-- Платёжные Price ID **не** захардкожены в `database/data/plans.php` для отображения клиенту: `PlanController` подставляет `price_id` из `config('services.stripe.prices')` по валюте пользователя (`app_user_settings.currency`, по умолчанию `usd`) и типу плана.
-- Переменные окружения (см. `config/services.php`):
+- Stripe Price IDs are **not** hard-coded in `database/data/plans.php` for client display: `PlanController` fills `price_id` from `config('services.stripe.prices')` using the user’s currency (`app_user_settings.currency`, default `usd`) and plan type.
+- Environment variables (see `config/services.php`):
     - `STRIPE_BASIC_PRICE_USD`, `STRIPE_BASIC_PRICE_EUR`
     - `STRIPE_PLUS_PRICE_USD`, `STRIPE_PLUS_PRICE_EUR`
     - `STRIPE_PREMIUM_PRICE_USD`, `STRIPE_PREMIUM_PRICE_EUR`
-- У бесплатного плана `price_id` в ответе API будет `null` (нет Stripe Price).
+- For the free plan, API `price_id` is `null` (no Stripe Price).
 
-Checkout: `POST /api/stripe/checkout` с телом `{ "plan_type": "basic" | "plus" | "premium" }` — `free` не принимается.
+Checkout: `POST /api/stripe/checkout` with body `{ "plan_type": "basic" | "plus" | "premium" }` — `free` is not accepted.
 
-Список планов для paywall: `GET /api/plans` — поля: `type`, `label`, `price` (центы), `currency`, `price_id`, `check_limit`, `description`.
+Paywall plan list: `GET /api/plans` — fields: `type`, `label`, `price` (cents), `currency`, `price_id`, `check_limit`, `description`.
 
 ---
 
-## Схема БД (кратко)
+## Database schema (short)
 
-Таблица `plans` (без timestamps):
+`plans` table (no timestamps):
 
-- `type` — строка/enum: free, basic, plus, premium
-- `payment_price_id` — nullable, Stripe Price ID (может дублировать/архивировать связь; основной источник для checkout — конфиг env)
-- `price` — int, центы
+- `type` — string/enum: free, basic, plus, premium
+- `payment_price_id` — nullable Stripe Price ID (may duplicate/archive linkage; checkout primarily uses env config)
+- `price` — int, cents
 - `label`, `description`
-- `check_limit` — максимум AI-сканов за биллинговый период
+- `check_limit` — max AI scans per billing period
 
-Счётчик использования: `user_subscriptions.used_checks_count`; сброс при новом периоде обрабатывается вебхуками Stripe (`invoice.paid` и т.д. — детали в `backend-spec.md`).
+Usage counter: `user_subscriptions.used_checks_count`; reset on new period is handled by Stripe webhooks (`invoice.paid`, etc. — see `backend-spec.md`).
 
 ---
 
-## Связанные файлы
+## Related files
 
-| Назначение             | Путь                                                                 |
-| ---------------------- | -------------------------------------------------------------------- |
-| Данные сидов           | `database/data/plans.php`                                            |
-| Команда сидирования    | `app/Console/Commands/SeedPlansCommand.php` (`plans:seed`)           |
-| Enum типов             | `app/Enums/PlanType.php`                                             |
-| Модель                 | `app/Models/Plan.php`                                                |
-| API списка планов      | `app/Http/Controllers/PlanController.php`                            |
-| Доступ по фичам        | `config/feature_access.php`, `app/Services/FeatureAccessService.php` |
-| Цены Stripe по валютам | `config/services.php` → `stripe.prices`                              |
-| Подробная спека        | `.cursor/backend-spec.md` (раздел subscriptions & billing)           |
+| Purpose                    | Path                                                                 |
+| -------------------------- | -------------------------------------------------------------------- |
+| Seed data                  | `database/data/plans.php`                                            |
+| Seed command               | `app/Console/Commands/SeedPlansCommand.php` (`plans:seed`)           |
+| Type enum                  | `app/Enums/PlanType.php`                                             |
+| Model                      | `app/Models/Plan.php`                                                |
+| Plans API                  | `app/Http/Controllers/PlanController.php`                            |
+| Feature access             | `config/feature_access.php`, `app/Services/FeatureAccessService.php` |
+| Stripe prices by currency  | `config/services.php` → `stripe.prices`                              |
+| Analytics dashboard (API)  | `app/Http/Controllers/AnalyticsDashboardController.php`, `app/Services/AnalyticsDashboardService.php` |
+| Full backend spec          | `.cursor/backend-spec.md` (subscriptions & billing sections)       |
 
-При изменении тарифов обновляйте `database/data/plans.php`, при необходимости — матрицу в этом файле и `.cursor/backend-spec.md`, и синхронизируйте Price ID в Stripe / env.
+## Documentation sync notes (2026)
+
+- **Login:** `POST /api/auth/login` **does not** insert into `app_users`. The app row must exist from `POST /api/auth/register`. Otherwise **401** with a message like *«Please sign up before signing in»*.
+- **Analytics:** besides `GET /api/transactions/summary` (all plans), the calendar dashboard is `GET /api/analytics/dashboard` for **Plus** and **Premium** only; one backend implementation for both (see `config/feature_access.php`).
+
+When plans change, update `database/data/plans.php`, this matrix and related specs (`.cursor/backend-spec.md`) as needed, and keep Stripe Price IDs in Stripe / env in sync.

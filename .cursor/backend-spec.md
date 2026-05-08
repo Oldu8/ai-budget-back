@@ -1,4 +1,6 @@
-# AI Budget: Backend Technical Specification (v1.5)
+# AI Budget: Backend Technical Specification (v1.6)
+
+**Changelog (v1.6):** `POST /api/auth/login` no longer creates `app_users` rows; analytics dashboard docs aligned (Plus **and** Premium, single payload; Basic/Free excluded).
 
 ## 1. Project Overview
 
@@ -38,7 +40,7 @@ The system has two separate user entities with different auth mechanisms:
 
 - Authenticated via Supabase Auth (JWT tokens)
 - Custom middleware `supabase.auth` validates token against Supabase `/auth/v1/user`
-- Auto-created on first request (firstOrCreate by `supabase_user_id`)
+- **Normal lifecycle:** row is created in `POST /api/auth/register` after Supabase signup. **`POST /api/auth/login` does not create** a missing row — if Supabase accepts the password but no `AppUser` exists yet, the API returns **401** (user must register via the backend first). The `supabase.auth` middleware still **syncs** `AppUser` with `firstOrCreate` when a valid JWT hits a protected route (edge cases, e.g. tokens issued outside this API).
 - Used for: transactions, subscriptions, payments, AI features
 - Model: `App\Models\AppUser` (extends Authenticatable)
 
@@ -74,8 +76,8 @@ Mobile App                     Backend API                     Supabase
     |                              |   apiKey: SUPABASE_ANON_KEY   |
     |                              |<-- { user, access_token } --- |
     |                              |                               |
-    |                              |   AppUser::firstOrCreate()    |
-    |                              |   (new record in app_users)   |
+    |                              |   Ensures AppUser for supabase_user_id |
+    |                              |   (new row in app_users if needed)    |
     |                              |                               |
     |<-- 201 --------------------- |                               |
     |   { access_token,            |                               |
@@ -86,7 +88,7 @@ Mobile App                     Backend API                     Supabase
 1. Client sends `POST /api/auth/register` with `{ email, password }`
 2. Backend validates input, sends signup request to Supabase Auth API
 3. Supabase creates the auth user, returns JWT tokens
-4. Backend creates `AppUser` record via `firstOrCreate(supabase_user_id)`
+4. Backend creates or finds `AppUser` via `firstOrCreate(supabase_user_id)`, runs `EnsureDefaultSubscriptionService`, registration notifications
 5. Backend returns `access_token`, `refresh_token`, and user profile to client
 
 **Login:**
@@ -100,8 +102,8 @@ Mobile App                     Backend API                     Supabase
     |                              |   ?grant_type=password        |
     |                              |<-- { user, access_token } --- |
     |                              |                               |
-    |                              |   AppUser::firstOrCreate()    |
-    |                              |   (existing record found)     |
+    |                              |   Load AppUser by supabase_user_id |
+    |                              |   (must exist — no login-time create) |
     |                              |                               |
     |<-- 200 --------------------- |                               |
     |   { access_token,            |                               |
@@ -112,8 +114,9 @@ Mobile App                     Backend API                     Supabase
 1. Client sends `POST /api/auth/login` with `{ email, password }`
 2. Backend sends credentials to Supabase `/auth/v1/token?grant_type=password`
 3. Supabase validates credentials, returns JWT tokens
-4. Backend finds/creates `AppUser`, loads settings
-5. Backend returns tokens + user profile to client
+4. Backend **requires** an existing `AppUser` with the same `supabase_user_id` (created via `POST /api/auth/register`). If missing → **401** JSON: `This email is not registered. Please sign up before signing in.` (no tokens issued for app provisioning via login alone)
+5. Backend syncs email / `email_verified_at` from Supabase, runs `EnsureDefaultSubscriptionService`, loads settings
+6. Backend returns tokens + user profile to client
 
 **Token refresh:**
 
@@ -146,6 +149,7 @@ Mobile App                     Backend API                     Supabase
 - Auth routes (`/api/auth/*`) are public — no middleware required
 - Protected routes (`/api/me/*`) use `supabase.auth` middleware that validates the token
 - `supabase_user_id` is the bridge between Supabase Auth and `app_users` table
+- **Login vs orphans:** Supabase may have an auth user (e.g. old test) without an `app_user` row. `POST /api/auth/login` then returns **401** so the app cannot “bootstrap” an account through login alone. **`supabase.auth` middleware** still uses `firstOrCreate` when a valid JWT reaches a protected route — operators should treat out-of-band Supabase users separately if that must be disabled.
 - Sensitive fields (`supabase_user_id`, `payment_customer_id`) are hidden from JSON responses
 
 ### 3.4. API Routes
@@ -158,6 +162,8 @@ Mobile App                     Backend API                     Supabase
 | `POST` | `/api/auth/login`    | Login             | `{ email, password }`    |
 | `POST` | `/api/auth/refresh`  | Refresh tokens    | `{ refresh_token }`      |
 | `POST` | `/api/auth/logout`   | Logout            | Header: `Bearer <token>` |
+
+**`POST /api/auth/login` responses:** **200** when Supabase password grant succeeds **and** a local `AppUser` exists for that `supabase_user_id`. **401** for invalid Supabase credentials **or** when the Supabase user exists but **no `AppUser` row** yet — client must call `POST /api/auth/register` first (login no longer creates `app_users`).
 
 **Protected (requires `Authorization: Bearer <token>`):**
 
@@ -178,7 +184,7 @@ Mobile App                     Backend API                     Supabase
 | `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
 | `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |
 | `GET`    | `/api/transactions/export`     | CSV export of expenses for date range (query: from, to); Basic/Plus/Premium only |
-| `GET`    | `/api/analytics/dashboard`     | Plus/Premium analytics for a calendar month (query: `month=YYYY-MM`). JSON: month, currency, period, overview, categories, trends |
+| `GET`    | `/api/analytics/dashboard`     | **Plus & Premium** (not Basic): calendar-month analytics (query `month=YYYY-MM`). JSON **without** `data` envelope: `month`, `currency`, `period` (`from`, `to`, `previous_from`, `previous_to`), `overview` (totals, `average_per_day`, `biggest_category`, diff vs previous month), `categories` (Level 1 with nested `subcategories`), `trends.categories` / `trends.subcategories` (mom deltas). Same expense basis as summaries: confirmed only, disabled categories excluded. **403** on Free/Basic. |
 | `POST`   | `/api/transactions`             | Create transaction (manual, ManualTransactionController)          |
 | `GET`    | `/api/transactions/{id}`        | Get transaction — JSON envelope `{ "data": { ... } }` (same shape as scan / receipt update / show) |
 | `PUT`    | `/api/transactions/{id}`        | Update transaction                                                  |
@@ -717,7 +723,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - Missing AppUser for a customer ID is logged and reported via `ErrorNotifier`, webhook returns 200 without throwing.
 
 **Free Plan Auto-Creation** (`EnsureDefaultSubscriptionService`):
-- Called in `AuthController::register()` and `login()` after user creation/lookup.
+- Called in `AuthController::register()` and **after successful** `login()` (when `AppUser` already exists).
 - Ensures every user has an active subscription. If no active subscription exists, creates a local-only free subscription (`payment_subscription_id = null`, `current_period_end = null`, `used_checks_count = 0`).
 - Free plan is local-only — no Stripe Product/Price. When paid subscription activates, free is canceled. When paid is deleted, free is re-created with fresh usage.
 
@@ -732,13 +738,13 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - **Data:** Confirmed expense transactions in the date range; transaction items whose category is not in the user's disabled list. One CSV row per transaction item.
 - **Response:** Streamed CSV file, `Content-Disposition: attachment; filename="expenses_YYYY-MM-DD_YYYY-MM-DD.csv"`. UTF-8 with BOM. Columns: Date, Category (subcategory label), Amount (in currency units, 2 decimals), Currency (from app_user_settings), Label (item label or empty).
 
-### 5.10. Analytics dashboard (Plus / Premium)
+### 5.10. Analytics dashboard (Plus and Premium)
 
 - **Route:** `GET /api/analytics/dashboard?month=YYYY-MM`
-- **Access:** `feature.access:analytics_dashboard` via `FeatureAccessService`. Allowed plans: Plus, Premium. No active subscription or other plan → 403 with message: `Analytics dashboard is not available on your plan.`
-- **Validation:** `month` required; must be a real calendar month (`2026-13` → 422).
-- **Data:** Same basis as transaction summaries: confirmed expenses only, not soft-deleted, items joined to Level 2 categories with parent rollup; categories disabled in `app_user_category_settings` excluded. Amounts are minor units (integers). `currency` from `app_user_settings` (uppercased). `average_per_day` is total for the month divided by number of days in that month (full-month average, MVP).
-- **Response:** Single JSON object (no `data` envelope): `month`, `currency`, `period` (`from`, `to`, `previous_from`, `previous_to`), `overview`, `categories` (nested `subcategories`), `trends` (`categories`, `subcategories`). Percents rounded to 2 decimals; `difference_percent` may be null when previous total is zero and current is positive.
+- **Access:** `feature.access:analytics_dashboard` via `FeatureAccessService`. **Allowed plans: Plus and Premium** (Basic and Free → **403** with `Analytics dashboard is not available on your plan.`). *Product copy* in `docs/plans.md` distinguishes «dashboard» (Plus) vs «advanced analytics» (Premium); **the current backend exposes one implementation** for both plan types — same payload and rules.
+- **Validation:** `month` required; `date_format:Y-m` (invalid month → **422**).
+- **Data:** Same basis as transaction summaries: confirmed expenses only, not soft-deleted, Level 2 items rolled up to parents; categories in `app_user_category_settings` excluded. Amounts in **minor units** (integers). `currency` from `app_user_settings` (uppercased). `overview.average_per_day` = `total_spent / days_in_month` (integer division).
+- **Response:** Top-level JSON (no `data` wrapper): `month`, `currency`, `period`, `overview`, `categories`, `trends`. Month-over-month comparison uses the **previous calendar month**. Percents in diff metadata rounded to 2 decimals; `difference_percent` may be null when previous total is zero and current is positive.
 
 ## 6. Environment Variables
 
@@ -784,6 +790,7 @@ Included:
 - Subscription plans with AI scan limits
 - Stripe integration (checkout, webhooks)
 - CSV export of expenses (GET /api/transactions/export; Basic/Plus/Premium only)
+- **Analytics dashboard** (`GET /api/analytics/dashboard`; Plus/Premium only — see §5.10)
 
 Deferred (post-MVP):
 
