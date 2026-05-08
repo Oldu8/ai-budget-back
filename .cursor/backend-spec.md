@@ -3,7 +3,7 @@
 ## 1. Project Overview
 
 Backend API for AI Budget — mobile app for personal budget management.
-Users can manually log income/expenses or use AI (photo of receipt) to auto-extract transaction data.
+Users can manually log income/expenses, run **AI receipt scan** (single image on Free/Basic; multiple images on Plus/Premium — see `docs/plans.md`), and on **Premium** (product) add expenses via **voice messages**. Pricing matrix: see `docs/plans.md` and section **4.4** below.
 
 ### Core Responsibilities
 
@@ -178,6 +178,7 @@ Mobile App                     Backend API                     Supabase
 | `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
 | `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |
 | `GET`    | `/api/transactions/export`     | CSV export of expenses for date range (query: from, to); Basic/Plus/Premium only |
+| `GET`    | `/api/analytics/dashboard`     | Plus/Premium analytics for a calendar month (query: `month=YYYY-MM`). JSON: month, currency, period, overview, categories, trends |
 | `POST`   | `/api/transactions`             | Create transaction (manual, ManualTransactionController)          |
 | `GET`    | `/api/transactions/{id}`        | Get transaction — JSON envelope `{ "data": { ... } }` (same shape as scan / receipt update / show) |
 | `PUT`    | `/api/transactions/{id}`        | Update transaction                                                  |
@@ -204,53 +205,55 @@ Mobile App                     Backend API                     Supabase
 
 **Token storage:**
 
-- Сохранять `access_token` и `refresh_token` в SecureStorage / Keychain (не в обычном storage)
-- При успешном register/login — записать оба токена
+- Store `access_token` and `refresh_token` in SecureStorage / Keychain (not plain app storage)
+- On successful register/login, persist both tokens
 
 **Protected requests:**
 
-- Добавлять заголовок `Authorization: Bearer <access_token>` ко всем запросам к `/api/me*` и другим защищённым эндпоинтам
-- При 401 — попробовать `/api/auth/refresh` с `refresh_token`, затем повторить исходный запрос
-- Если refresh вернул 401 — очистить токены и перенаправить на экран логина
+- Send header `Authorization: Bearer <access_token>` on all requests to `/api/me*` and other protected endpoints
+- On 401, try `POST /api/auth/refresh` with `refresh_token`, then retry the original request
+- If refresh returns 401, clear tokens and navigate to login
 
 **Example flow:**
 
 ```
 1. POST /api/auth/register { email, password } → 201 { access_token, refresh_token, user }
-2. Сохранить токены, экран онбординга
-3. POST /api/me/settings { currency, language, timezone } → 201 (создание настроек)
-4. GET /api/me + Authorization: Bearer <access_token> → профиль
-5. При истечении токена: POST /api/auth/refresh { refresh_token } → новые токены
-6. POST /api/auth/logout + Authorization: Bearer <token> → выход
+2. Persist tokens; onboarding screen
+3. POST /api/me/settings { currency, language, timezone } → 201 (create settings)
+4. GET /api/me + Authorization: Bearer <access_token> → profile
+5. When access token expires: POST /api/auth/refresh { refresh_token } → new tokens
+6. POST /api/auth/logout + Authorization: Bearer <token> → sign out
 ```
 
 **Settings:**
 
-- `POST /api/me/settings` — для онбординга после регистрации. Создаёт настройки один раз. При повторном вызове → 409.
-- `PUT /api/me/settings` — для изменения уже существующих настроек.
+- `POST /api/me/settings` — onboarding after registration. Creates settings once; duplicate call → 409.
+- `PUT /api/me/settings` — update existing settings.
 
 ### 3.6. Email Confirmation (Supabase)
 
-Подтверждение почты полностью обрабатывается Supabase. Бэкенд не создаёт отдельных роутов для подтверждения.
+Email confirmation is handled entirely by Supabase. The backend does not expose separate confirmation routes.
 
-**Текущее поведение:**
-- `app_users.email_verified_at` — синхронизируется из Supabase `email_confirmed_at` в middleware
-- Юзер в ответах auth получает `user.email_verified_at` (null до подтверждения)
-- **Ничего не блокируется** — юзер может пользоваться приложением без подтверждения
+**Current behaviour:**
 
-**Планируется (после реализации транзакций):**
-- Транзакции (создание, просмотр) будут доступны только при `email_verified_at !== null`
-- Остальные эндпоинты (профиль, настройки) — без ограничений
+- `app_users.email_verified_at` — synced from Supabase `email_confirmed_at` in middleware
+- Auth responses include `user.email_verified_at` (null until confirmed)
+- **Nothing is blocked** — users may use the app before confirming email
 
-**Настройка Supabase (после деплоя):**
+**Planned (after transaction rollout):**
 
-1. Supabase Dashboard → Authentication → Providers → Email → **Confirm email** (уже включено)
+- Transaction create/read will require `email_verified_at !== null`
+- Other endpoints (profile, settings) remain unrestricted
+
+**Supabase setup (after deploy):**
+
+1. Supabase Dashboard → Authentication → Providers → Email → **Confirm email** (typically already on)
 2. Authentication → URL Configuration:
-   - **Site URL** — URL приложения (например `https://yourapp.com` или deep link `myapp://`)
-   - **Redirect URLs** — куда редиректить после клика по ссылке в письме (например `myapp://auth/confirm`)
-3. Email Templates → Confirm signup — при необходимости изменить текст письма
+   - **Site URL** — app URL (e.g. `https://yourapp.com` or deep link `myapp://`)
+   - **Redirect URLs** — where to redirect after clicking the email link (e.g. `myapp://auth/confirm`)
+3. Email Templates → Confirm signup — adjust copy if needed
 
-**Порядок:** сначала деплой бэка и фронта, затем добавить реальные ссылки в Supabase.
+**Order of operations:** deploy backend and frontend first, then add real URLs in Supabase.
 
 ## 4. Database Schema
 
@@ -291,48 +294,48 @@ Mobile App                     Backend API                     Supabase
 - `visibility_tag` (nullable) — metadata (e.g. kids, car, pets) for bulk-toggling
 
 **Category hierarchy rules:**
-- **Level 1 (parent)** — категории агрегации (e.g. Housing, Food). НЕ выбираются пользователем при создании транзакции. На фронте отображают сумму всех дочерних подкатегорий.
-- **Level 2 (child)** — конкретные подкатегории (e.g. Rent, Groceries). Именно их пользователь выбирает при создании/редактировании транзакции.
-- `transaction_items.category_id` всегда ссылается на Level 2 категорию. Привязка к Level 1 запрещена на уровне клиента (parent-категории не отображаются как опции для выбора).
+- **Level 1 (parent)** — rollup categories only (e.g. Housing, Food). **Not** user-selectable when creating a transaction. In the UI they show summed amounts for all child subcategories.
+- **Level 2 (child)** — concrete subcategories (e.g. Rent, Groceries). These are what the user picks when creating or editing a transaction.
+- `transaction_items.category_id` always references a Level 2 category. Level 1 must not be used on the client (parents are not shown as selectable options).
 
 **Seeding categories:** `php artisan categories:seed`. Data: `database/data/categories.php`. Uses `updateOrCreate` by `name` — safe to run multiple times.
 
 ### 4.3. Transactions, Transaction Items & Recurring Expenses
 
-**transactions** — операция / чек (дата, общая сумма, картинка).
+**transactions** — single operation / receipt (date, total, optional image).
 
-- `total_amount` — integer (в копейках, сумма чека)
+- `total_amount` — integer (minor units / cents, receipt total)
 - `type` — enum: `income`, `expense`
 - `created_by` — enum: `user`, `ai`, `recurring`
-- `raw_ai_data` (JSON, nullable) — полный ответ OpenAI для AI-чеков
-- `confirmed_at` (nullable) — когда транзакция подтверждена
-- `img_path` (nullable) — путь к фото чека в Supabase Storage
-- `recurring_expense_id` (nullable) — FK на `recurring_expenses` (nullOnDelete)
-- `recurring_run_at` (nullable, datetime) — дата/время, для какого запуска правила создана транзакция (используется для защиты от дублей)
+- `raw_ai_data` (JSON, nullable) — full OpenAI response for AI-derived receipts
+- `confirmed_at` (nullable) — when the transaction was confirmed
+- `img_path` (nullable) — receipt image path in Supabase Storage
+- `recurring_expense_id` (nullable) — FK to `recurring_expenses` (nullOnDelete)
+- `recurring_run_at` (nullable, datetime) — which scheduled run this transaction belongs to (deduplication)
 - Soft deletes
 - Indexes: (app_user_id, date), (app_user_id, date, type), (recurring_expense_id, recurring_run_at)
 
-**transaction_items** — позиции внутри операции (категория, сумма, название).
+**transaction_items** — line items (category, amount, label).
 
-- `transaction_id` — FK на transactions (cascadeOnDelete)
-- `category_id` — FK на categories (restrictOnDelete)
-- `amount` — integer (в копейках)
-- `label` (nullable) — название позиции (хлеб, бананы и т.д.)
+- `transaction_id` — FK to transactions (cascadeOnDelete)
+- `category_id` — FK to categories (restrictOnDelete)
+- `amount` — integer (minor units / cents)
+- `label` (nullable) — line description (e.g. bread, bananas)
 - Indexes: (transaction_id, category_id), (category_id)
 
-**Структура:**
-- **Ручная:** 1 transaction с total_amount, 1 transaction_item с amount = total_amount
-- **AI-чек:** 1 transaction с общей суммой, N transaction_items по категориям
-- **Рекуррентный расход:** 1 transaction с total_amount, 1 transaction_item (amount = total_amount) по одной категории; создаётся по расписанию, всегда с `type = expense`, `created_by = 'recurring'`, `confirmed_at = now()`
+**Shapes:**
+- **Manual:** 1 transaction with `total_amount`, 1 transaction_item where `amount` = `total_amount`
+- **AI receipt:** 1 transaction with overall total, N transaction_items across categories
+- **Recurring:** 1 transaction with `total_amount`, 1 transaction_item (`amount` = `total_amount`) for one category; created by the scheduler, always `type = expense`, `created_by = 'recurring'`, `confirmed_at = now()`
 
-**confirmed_at — ключевое поле для видимости транзакции:**
-- **Manual:** устанавливается сразу (`now()`) при создании
-- **AI:** `null` при создании. Заполняется только когда юзер подтверждает результат сканирования
-- **Неподтверждённые транзакции (`confirmed_at IS NULL`):**
-  - НЕ отображаются в списке транзакций (`GET /api/transactions`)
-  - НЕ учитываются в агрегации по месяцу/категориям (CTE)
-  - Существуют в БД, но невидимы для итоговых данных на всех устройствах
-- Это гарантирует, что если юзер отсканировал чек, но не подтвердил — транзакция не повлияет на статистику и не появится в списках
+**`confirmed_at` — visibility gate:**
+- **Manual:** set immediately (`now()`) on create
+- **AI:** `null` on create; set only after the user confirms the scan result
+- **Unconfirmed (`confirmed_at IS NULL`):**
+  - Excluded from `GET /api/transactions` list
+  - Excluded from month/category aggregation (CTE filters)
+  - Row exists in DB but is invisible to totals on all devices
+- Ensures a scanned-but-not-confirmed receipt does not affect stats or lists
 
 ### 4.4. Subscriptions & Billing (Stripe)
 
@@ -345,16 +348,18 @@ Mobile App                     Backend API                     Supabase
 - `description` (nullable) — text listing plan features (for UI/table)
 - `check_limit` — max AI scans per billing cycle
 
-**Тарифы (каталог планов)**
+**Plans (pricing catalog)**
 
-Фиксированный порядок тарифов: **Free → Basic → Plus → Premium**. Порядок признаков для описания/UI: AI scans, Manual transactions, History, Categories, Recurring transactions, Analytics, CSV export, прочее.
+Plan order is fixed: **Free → Basic → Plus → Premium**. Typical marketing/UI trait order: AI scans (photos per scan — see Other column), manual transactions, history, categories, recurring, analytics, CSV export, plus other bullets in `docs/plans.md`.
 
-| Plan    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics              | CSV | Other                |
-| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | ---------------------- | --- | -------------------- |
-| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —                      | —   | —                    |
-| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —                      | yes | —                    |
-| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard              | yes | —                    |
-| Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced + AI insights | yes | AI spending insights |
+**Category visibility** (`PATCH /api/me/category-visibility`, etc.) works on **all** tiers including Free; not repeated in the matrix below.
+
+| Plan    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics              | CSV | Other                         |
+| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | ---------------------- | --- | ----------------------------- |
+| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —                      | —   | 1 photo/scan                  |
+| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —                      | yes | 1 photo/scan                  |
+| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard              | yes | Multi-photo scans             |
+| Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced (no AI insights) | yes | Multi-photo scans; voice expense entry |
 
 Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `updateOrCreate` by `type` — safe to run multiple times.
 
@@ -384,26 +389,26 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
   - **`canceled`** — subscription ended or was canceled; access follows product rules (e.g. until `current_period_end`). Not returned as the current row from `activeSubscription()`.
   - **`pending`** — subscription or payment not yet fully activated (e.g. awaiting first successful payment).
 
-**recurring_expenses** — правила для рекуррентных расходов.
+**recurring_expenses** — recurring expense rules.
 
-- `app_user_id` — FK на app_users (cascadeOnDelete)
-- `category_id` — FK на categories (restrictOnDelete), всегда Level 2 категория
-- `amount` — integer (в копейках), сумма одного списания
-- `label` (nullable) — подпись/описание расхода
-- `starts_at` (datetime) — дата/время старта правила
+- `app_user_id` — FK to app_users (cascadeOnDelete)
+- `category_id` — FK to categories (restrictOnDelete), always Level 2
+- `amount` — integer (minor units), amount per occurrence
+- `label` (nullable) — note / description
+- `starts_at` (datetime) — rule start time
 - `frequency` — string: `weekly` | `monthly` | `yearly`
-- `interval` — integer, шаг между запусками (по умолчанию 1)
-- `ends_at` (nullable, datetime) — опциональная дата окончания; если null — бесконечно
-- `is_active` — boolean, включает/выключает правило (по умолчанию true)
-- `last_run_at` (nullable, datetime) — когда правило выполнялось в последний раз
-- `next_run_at` (datetime) — запланированное время следующего запуска
-- Soft deletes включены
+- `interval` — integer step between runs (default 1)
+- `ends_at` (nullable, datetime) — optional end; null means no end
+- `is_active` — boolean (default true)
+- `last_run_at` (nullable, datetime) — last processed run time
+- `next_run_at` (datetime) — next scheduled run
+- Soft deletes enabled
 
-**Правила:**
-- `category_id` всегда Level 2 (подкатегория, `categories.category_id IS NOT NULL`).
-- Категория не должна быть в `app_user_category_settings` для пользователя (скрытые категории нельзя выбирать).
-- При выключении правила (`is_active = false`) планировщик его не обрабатывает.
-- При включении (`toggle` с false → true) `next_run_at` двигается вперёд до ближайшего будущего запуска.
+**Rules:**
+- `category_id` must be Level 2 (`categories.category_id IS NOT NULL`).
+- Category must not be disabled for the user in `app_user_category_settings`.
+- When disabled (`is_active = false`), the scheduler skips the rule.
+- When re-enabled (toggle false → true), `next_run_at` advances to the next future run.
 
 ## 5. Key Business Rules
 
@@ -411,25 +416,25 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 
 - `POST /api/transactions` — body: `{ total_amount, date, type, category_id }`
 - `type`: `income` | `expense`
-- `total_amount` — в копейках (целое число)
-- Создаётся 1 transaction + 1 transaction_item (amount = total_amount)
-- `created_by` = `user`, `confirmed_at` = now() (сразу)
-- Список: `GET /api/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&type=expense&per_page=20`
+- `total_amount` — minor units (integer)
+- Creates 1 transaction + 1 transaction_item (`amount` = `total_amount`)
+- `created_by` = `user`, `confirmed_at` = now()
+- List: `GET /api/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&type=expense&per_page=20`
 
 ### 5.2. Categories list and transaction summary
 
-Эндпоинты для отображения дерева категорий и сводки трат за период. Учитываются только подтверждённые транзакции (`confirmed_at IS NOT NULL`), тип `expense`, данные текущего пользователя. Период задаётся параметрами `from` и `to` (YYYY-MM-DD); в ответах не передаются лейблы категорий/подкатегорий — только id, фронт резолвит названия по списку категорий.
+Endpoints for the category tree and expense aggregates for a range. Only **confirmed** transactions (`confirmed_at IS NOT NULL`), type `expense`, for the current user. Period is `from` / `to` (YYYY-MM-DD). Responses do **not** embed category labels — ids only; the client resolves labels from `GET /api/categories`.
 
-**1. Список категорий и подкатегорий**
+**1. Category and subcategory tree**
 
-- **Route:** `GET /api/categories`. Optional query `?visibility_tag=X` — return only categories with that tag (for funnel preview; no user filter). Without query — categories are filtered by user's disabled list: any category whose id is in `app_user_category_settings` for the current user is excluded.
+- **Route:** `GET /api/categories`. Optional query `?visibility_tag=X` — return only categories with that tag (funnel preview; no per-user filter). Without query — rows disabled for the user in `app_user_category_settings` are excluded.
 - **Response:** `{ "data": [ { "id", "slug", "label", "children": [ { "id", "slug", "label" } ] } ] }`
-- `slug` = поле `categories.name` из БД. Level 1 (родители) — объекты с массивом `children` (Level 2). Используется как единственный источник id → slug/label для подписей на графиках и в сводках.
+- `slug` is `categories.name` in the DB. Level 1 rows have a `children` array (Level 2). Canonical id → slug/label source for charts and summaries.
 
-**2. Сводка по категориям (Level 1) за период**
+**2. Level‑1 summary for a period**
 
 - **Route:** `GET /api/transactions/summary?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- **Query:** `from`, `to` — обязательны, даты, `to >= from`.
+- **Query:** `from`, `to` — required, dates, `to >= from`.
 - **Response:**
 
 ```json
@@ -448,139 +453,128 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 }
 ```
 
-- `days` — объект «дата → объект category_id → сумма в копейках за день». Все даты в интервале присутствуют (при отсутствии трат — пустой объект). Only categories not in the user's `app_user_category_settings` are included in aggregation.
-- `meta.totals_by_category` — сумма по каждой категории за период; `meta.grand_total` — общая сумма.
+- `days` — map *date → { category_id → amount in minor units for that day }*. Every date in the range appears (empty object if no spend). Disabled categories excluded.
+- `meta.totals_by_category` — per Level‑1 category total for the range; `meta.grand_total` — overall total.
 
-**3. Сводка по подкатегориям одной категории за период**
+**3. Subcategories under one Level‑1 category**
 
 - **Route:** `GET /api/transactions/summary/{category}?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- **URL:** `{category}` — id категории Level 1. Если категория не верхнего уровня — 404.
-- **Query:** `from`, `to` — как выше.
-- **Response:** то же, что в п.2, плюс в начале объект `category: { "id", "slug", "label" }`; в `days` ключи — id подкатегорий (Level 2); в `meta` — `totals_by_subcategory` и `grand_total` (итог по выбранной категории).
+- **URL:** `{category}` — Level‑1 category id; 404 if not a parent row.
+- **Query:** same as above.
+- **Response:** Same as §2 plus root `category: { "id", "slug", "label" }`; `days` keys are Level‑2 ids; `meta` has `totals_by_subcategory` and `grand_total` for that branch.
 
-**Файлы:** `CategoryController` (index), `TransactionSummaryController` (index, show), `SummaryRangeRequest`, `SummaryResponse` (DTO).
+**Files:** `CategoryController` (index), `TransactionSummaryController` (index, show), `SummaryRangeRequest`, `SummaryResponse` (DTO).
 
 ### 5.3. Recurring expenses (rules + scheduler)
 
-**Доступ по тарифу:**
+**Plan access:**
 
-- Рекуррентные расходы доступны только пользователям с активной/пробной подпиской на планах **Plus** или **Premium**.
-- Проверка делается через `FeatureAccessService::canAccess($user, 'recurring_expenses')` (middleware `feature.access:recurring_expenses` на routes).
-  - Берётся `activeSubscription()` (status `active` или `trialing`) с планом.
-  - Разрешены только планы с `plan.type` = `plus` или `premium`.
-  - Если нет подходящей подписки → 403 `"Recurring expenses are not available on your plan."`
+- Recurring expenses are limited to users with active or trialing subscription on **Plus** or **Premium**.
+- Checked via `FeatureAccessService::canAccess($user, 'recurring_expenses')` (middleware `feature.access:recurring_expenses` on routes).
+  - Uses `activeSubscription()` (status `active` or `trialing`) including plan.
+  - Only `plan.type` ∈ {`plus`, `premium`}.
+  - Otherwise → 403 `"Recurring expenses are not available on your plan."`
 
-**API: правила рекуррентных расходов**
+**API: recurring rules**
 
-- Все эндпоинты защищены `supabase.auth` и работают только в контексте текущего `AppUser`.
+- Endpoints require `supabase.auth` and current `AppUser` context only.
 - **Routes:**
-  - `GET /api/recurring-expenses` — список правил текущего пользователя.
-  - `POST /api/recurring-expenses` — создание правила.
-  - `GET /api/recurring-expenses/{id}` — получить одно правило.
-  - `PUT /api/recurring-expenses/{id}` — обновление правила.
-  - `DELETE /api/recurring-expenses/{id}` — soft-delete правила.
-  - `PATCH /api/recurring-expenses/{id}/toggle` — включить/выключить правило (`is_active`).
+  - `GET /api/recurring-expenses` — list rules for the user.
+  - `POST /api/recurring-expenses` — create.
+  - `GET /api/recurring-expenses/{id}` — show one.
+  - `PUT /api/recurring-expenses/{id}` — update.
+  - `DELETE /api/recurring-expenses/{id}` — soft-delete.
+  - `PATCH /api/recurring-expenses/{id}/toggle` — flip `is_active`.
 
-**Валидация (Store/UpdateRecurringExpenseRequest):**
+**Validation (`StoreRecurringExpenseRequest` / `UpdateRecurringExpenseRequest`):**
 
 - `category_id`:
-  - `required|integer|exists:categories,id` (для создания),
-  - только Level 2 (`categories.category_id IS NOT NULL`),
-  - категория не должна быть в `app_user_category_settings` для текущего пользователя.
-- `amount`: `required|integer|min:1` (или `sometimes` для update).
+  - `required|integer|exists:categories,id` on create,
+  - Level 2 only (`categories.category_id IS NOT NULL`),
+  - must not be disabled for this user in `app_user_category_settings`.
+- `amount`: `required|integer|min:1` (`sometimes` on update).
 - `label`: `nullable|string|max:255`.
-- `starts_at`: `required|date` (или `sometimes` для update).
-- `frequency`: `required|in:weekly,monthly,yearly` (или `sometimes`).
-- `interval`: `integer|min:1` (по умолчанию 1).
+- `starts_at`: `required|date` (`sometimes` on update).
+- `frequency`: `required|in:weekly,monthly,yearly` (`sometimes`).
+- `interval`: `integer|min:1` (default 1).
 - `ends_at`: `nullable|date|after_or_equal:starts_at`.
 
-**Создание правила (POST /api/recurring-expenses):**
+**Create (`POST /api/recurring-expenses`):**
 
-- Использует `StoreRecurringExpenseRequest`.
-- `app_user_id` берётся из `$request->user()->id`.
-- При создании:
-  - `interval` по умолчанию 1.
-  - `next_run_at` = `max(starts_at, now())` — чтобы правило либо стартовало в будущем, либо как можно скорее.
+- `StoreRecurringExpenseRequest`.
+- `app_user_id` from `$request->user()->id`.
+- On create:
+  - `interval` defaults to 1.
+  - `next_run_at` = `max(starts_at, now())` — future start or as soon as possible.
   - `is_active` = true.
 
-**Обновление (PUT /api/recurring-expenses/{id}):**
+**Update (`PUT /api/recurring-expenses/{id}`):**
 
-- Работает только с правилами текущего пользователя.
-- При изменении `starts_at`/`frequency`/`interval` — пересчитывается `next_run_at` по тому же правилу `max(starts_at, now())`, чтобы не вызвать каскадный запуск задним числом.
+- Rule must belong to the current user.
+- If `starts_at` / `frequency` / `interval` change — recompute `next_run_at` with the same `max(starts_at, now())` rule to avoid backdated bursts.
 
-**Toggle (PATCH /api/recurring-expenses/{id}/toggle`):**
+**Toggle (`PATCH /api/recurring-expenses/{id}/toggle`):**
 
-- Меняет `is_active` на противоположное.
-- При включении (`is_active = true`):
-  - Берёт `next_run_at` (или `starts_at`, если оно не задано; иначе `now()`).
-  - Пока `next_run_at < now()` — двигает его вперёд на один шаг (`interval` в зависимости от `frequency`).
-  - Сохраняет обновлённый `next_run_at`, чтобы следующее списание было в будущем.
+- Flips `is_active`.
+- When enabling (`is_active = true`):
+  - Reads `next_run_at` (or `starts_at` if missing; otherwise `now()`).
+  - While `next_run_at < now()`, advance one step per `frequency`/`interval`.
+  - Persist updated `next_run_at` so the next charge lands in the future.
 
-**Планировщик (app:run-recurring-expenses):**
+**Scheduler (`app:run-recurring-expenses`):**
 
-- Консольная команда `app:run-recurring-expenses` (`RunRecurringExpensesCommand`).
-- Планируется в `App\Console\Kernel` раз в час:
+- Artisan `app:run-recurring-expenses` (`RunRecurringExpensesCommand`).
+- Scheduled in `App\Console\Kernel` hourly:
 
   - `$schedule->command('app:run-recurring-expenses')->hourly()->withoutOverlapping()->onOneServer();`
 
-- Отбирает правила:
+- Candidate rules:
 
   - `is_active = true`
-  - `next_run_at <= now() + 14 hours` (предварительная фильтрация с учётом максимального UTC+14)
-  - `deleted_at IS NULL` (через SoftDeletes)
+  - `next_run_at <= now() + 14 hours` (pre-filter for UTC+14 edge cases)
+  - `deleted_at IS NULL` (SoftDeletes)
 
-- Обработка:
+- Processing:
 
-  - Идёт по правилам чанками (`chunkById(100)`), упорядоченным по `next_run_at`.
-  - Для каждого правила:
-    - Открывает DB-транзакцию.
-    - Берёт правило с `lockForUpdate()` по `id`.
-    - Повторно проверяет условия (`is_active`, `next_run_at <= userToday`, `next_run_at <= ends_at`).
-    - Берёт пользователя `appUser` и ещё раз проверяет `FeatureAccessService::canAccess($user, 'recurring_expenses')` (если подписка больше не подходит — правило пропускается).
-    - Определяет `userToday` по таймзоне юзера (`app_user_settings.timezone`). Сравнивает `next_run_at` (startOfDay) с `userToday` — если ещё не наступил день, пропускает.
-    - Проверяет `ends_at`: если `next_run_at > ends_at` — пропускает (правило завершено).
-    - Запоминает текущее `runAt = next_run_at` (дата, startOfDay).
-    - Проверяет дубликаты:
-      - Поиск `transactions` с тем же `recurring_expense_id` и `recurring_run_at = runAt`.
-      - Если такая транзакция уже есть — просто двигает правило вперёд (обновляет `last_run_at` и `next_run_at`) и выходит.
-    - Создаёт:
+  - `chunkById(100)`, ordered by `next_run_at`.
+  - Per rule:
+    - Open DB transaction.
+    - Load rule `lockForUpdate()`.
+    - Re-check (`is_active`, `next_run_at <= userToday`, `next_run_at <= ends_at`).
+    - Load `AppUser`; re-run `FeatureAccessService::canAccess(..., 'recurring_expenses')` (skip if plan no longer qualifies).
+    - `userToday` from `app_user_settings.timezone`. Compare `next_run_at` (start of day) to `userToday` — skip if the local day has not arrived.
+    - If `next_run_at > ends_at` — skip (rule finished).
+    - `runAt` = stored `next_run_at` date (start of day).
+    - Dedup:
+      - Find existing `transactions` with same `recurring_expense_id` and `recurring_run_at = runAt`.
+      - If exists — advance rule (`last_run_at`, `next_run_at`) and exit.
+    - Else insert:
       - 1 `transaction`:
-        - `app_user_id` = `recurring_expenses.app_user_id`
+        - `app_user_id` = rule’s user
         - `total_amount` = `amount`
-        - `date` = `runAt` (дата, `Y-m-d`)
+        - `date` = `runAt` (`Y-m-d`)
         - `type` = `expense`
         - `created_by` = `recurring`
         - `confirmed_at` = `now()`
-        - `recurring_expense_id` = id правила
+        - `recurring_expense_id` = rule id
         - `recurring_run_at` = `runAt`
-      - 1 `transaction_item`:
-        - `category_id` = `recurring_expenses.category_id`
-        - `amount` = `recurring_expenses.amount`
-        - `label` = `recurring_expenses.label`
-    - Обновляет правило:
+      - 1 `transaction_item`: `category_id`, `amount`, `label` from rule.
+    - Update rule:
       - `last_run_at` = `runAt`
-      - `next_run_at` = `runAt`, сдвинутый на один шаг:
-        - `weekly`: `+ interval weeks`
-        - `monthly`: `+ interval months (no overflow)`
-        - `yearly`: `+ interval years`
+      - `next_run_at` = `runAt` advanced one period (`weekly` / `monthly` without overflow / `yearly`).
 
-- **Без бэкфилла:** если правило сильно «просрочено» (несколько периодов подряд не запускалось), при одном проходе команды создаётся только **одна** транзакция, а `next_run_at` сдвигается ровно на один шаг вперёд. Следующий запуск произойдёт уже на следующем цикле планировщика.
+- **No backfill:** if a rule is far behind, a single run creates **one** transaction and moves `next_run_at` by **one** step; the next cycle handles the following period.
 
-**Влияние на списки и сводки:**
+**Lists and summaries:**
 
-- Рекуррентно созданные транзакции:
-  - `type = expense`
-  - `confirmed_at IS NOT NULL`
-  - `transaction_items` с валидной Level 2 категорией.
-- Поэтому они автоматически:
-  - Видны в `GET /api/transactions` (ManualTransactionController@index), если попадают в диапазон дат.
-  - Участвуют в агрегации в `TransactionSummaryController` (обе сводки), т.к. фильтры уже учитывают только `type = expense` и `confirmed_at IS NOT NULL`.
+- Recurring-generated rows: `type = expense`, `confirmed_at IS NOT NULL`, valid Level‑2 `transaction_items`.
+- Therefore they appear in `GET /api/transactions` when in range and in both `TransactionSummaryController` endpoints (filters already require `type = expense` and `confirmed_at IS NOT NULL`).
 
-### 5.3. Агрегация по месяцу и категориям (концепция / legacy SQL)
+### 5.4. Monthly aggregation & categories (concept / legacy SQL)
 
-Items поднимаются вверх по дереву категорий. Шампунь и гель из разных транзакций суммируются в home_cosmetics и home. Фактическая отдача данных — через эндпоинты summary (см. 5.2).
+Leaf items roll up the category tree (e.g. shampoo and body wash from different receipts aggregate under the same parent branches). **Authoritative** responses are the summary APIs (§5.2).
 
-**Результат (концептуально):** `date`, `category_id`, `category_name`, `total_amount`.
+**Conceptual result:** `date`, `category_id`, `category_name`, `total_amount`.
 
 ```sql
 WITH RECURSIVE cat_path AS (
@@ -611,9 +605,9 @@ GROUP BY iim.date, cp.node_id, c.name
 ORDER BY iim.date, cp.node_id;
 ```
 
-На фронте: маппить `category_id` → `category_name` (или использовать `name` как ключ). Реализация — через summary API (5.2).
+On the client, map `category_id` → `category_name` (or use `name` as key). Production path: summary API (§5.2).
 
-### 5.4. AI Scan Pipeline (ScanController)
+### 5.5. AI Scan Pipeline (ScanController)
 
 **Route:** `POST /api/transactions/scan` — multipart/form-data, field `image` (jpeg/jpg/png/webp, max 5 MB).
 
@@ -667,9 +661,9 @@ ORDER BY iim.date, cp.node_id;
 - `app/Services/SupabaseStorageService.php` — Supabase Storage REST API (upload, delete, signed URLs)
 - `app/Http/Requests/ScanRequest.php` — image validation
 
-**Между шагами 10–11 и `PUT .../update`** транзакция существует в БД, но не учитывается ни в списках, ни в статистике. Подтверждение происходит вместе с финальным сохранением правок одним запросом.
+**Between steps 10–11 and `PUT .../update`** the draft row exists in the database but does not appear in lists or aggregates. Confirmation happens in one request together with saving edits.
 
-### 5.5. Visibility tags and category settings
+### 5.6. Visibility tags and category settings
 
 **Data:** Table `visibility_questions` — list of visibility questions (visibility_tag, question_key, type, order, translation_key, is_active). Seeded by `php artisan visibility-questions:seed`. Backend provides structure only; frontend handles translation via i18n. Used by `GET /api/funnel/visibility-questions` and `GET /api/visibility-tags`.
 
@@ -680,7 +674,7 @@ ORDER BY iim.date, cp.node_id;
 - Funnel: show questions from `/api/funnel/visibility-questions`; on answer "no" for a tag, call `PATCH /api/me/category-visibility` with `{ "visibility_tag": "kids", "enabled": false }`. Settings screen: list tags with toggles from `/api/visibility-tags`, update via same PATCH.
 - Future: per-category toggle = insert/delete single row by `category_id`.
 
-### 5.6. Scan quota (plan-based limit)
+### 5.7. Scan quota (plan-based limit)
 
 Each plan defines `check_limit` (max AI scans per billing period). The count is stored in `user_subscriptions.used_checks_count` and is incremented after each successful scan (when a transaction is created); it is reset to 0 by the Stripe `invoice.paid` webhook at the start of a new billing cycle.
 
@@ -696,7 +690,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - **`subscription_status`**: String — the `statuses.name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no active subscription row.
 - **`scan_usage`**: Object `{ scans_remaining, scans_limit, period_end }`. If no subscription: `scans_remaining: 0`, `scans_limit: 0`, `period_end: null`. If subscription exists: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = end of current billing period (ISO 8601).
 
-### 5.7. Stripe Integration (StripeController)
+### 5.8. Stripe Integration (StripeController)
 
 **Checkout** (`POST /api/stripe/checkout`):
 - Accepts `{ plan_type: "basic"|"plus"|"premium" }`. Rejects `free`.
@@ -730,7 +724,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 **Plans** (`GET /api/plans`):
 - Returns all plans ordered Free → Basic → Plus → Premium with currency-aware `price_id` from config.
 
-### 5.8. CSV export of expenses
+### 5.9. CSV export of expenses
 
 - **Route:** `GET /api/transactions/export?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - **Access:** Enforced by `feature.access:csv_export` middleware via `FeatureAccessService`. Only for users with active subscription on Basic, Plus, or Premium plan. If no subscription or plan is Free → 403 "CSV export is not available on your plan."
@@ -738,16 +732,24 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - **Data:** Confirmed expense transactions in the date range; transaction items whose category is not in the user's disabled list. One CSV row per transaction item.
 - **Response:** Streamed CSV file, `Content-Disposition: attachment; filename="expenses_YYYY-MM-DD_YYYY-MM-DD.csv"`. UTF-8 with BOM. Columns: Date, Category (subcategory label), Amount (in currency units, 2 decimals), Currency (from app_user_settings), Label (item label or empty).
 
+### 5.10. Analytics dashboard (Plus / Premium)
+
+- **Route:** `GET /api/analytics/dashboard?month=YYYY-MM`
+- **Access:** `feature.access:analytics_dashboard` via `FeatureAccessService`. Allowed plans: Plus, Premium. No active subscription or other plan → 403 with message: `Analytics dashboard is not available on your plan.`
+- **Validation:** `month` required; must be a real calendar month (`2026-13` → 422).
+- **Data:** Same basis as transaction summaries: confirmed expenses only, not soft-deleted, items joined to Level 2 categories with parent rollup; categories disabled in `app_user_category_settings` excluded. Amounts are minor units (integers). `currency` from `app_user_settings` (uppercased). `average_per_day` is total for the month divided by number of days in that month (full-month average, MVP).
+- **Response:** Single JSON object (no `data` envelope): `month`, `currency`, `period` (`from`, `to`, `previous_from`, `previous_to`), `overview`, `categories` (nested `subcategories`), `trends` (`categories`, `subcategories`). Percents rounded to 2 decimals; `difference_percent` may be null when previous total is zero and current is positive.
+
 ## 6. Environment Variables
 
 | Variable                | Purpose                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------- |
-| `DB_CONNECTION`         | `pgsql` — использовать PostgreSQL                                                     |
-| `DB_URL`                | Connection string к Supabase PostgreSQL (Settings → Database → URI)                   |
+| `DB_CONNECTION`         | Set to `pgsql` for PostgreSQL                                                        |
+| `DB_URL`                | Supabase Postgres connection URI (Dashboard → Database)                               |
 | `SUPABASE_URL`          | Project URL (Settings → API → Project URL)                                            |
-| `SUPABASE_ANON_KEY`     | Используется в AuthController для register/login/refresh (Supabase → anon public)     |
-| `SUPABASE_SERVICE_ROLE` | Используется в middleware и logout (валидация токена, Supabase → service_role secret) |
-| `OPENAI_API_KEY`        | OpenAI API key для AI scan                                                            |
+| `SUPABASE_ANON_KEY`     | Used by AuthController for register/login/refresh (Supabase anon public key)           |
+| `SUPABASE_SERVICE_ROLE` | Middleware + logout: JWT validation (Supabase **service_role** — never expose)      |
+| `OPENAI_API_KEY`        | OpenAI key for receipt scan                                                           |
 | `SUPABASE_STORAGE_BUCKET` | Supabase Storage bucket name (default: `receipts`)                                  |
 | `OPENAI_REQUEST_TIMEOUT`| OpenAI request timeout in seconds (default: 60)                                       |
 | `STRIPE_SECRET_KEY`     | Stripe secret key                                                                   |
@@ -755,18 +757,18 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret                                                       |
 | `STRIPE_SUCCESS_URL`    | Redirect after successful checkout; if unset, defaults to `{APP_URL}/stripe/checkout/success` (public test page) |
 | `STRIPE_CANCEL_URL`     | Redirect after canceled checkout; if unset, defaults to `{APP_URL}/stripe/checkout/cancel` (public test page)   |
-| `STRIPE_BASIC_PRICE_EUR` / `STRIPE_BASIC_PRICE_USD` | Stripe Price IDs для плана Basic (EUR / USD)                    |
-| `STRIPE_PLUS_PRICE_EUR` / `STRIPE_PLUS_PRICE_USD`   | Stripe Price IDs для плана Plus (EUR / USD)                   |
-| `STRIPE_PREMIUM_PRICE_EUR` / `STRIPE_PREMIUM_PRICE_USD` | Stripe Price IDs для плана Premium (EUR / USD)            |
-| `DISCORD_ERRORS_WEBHOOK_URL` | Ошибки / Stripe issues → `#error-logs` (fallback: `DISCORD_WEBHOOK_URL`) |
-| `DISCORD_REGISTRATIONS_WEBHOOK_URL` | Успешная регистрация → `#new-users` |
-| `DISCORD_PAYMENTS_WEBHOOK_URL` | Старт платной подписки / отмена подписки → `#payment-info` (не продления) |
-| `DISCORD_REGISTRATION_INCLUDE_EMAIL` | `true` — в сообщении о регистрации полный email; иначе только `app_user_id` + домен |
+| `STRIPE_BASIC_PRICE_EUR` / `STRIPE_BASIC_PRICE_USD` | Stripe Price IDs for **Basic** (EUR / USD)                          |
+| `STRIPE_PLUS_PRICE_EUR` / `STRIPE_PLUS_PRICE_USD`   | Stripe Price IDs for **Plus** (EUR / USD)                           |
+| `STRIPE_PREMIUM_PRICE_EUR` / `STRIPE_PREMIUM_PRICE_USD` | Stripe Price IDs for **Premium** (EUR / USD)                    |
+| `DISCORD_ERRORS_WEBHOOK_URL` | Errors / Stripe issues → `#error-logs` (fallback: `DISCORD_WEBHOOK_URL`)          |
+| `DISCORD_REGISTRATIONS_WEBHOOK_URL` | Successful sign-ups → `#new-users`                                              |
+| `DISCORD_PAYMENTS_WEBHOOK_URL` | Paid subscription start / cancel → `#payment-info` (not renewals)              |
+| `DISCORD_REGISTRATION_INCLUDE_EMAIL` | `true` — include full email in registration ping; otherwise `app_user_id` + domain only |
 
 **Supabase keys:**
 
-- `SUPABASE_ANON_KEY` — для прокси auth-запросов (signup, token)
-- `SUPABASE_SERVICE_ROLE` — для проверки JWT и logout (никогда не отдавать клиенту)
+- `SUPABASE_ANON_KEY` — proxied signup/token calls to Supabase
+- `SUPABASE_SERVICE_ROLE` — JWT validation + logout (**never ship to clients**)
 
 ## 7. MVP Scope
 

@@ -77,6 +77,27 @@ class FeatureAccessServiceTest extends TestCase
         $this->assertTrue($result->allowed);
     }
 
+    public function test_basic_plan_denied_for_analytics_dashboard(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Basic));
+
+        $result = $this->service->canAccess($user, 'analytics_dashboard');
+
+        $this->assertFalse($result->allowed);
+        $this->assertEquals('Analytics dashboard is not available on your plan.', $result->message);
+    }
+
+    public function test_plus_plan_can_access_analytics_dashboard(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+
+        $result = $this->service->canAccess($user, 'analytics_dashboard');
+
+        $this->assertTrue($result->allowed);
+    }
+
     public function test_free_plan_denied_for_csv_export(): void
     {
         $user = $this->makeAppUser();
@@ -106,6 +127,7 @@ class FeatureAccessServiceTest extends TestCase
         $this->assertTrue($this->service->canAccess($user, 'ai_scan')->allowed);
         $this->assertTrue($this->service->canAccess($user, 'recurring_expenses')->allowed);
         $this->assertTrue($this->service->canAccess($user, 'csv_export')->allowed);
+        $this->assertTrue($this->service->canAccess($user, 'analytics_dashboard')->allowed);
     }
 
     public function test_unknown_feature_is_denied(): void

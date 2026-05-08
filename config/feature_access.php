@@ -24,5 +24,13 @@ return [
                 'denied' => 'CSV export is not available on your plan.',
             ],
         ],
+        'analytics_dashboard' => [
+            'allowed_plans' => ['plus', 'premium'],
+            'requires_quota' => false,
+            'messages' => [
+                'no_subscription' => 'Analytics dashboard is not available on your plan.',
+                'denied' => 'Analytics dashboard is not available on your plan.',
+            ],
+        ],
     ],
 ];

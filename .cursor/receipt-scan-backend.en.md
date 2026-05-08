@@ -4,6 +4,8 @@
 
 Receipt scanning is **not** a separate OCR service. The backend uploads the photo to **Supabase Storage**, sends the image as **base64** to **OpenAI `gpt-4o-mini`** in **JSON mode** with a **system prompt** that includes allowed categories, then **creates an expense transaction** with line items. The user **saves edits and confirms** in one step (`PUT .../update`) before the transaction appears in the main transaction list and summaries.
 
+**Product / plans:** Free and Basic: **one** image per scan. Plus and Premium: **multiple** photos per scan (e.g. long receipts); see `docs/plans.md`. The documented HTTP shape below reflects the current **`image`** field; extend when multi-upload is implemented.
+
 ---
 
 ## API surface

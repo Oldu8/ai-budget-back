@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsDashboardController;
 use App\Http\Controllers\AppUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
@@ -52,6 +53,9 @@ Route::middleware('supabase.auth')->group(function () {
     Route::get('/transactions/summary/{category}', [TransactionSummaryController::class, 'show']);
     Route::get('/transactions/export', [ExpenseExportController::class, 'export'])
         ->middleware('feature.access:csv_export');
+
+    Route::get('/analytics/dashboard', AnalyticsDashboardController::class)
+        ->middleware('feature.access:analytics_dashboard');
 
     Route::get('/transactions', [ManualTransactionController::class, 'index']);
     Route::post('/transactions', [ManualTransactionController::class, 'store']);

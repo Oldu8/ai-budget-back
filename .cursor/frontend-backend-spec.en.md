@@ -13,8 +13,9 @@ AI Budget is a personal budget tracker:
 - Users register / log in with email + password (Supabase Auth behind an API proxy).
 - Users can:
   - create **manual transactions** (incomes / expenses),
-  - scan receipts with **AI scan** (photo → categorized items),
-  - enable / disable expense categories (via visibility tags),
+  - scan receipts with **AI scan** (photos → categorized items; Free/Basic: one image per scan; Plus/Premium: multiple — see [`docs/plans.md`](../docs/plans.md)),
+  - on **Premium**, add expenses via **voice messages** (product feature; see [`docs/plans.md`](../docs/plans.md)),
+  - enable / disable expense categories (via visibility tags; **all plans**, including Free),
   - see expense summaries by category / subcategory for a period,
   - export expenses to **CSV** (paid plans only).
 - Subscriptions and AI scan limits are managed via Stripe.
@@ -66,6 +67,7 @@ Frontend:
   - disabling = insert one row per category that has this tag;
   - enabling = delete all rows with this tag for the user.
 - All endpoints that return categories / summaries / AI results respect this table and exclude disabled categories.
+- **Plans:** category visibility is **not** paywalled — Free users can use the same visibility APIs as paid tiers.
 
 Frontend:
 
@@ -144,6 +146,7 @@ Frontend:
   - handle 403 errors:
     - `Subscription required to scan.`
     - `Scan limit reached for this billing period.`
+- Paywall / plan copy (multi-photo receipt scan, voice entry on Premium, advanced analytics without «AI insights») should match `GET /api/plans` → `description` and the matrix in [`docs/plans.md`](../docs/plans.md).
 
 ### 2.6. Stripe: Checkout, Portal, Plans
 
@@ -263,7 +266,7 @@ Frontend:
 ### 4.4. AI scan (receipt recognition)
 
 - `POST /api/transactions/scan`:
-  - multipart with `image` (jpeg/png).
+  - multipart with `image` (jpeg/png) in the current API; product target is **multiple** images per scan on Plus/Premium (see [`docs/plans.md`](../docs/plans.md), `.cursor/receipt-scan-backend.en.md`).
   - requires active subscription and free scan quota.
   - returns a draft transaction with categorized items.
 - `PUT /api/transactions/{transaction}/update`:
