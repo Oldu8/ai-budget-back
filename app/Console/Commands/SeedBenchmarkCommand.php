@@ -30,7 +30,7 @@ class SeedBenchmarkCommand extends Command
     protected $description = 'Generate benchmark dataset for EXPLAIN ANALYZE (dev only)';
 
     private const EMAIL = 'benchmark@local.test';
-    private const BG_EMAIL_PATTERN = 'bg-%d@bench.local';
+
     private const BG_EMAIL_LIKE = 'bg-%@bench.local';
 
     public function handle(): int
@@ -41,9 +41,9 @@ class SeedBenchmarkCommand extends Command
             return self::FAILURE;
         }
 
-        $count      = (int) $this->option('count');
-        $bgUsers    = (int) $this->option('background-users');
-        $txPerBg    = (int) $this->option('tx-per-bg-user');
+        $count = (int) $this->option('count');
+        $bgUsers = (int) $this->option('background-users');
+        $txPerBg = (int) $this->option('tx-per-bg-user');
 
         $this->info(sprintf(
             'benchmark:seed — main user: %s tx, background users: %s × %s tx',
@@ -74,7 +74,7 @@ class SeedBenchmarkCommand extends Command
     private function cleanUp(): void
     {
         $mainDeleted = DB::table('app_users')->where('email', self::EMAIL)->delete();
-        $bgDeleted   = DB::table('app_users')->where('email', 'like', self::BG_EMAIL_LIKE)->delete();
+        $bgDeleted = DB::table('app_users')->where('email', 'like', self::BG_EMAIL_LIKE)->delete();
 
         if ($mainDeleted || $bgDeleted) {
             $this->line("  Dropped {$mainDeleted} main + {$bgDeleted} background users (cascade).");
@@ -94,9 +94,9 @@ class SeedBenchmarkCommand extends Command
 
         $userId = DB::table('app_users')->insertGetId([
             'supabase_user_id' => (string) Str::uuid(),
-            'email'            => self::EMAIL,
-            'created_at'       => now(),
-            'updated_at'       => now(),
+            'email' => self::EMAIL,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $this->line("  Created main benchmark user id={$userId}.");
@@ -126,7 +126,7 @@ class SeedBenchmarkCommand extends Command
 
     private function insertItems(int $userId): void
     {
-        DB::statement("
+        DB::statement('
             INSERT INTO transaction_items
                 (transaction_id, category_id, amount, created_at, updated_at)
             SELECT
@@ -142,7 +142,7 @@ class SeedBenchmarkCommand extends Command
                 WHERE category_id IS NOT NULL
             ) c ON (t.id % (SELECT COUNT(*) FROM categories WHERE category_id IS NOT NULL)) = c.rn
             WHERE t.app_user_id = :user_id
-        ", ['user_id' => $userId]);
+        ', ['user_id' => $userId]);
 
         $this->line('  Inserted transaction items.');
     }
@@ -209,7 +209,7 @@ class SeedBenchmarkCommand extends Command
             ) c ON (t.id % (SELECT COUNT(*) FROM categories WHERE category_id IS NOT NULL)) = c.rn
         ");
 
-        $this->line("  Inserted background transaction items.");
+        $this->line('  Inserted background transaction items.');
 
         DB::statement('ANALYZE transactions');
         DB::statement('ANALYZE transaction_items');

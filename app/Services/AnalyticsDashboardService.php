@@ -139,11 +139,11 @@ final class AnalyticsDashboardService
         return $rows
             ->mapWithKeys(fn (object $row) => [
                 (int) $row->subcategory_id => [
-                    'amount'       => (int) $row->total,
-                    'slug'         => (string) $row->sub_slug,
-                    'label'        => (string) $row->sub_label,
-                    'parent_id'    => (int) $row->parent_id,
-                    'parent_slug'  => (string) $row->parent_slug,
+                    'amount' => (int) $row->total,
+                    'slug' => (string) $row->sub_slug,
+                    'label' => (string) $row->sub_label,
+                    'parent_id' => (int) $row->parent_id,
+                    'parent_slug' => (string) $row->parent_slug,
                     'parent_label' => (string) $row->parent_label,
                 ],
             ])
