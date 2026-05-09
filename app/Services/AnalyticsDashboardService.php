@@ -121,17 +121,9 @@ final class AnalyticsDashboardService
             ->where('type', TransactionType::Expense)
             ->join('transaction_items', 'transactions.id', '=', 'transaction_items.transaction_id')
             ->join('categories as subcat', 'transaction_items.category_id', '=', 'subcat.id')
-            ->whereNotNull('subcat.category_id')
             ->join('categories as parent', 'subcat.category_id', '=', 'parent.id')
             ->when(! empty($disabledCategoryIds), fn ($q) => $q->whereNotIn('transaction_items.category_id', $disabledCategoryIds))
-            ->groupBy(
-                'subcat.id',
-                'subcat.name',
-                'subcat.label',
-                'parent.id',
-                'parent.name',
-                'parent.label',
-            )
+            ->groupBy('subcat.id', 'parent.id')
             ->select([
                 'subcat.id as subcategory_id',
                 'subcat.name as sub_slug',
@@ -145,22 +137,16 @@ final class AnalyticsDashboardService
             ->get();
 
         return $rows
-            ->mapWithKeys(function (object $row): array {
-                /** @var array<string, mixed> $r */
-                $r = (array) $row;
-                $id = (int) $r['subcategory_id'];
-
-                return [
-                    $id => [
-                        'amount' => (int) $r['total'],
-                        'slug' => (string) $r['sub_slug'],
-                        'label' => (string) $r['sub_label'],
-                        'parent_id' => (int) $r['parent_id'],
-                        'parent_slug' => (string) $r['parent_slug'],
-                        'parent_label' => (string) $r['parent_label'],
-                    ],
-                ];
-            })
+            ->mapWithKeys(fn (object $row) => [
+                (int) $row->subcategory_id => [
+                    'amount' => (int) $row->total,
+                    'slug' => (string) $row->sub_slug,
+                    'label' => (string) $row->sub_label,
+                    'parent_id' => (int) $row->parent_id,
+                    'parent_slug' => (string) $row->parent_slug,
+                    'parent_label' => (string) $row->parent_label,
+                ],
+            ])
             ->all();
     }
 

@@ -5,6 +5,7 @@ namespace Tests;
 use App\Enums\PlanType;
 use App\Http\Middleware\SupabaseAuthViaServiceRole;
 use App\Models\AppUser;
+use App\Models\AppUserSettings;
 use App\Models\Category;
 use App\Models\Plan;
 use App\Models\Status;
@@ -55,6 +56,16 @@ abstract class TestCase extends BaseTestCase
             'price' => 0,
             'label' => $type->value,
             'check_limit' => $checkLimit,
+        ]);
+    }
+
+    protected function makeSettings(AppUser $user, string $currency = 'usd', string $language = 'en', string $timezone = 'UTC'): AppUserSettings
+    {
+        return AppUserSettings::create([
+            'app_user_id' => $user->id,
+            'currency' => $currency,
+            'language' => $language,
+            'timezone' => $timezone,
         ]);
     }
 
