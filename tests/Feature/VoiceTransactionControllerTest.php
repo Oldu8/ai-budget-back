@@ -101,4 +101,73 @@ final class VoiceTransactionControllerTest extends TestCase
         $this->assertNotNull($tx);
         $this->assertSame('voice_expense', $tx->raw_ai_data['source'] ?? null);
     }
+
+    public function test_voice_expense_returns_422_when_ai_says_not_an_expense(): void
+    {
+        $parsedJson = json_encode([
+            'is_expense' => false,
+            'message' => 'No expense detected',
+        ], JSON_THROW_ON_ERROR);
+
+        OpenAI::fake([
+            TranscriptionResponse::fake(['text' => 'the weather is nice today']),
+            CreateResponse::fake([
+                'choices' => [[
+                    'index' => 0,
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => $parsedJson,
+                        'function_call' => null,
+                        'tool_calls' => [],
+                    ],
+                    'logprobs' => null,
+                    'finish_reason' => 'stop',
+                ]],
+            ]),
+        ]);
+
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Premium, 50));
+
+        $response = $this->apiAs($user)->post('/api/transactions/voice', [
+            'audio' => UploadedFile::fake()->create('note.mp3', 100, 'audio/mpeg'),
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonFragment(['message' => 'The recording does not appear to contain an expense.']);
+    }
+
+    public function test_voice_expense_returns_422_when_ai_returns_incomplete_data(): void
+    {
+        $parsedJson = json_encode([
+            'is_expense' => true,
+        ], JSON_THROW_ON_ERROR);
+
+        OpenAI::fake([
+            TranscriptionResponse::fake(['text' => 'I spent something somewhere']),
+            CreateResponse::fake([
+                'choices' => [[
+                    'index' => 0,
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => $parsedJson,
+                        'function_call' => null,
+                        'tool_calls' => [],
+                    ],
+                    'logprobs' => null,
+                    'finish_reason' => 'stop',
+                ]],
+            ]),
+        ]);
+
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Premium, 50));
+
+        $response = $this->apiAs($user)->post('/api/transactions/voice', [
+            'audio' => UploadedFile::fake()->create('note.mp3', 100, 'audio/mpeg'),
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonFragment(['message' => 'AI returned incomplete data. Please try again.']);
+    }
 }
