@@ -205,6 +205,19 @@
       }
     },
     {
+      "name": "transactions.voice",
+      "method": "POST",
+      "path": "/api/transactions/voice",
+      "auth": "supabase",
+      "description": "Premium: voice expense entry. Multipart audio is transcribed and parsed into a draft expense (same TransactionResource as scan). Does not use AI scan quota. Requires feature voice_expense (Premium plan).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "body": {
+        "audio": "file (mp3, m4a, wav, webm, ogg, etc.; max 5 MB)"
+      }
+    },
+    {
       "name": "transactions.confirm",
       "method": "POST",
       "path": "/api/transactions/{transaction}/confirm",

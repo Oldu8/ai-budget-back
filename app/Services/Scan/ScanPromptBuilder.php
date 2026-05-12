@@ -12,7 +12,7 @@ final class ScanPromptBuilder
     {
         $categoriesJson = json_encode(
             $this->groupByParent($categories),
-            JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT,
+            JSON_UNESCAPED_UNICODE,
         );
 
         return <<<PROMPT
@@ -20,7 +20,7 @@ Analyze the image. Is it a financial document (receipt, invoice, bill, payment c
 
 If NOT: return {"is_receipt": false, "message": "reason"}
 
-If YES: extract date, total, and line items. Match each item to the best category below. If no specific subcategory fits, use the "Other" subcategory of the most relevant group. Use ONLY category_id values from this list:
+If YES: extract date, total, and line items. Match each item to the best category below. If no specific subcategory fits, use the "Other" subcategory of the most relevant group. Use ONLY category_id values from this list. Each Level 2 entry is [id, label] (integer id then display label):
 
 {$categoriesJson}
 
@@ -42,10 +42,7 @@ PROMPT;
 
         foreach ($categories as $category) {
             $parentLabel = $category->parent->label ?? 'Other';
-            $grouped[$parentLabel][] = [
-                'id' => $category->id,
-                'label' => $category->label,
-            ];
+            $grouped[$parentLabel][] = [(int) $category->id, $category->label];
         }
 
         return $grouped;
