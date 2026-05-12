@@ -34,10 +34,11 @@ return [
         ],
         'voice_expense' => [
             'allowed_plans' => ['premium'],
-            'requires_quota' => false,
+            'requires_quota' => true,
             'messages' => [
                 'no_subscription' => 'Voice expense entry is only available on Premium.',
                 'denied' => 'Voice expense entry is only available on Premium.',
+                'quota_exceeded' => 'Scan limit reached for this billing period.',
             ],
         ],
     ],

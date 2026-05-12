@@ -69,6 +69,7 @@ Config: `config/feature_access.php`. Service: `App\Services\FeatureAccessService
 | Feature (`feature`)   | Allowed plans              | Quota                                      | Denied message(s)                                                               |
 | --------------------- | -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
 | `ai_scan`             | free, basic, plus, premium | yes (`used_checks_count` vs `check_limit`) | «Subscription required to scan.» / «Scan limit reached for this billing period.» |
+| `voice_expense`       | premium                    | yes (same counter as `ai_scan`)            | «Voice expense entry is only available on Premium.» / «Scan limit reached for this billing period.» |
 | `recurring_expenses`  | plus, premium              | no                                         | «Recurring expenses are not available on your plan.»                            |
 | `analytics_dashboard` | plus, premium              | no                                         | «Analytics dashboard is not available on your plan.»                          |
 | `csv_export`          | basic, plus, premium       | no                                         | «CSV export is not available on your plan.»                                   |
@@ -104,7 +105,7 @@ Paywall plan list: `GET /api/plans` — fields: `type`, `label`, `price` (cents)
 - `payment_price_id` — nullable Stripe Price ID (may duplicate/archive linkage; checkout primarily uses env config)
 - `price` — int, cents
 - `label`, `description`
-- `check_limit` — max AI scans per billing period
+- `check_limit` — max AI **operations** per billing period (**receipt scan** and **Premium voice expense** share the same `used_checks_count` counter)
 
 Usage counter: `user_subscriptions.used_checks_count`; reset on new period is handled by Stripe webhooks (`invoice.paid`, etc. — see `backend-spec.md`).
 

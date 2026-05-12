@@ -352,7 +352,8 @@ Frontend:
 - `POST /api/transactions/voice`:
   - multipart field `audio` (common mobile formats; max 5 MB).
   - **Premium only** (`feature.access:voice_expense`). On other plans → **403** with `Voice expense entry is only available on Premium.`
-  - Does **not** consume AI receipt **scan** quota (`used_checks_count` is unchanged).
+  - **Uses the same AI scan quota** as receipt scan (`plan.check_limit` / `used_checks_count`; `scan_usage` on `/api/me` applies). When the period limit is exhausted → **403** with `Scan limit reached for this billing period.`
+  - On **successful** draft creation, `used_checks_count` is incremented once (same counter as `POST /api/transactions/scan`).
   - Transcribes audio with OpenAI, parses text into categorized line items, returns the same **`TransactionResource`** shape as receipt scan (`type: expense`, `created_by: ai`, `confirmed_at: null` until saved via `PUT /api/transactions/{transaction}/update`).
   - `raw_ai_data` includes a `source` marker (`voice_expense`), `transcript`, and parsed JSON.
   - Audio is **not** stored server-side (temporary upload only).

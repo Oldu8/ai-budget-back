@@ -9,15 +9,18 @@ use App\Http\Resources\TransactionResource;
 use App\Models\AppUser;
 use App\Models\Category;
 use App\Services\AiTransactionDraftService;
+use App\Services\FeatureAccessService;
 use App\Services\Voice\VoiceExpenseParserService;
 use App\Services\Voice\VoiceTranscriptionService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 final class VoiceTransactionController extends Controller
 {
     public function __construct(
+        private FeatureAccessService $featureAccess,
         private VoiceTranscriptionService $transcription,
         private VoiceExpenseParserService $parser,
         private AiTransactionDraftService $draftService,
@@ -29,12 +32,20 @@ final class VoiceTransactionController extends Controller
         /** @var AppUser $user */
         $user = $request->user();
 
+        $access = $this->featureAccess->canAccess($user, 'voice_expense');
+        if (! $access->allowed) {
+            return response()->json(['message' => $access->message], 403);
+        }
+        $subscription = $access->subscription;
+
         $categories = Category::leafCategoriesForUser($user);
 
         $user->loadMissing('settings');
-        $timezone = $user->settings?->timezone ?? config('app.timezone', 'UTC');
+
+        // Prefer data_get when settings row may be absent (HasOne yields null).
+        $timezone = data_get($user, 'settings.timezone') ?? config('app.timezone', 'UTC');
         $today = Carbon::now($timezone)->format('Y-m-d');
-        $currencyCode = $user->settings?->currency ?? 'USD';
+        $currencyCode = data_get($user, 'settings.currency') ?? 'USD';
 
         try {
             $transcript = $this->transcription->transcribe($file);
@@ -74,20 +85,25 @@ final class VoiceTransactionController extends Controller
             ], 422);
         }
 
-        $transaction = $this->draftService->createExpenseDraft(
-            $user,
-            [
-                'total_amount' => $aiResult['total_amount'],
-                'date' => $aiResult['date'],
-                'items' => $aiResult['items'],
-            ],
-            [
-                'source' => 'voice_expense',
-                'transcript' => $transcript,
-                'parsed' => $aiResult,
-            ],
-            null,
-        );
+        $transaction = DB::transaction(function () use ($user, $aiResult, $transcript, $subscription) {
+            $tx = $this->draftService->createExpenseDraft(
+                $user,
+                [
+                    'total_amount' => $aiResult['total_amount'],
+                    'date' => $aiResult['date'],
+                    'items' => $aiResult['items'],
+                ],
+                [
+                    'source' => 'voice_expense',
+                    'transcript' => $transcript,
+                    'parsed' => $aiResult,
+                ],
+                null,
+            );
+            $subscription->increment('used_checks_count');
+
+            return $tx;
+        });
 
         $transaction->load('items.category');
 
