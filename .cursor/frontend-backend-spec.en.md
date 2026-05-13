@@ -347,6 +347,21 @@ Frontend:
 - Build `from` / `to` from selected months (e.g. 2026-01-01…2026-02-29).
 - Perform a `GET` with `Accept: text/csv` and use platform tools to download / share / open the file.
 
+### 4.8. Voice expense entry (Premium)
+
+- `POST /api/transactions/voice`:
+  - multipart field `audio` (common mobile formats; max 5 MB).
+  - **Premium only** (`feature.access:voice_expense`). On other plans → **403** with `Voice expense entry is only available on Premium.`
+  - **Uses the same AI scan quota** as receipt scan (`plan.check_limit` / `used_checks_count`; `scan_usage` on `/api/me` applies). When the period limit is exhausted → **403** with `Scan limit reached for this billing period.`
+  - On **successful** draft creation, `used_checks_count` is incremented once (same counter as `POST /api/transactions/scan`).
+  - Transcribes audio with OpenAI, parses text into categorized line items, returns the same **`TransactionResource`** shape as receipt scan (`type: expense`, `created_by: ai`, `confirmed_at: null` until saved via `PUT /api/transactions/{transaction}/update`).
+  - `raw_ai_data` includes a `source` marker (`voice_expense`), `transcript`, and parsed JSON.
+  - Audio is **not** stored server-side (temporary upload only).
+
+Frontend:
+
+- Same post-processing as §4.4: show draft lines, let the user edit, then `PUT .../update` to confirm.
+
 ---
 
 ## 5. File map — where to look in the backend
@@ -362,6 +377,7 @@ If you need more detail:
   - `App/Http/Controllers/CategoryVisibilityController.php` — visibility tags and onboarding.
   - `App/Http/Controllers/ManualTransactionController.php` — transaction CRUD.
   - `App/Http/Controllers/ScanController.php` — AI scan and receipt update.
+  - `App/Http/Controllers/VoiceTransactionController.php` — Premium voice expense draft (`POST /api/transactions/voice`).
   - `App/Http/Controllers/TransactionSummaryController.php` — expense summaries (date range).
   - `App/Http/Controllers/AnalyticsDashboardController.php` — analytics dashboard (month, Plus/Premium).
   - `App/Http/Controllers/ExpenseExportController.php` — CSV export.

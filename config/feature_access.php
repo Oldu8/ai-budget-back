@@ -32,5 +32,14 @@ return [
                 'denied' => 'Analytics dashboard is not available on your plan.',
             ],
         ],
+        'voice_expense' => [
+            'allowed_plans' => ['premium'],
+            'requires_quota' => true,
+            'messages' => [
+                'no_subscription' => 'Voice expense entry is only available on Premium.',
+                'denied' => 'Voice expense entry is only available on Premium.',
+                'quota_exceeded' => 'Scan limit reached for this billing period.',
+            ],
+        ],
     ],
 ];

@@ -12,6 +12,7 @@ use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\TransactionSummaryController;
+use App\Http\Controllers\VoiceTransactionController;
 use App\Http\Middleware\EnsureApiKey;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +47,8 @@ Route::middleware('supabase.auth')->group(function () {
     Route::patch('/me/category-visibility', [CategoryVisibilityController::class, 'update']);
 
     Route::post('/transactions/scan', [ScanController::class, 'scan']);
+    Route::post('/transactions/voice', [VoiceTransactionController::class, 'store'])
+        ->middleware('feature.access:voice_expense');
     Route::put('/transactions/{transaction}/update', [ScanController::class, 'updateReceipt']);
     Route::get('/transactions/{transaction}/image', [ScanController::class, 'image']);
 

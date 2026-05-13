@@ -82,10 +82,7 @@ class AuthController extends Controller
             file_put_contents('php://stderr', "[Register Error] {$e->getMessage()}\n{$e->getTraceAsString()}\n");
             ErrorNotifier::notify('Register failed', $e->getMessage(), $context);
 
-            return response()->json([
-                'message' => 'Registration failed',
-                'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
+            return response()->json(['message' => 'Registration failed'], 500);
         }
     }
 

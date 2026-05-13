@@ -191,6 +191,7 @@ Mobile App                     Backend API                     Supabase
 | `DELETE` | `/api/transactions/{id}`        | Soft-delete transaction                                             |
 
 | `POST`   | `/api/transactions/scan`               | AI scan: upload image; 201 `{ "data": { ... } }` (transaction with `items[].category`) |
+| `POST`   | `/api/transactions/voice`              | **Premium** — voice expense draft: multipart `audio`; 201 same envelope as scan; `raw_ai_data` includes `source`, `transcript`, `parsed`; increments **`used_checks_count`** like receipt scan when draft is created (same plan `check_limit`); audio not persisted |
 | `PUT`    | `/api/transactions/{id}/update`        | Save edited AI receipt (`date`, `items[]` …) and **confirm** in one request; server recalculates `total_amount`, sets `confirmed_at` |
 | `GET`    | `/api/transactions/{id}/image`         | Receipt preview: `{ "url", "expires_in" }` signed URL (owner, requires `img_path`) |
 | `GET`    | `/api/plans`                           | List all plans with currency-aware pricing for frontend paywall |
@@ -668,6 +669,16 @@ On the client, map `category_id` → `category_name` (or use `name` as key). Pro
 - `app/Http/Requests/ScanRequest.php` — image validation
 
 **Between steps 10–11 and `PUT .../update`** the draft row exists in the database but does not appear in lists or aggregates. Confirmation happens in one request together with saving edits.
+
+### 5.5.1. Voice expense entry (Premium, VoiceTransactionController)
+
+**Route:** `POST /api/transactions/voice` — multipart/form-data, field `audio` (extension + MIME validation; max 5 MB). **Premium only**, **same AI scan quota** as `ai_scan` (`FeatureAccessService::canAccess($user, 'voice_expense')` with `requires_quota`: if `used_checks_count >= plan.check_limit` → 403 `Scan limit reached for this billing period.`). **After a successful draft** (same DB transaction), increment `used_checks_count`. Audio is not persisted.
+
+**Flow:** transcribe audio via OpenAI (model `config('services.openai.audio_model')`, default `whisper-1` from env `OPENAI_AUDIO_MODEL`) — file is streamed, not stored; parse transcript with GPT-4o-mini + `VoicePromptBuilder` (same category rules as scan); validate `is_expense`, `total_amount`, `date`, `items`; persist draft via `AiTransactionDraftService::createExpenseDraft` with `raw_ai_data` `{ "source": "voice_expense", "transcript", "parsed" }`; **increment `used_checks_count`** in the same DB transaction. Plan + quota: `feature.access:voice_expense` middleware and `VoiceTransactionController` both call `FeatureAccessService::canAccess($user, 'voice_expense')` before OpenAI (defence in depth). Transcription/parse failures → 503 with generic messages (no transcript in JSON errors). Not an expense / incomplete AI → 422.
+
+**Confirm:** same `PUT /api/transactions/{id}/update` as receipt drafts.
+
+**Files:** `VoiceTransactionController`, `VoiceTranscriptionService`, `VoiceExpenseParserService`, `VoicePromptBuilder`, `AiTransactionDraftService`, `VoiceTransactionRequest`, `config/feature_access.php` (`voice_expense`), `config/services.php` (`audio_model`).
 
 ### 5.6. Visibility tags and category settings
 

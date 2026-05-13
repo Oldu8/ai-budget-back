@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TransactionCreatedBy;
-use App\Enums\TransactionType;
 use App\Http\Requests\ScanRequest;
 use App\Http\Requests\UpdateReceiptTransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\AppUser;
 use App\Models\Category;
 use App\Models\Transaction;
-use App\Models\TransactionItem;
+use App\Services\AiTransactionDraftService;
 use App\Services\FeatureAccessService;
 use App\Services\ReceiptTransactionService;
 use App\Services\ScanService;
@@ -28,6 +26,7 @@ class ScanController extends Controller
         private SupabaseStorageService $storage,
         private ScanService $scanner,
         private ReceiptTransactionService $receiptTransactionService,
+        private AiTransactionDraftService $draftService,
     ) {}
 
     public function scan(ScanRequest $request): JsonResponse
@@ -88,35 +87,17 @@ class ScanController extends Controller
             ], 422);
         }
 
-        $validCategoryIds = $categories->pluck('id')->toArray();
-        $fallbackCategoryId = $categories->firstWhere('name', 'finance_other_misc')?->id;
-
-        $transaction = DB::transaction(function () use ($aiResult, $user, $imgPath, $validCategoryIds, $fallbackCategoryId, $subscription) {
-            $transaction = Transaction::create([
-                'app_user_id' => $user->id,
-                'total_amount' => (int) $aiResult['total_amount'],
-                'date' => $aiResult['date'],
-                'type' => TransactionType::Expense,
-                'created_by' => TransactionCreatedBy::Ai,
-                'confirmed_at' => null,
-                'img_path' => $imgPath,
-                'raw_ai_data' => $aiResult,
-            ]);
-
-            // TODO: Может явно выдавать ошибку, если нет категории, а не фаллбек делать
-            foreach ($aiResult['items'] as $item) {
-                $categoryId = in_array((int) ($item['category_id'] ?? 0), $validCategoryIds)
-                    ? (int) $item['category_id']
-                    : $fallbackCategoryId;
-
-                TransactionItem::create([
-                    'transaction_id' => $transaction->id,
-                    'category_id' => $categoryId,
-                    'amount' => (int) ($item['amount'] ?? 0),
-                    'label' => $item['product'] ?? null,
-                ]);
-            }
-
+        $transaction = DB::transaction(function () use ($aiResult, $user, $imgPath, $subscription) {
+            $transaction = $this->draftService->createExpenseDraft(
+                $user,
+                [
+                    'total_amount' => $aiResult['total_amount'],
+                    'date' => $aiResult['date'],
+                    'items' => $aiResult['items'],
+                ],
+                $aiResult,
+                $imgPath,
+            );
             $subscription->increment('used_checks_count');
 
             return $transaction;

@@ -205,6 +205,19 @@
       }
     },
     {
+      "name": "transactions.voice",
+      "method": "POST",
+      "path": "/api/transactions/voice",
+      "auth": "supabase",
+      "description": "Premium: voice expense entry. Multipart audio → draft expense (same TransactionResource as scan). Counts against the same AI scan quota as receipt scan (increment used_checks_count on success; 403 Scan limit reached when exhausted). Requires feature voice_expense (Premium plan).",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "body": {
+        "audio": "file (mp3, m4a, wav, webm, ogg, etc.; max 5 MB)"
+      }
+    },
+    {
       "name": "transactions.confirm",
       "method": "POST",
       "path": "/api/transactions/{transaction}/confirm",

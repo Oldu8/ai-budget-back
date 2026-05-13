@@ -128,6 +128,30 @@ class FeatureAccessServiceTest extends TestCase
         $this->assertTrue($this->service->canAccess($user, 'recurring_expenses')->allowed);
         $this->assertTrue($this->service->canAccess($user, 'csv_export')->allowed);
         $this->assertTrue($this->service->canAccess($user, 'analytics_dashboard')->allowed);
+        $this->assertTrue($this->service->canAccess($user, 'voice_expense')->allowed);
+    }
+
+    public function test_premium_voice_expense_denied_when_quota_exceeded(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Premium, checkLimit: 10);
+        $this->subscribe($user, $plan, usedChecks: 10);
+
+        $result = $this->service->canAccess($user, 'voice_expense');
+
+        $this->assertFalse($result->allowed);
+        $this->assertSame('Scan limit reached for this billing period.', $result->message);
+    }
+
+    public function test_plus_plan_denied_for_voice_expense(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+
+        $result = $this->service->canAccess($user, 'voice_expense');
+
+        $this->assertFalse($result->allowed);
+        $this->assertSame('Voice expense entry is only available on Premium.', $result->message);
     }
 
     public function test_unknown_feature_is_denied(): void
