@@ -15,7 +15,7 @@ use App\Services\Voice\VoiceTranscriptionService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final class VoiceTransactionController extends Controller
 {
@@ -49,12 +49,7 @@ final class VoiceTransactionController extends Controller
 
         try {
             $transcript = $this->transcription->transcribe($file);
-        } catch (\Throwable $e) {
-            Log::error('Voice expense transcription failed', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-
+        } catch (Throwable) {
             return response()->json([
                 'message' => 'AI transcription failed. Please try again.',
             ], 503);
@@ -62,12 +57,7 @@ final class VoiceTransactionController extends Controller
 
         try {
             $aiResult = $this->parser->parse($transcript, $categories, $today, $currencyCode);
-        } catch (\Throwable $e) {
-            Log::error('Voice expense parse failed', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-
+        } catch (Throwable) {
             return response()->json([
                 'message' => 'AI processing failed. Please try again.',
             ], 503);

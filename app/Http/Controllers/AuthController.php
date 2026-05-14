@@ -100,7 +100,6 @@ class AuthController extends Controller
 
         if ($response->failed()) {
             $message = $this->supabaseErrorMessage($response, 'Invalid credentials');
-
             return response()->json(['message' => $message], $response->status());
         }
 
@@ -176,9 +175,9 @@ class AuthController extends Controller
         $url = rtrim(config('services.supabase.url'), '/');
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.$token,
+            'Authorization' => 'Bearer ' . $token,
             'apiKey' => config('services.supabase.service_role'),
-        ])->post($url.'/auth/v1/logout');
+        ])->post($url . '/auth/v1/logout');
 
         if ($response->failed()) {
             return response()->json(['message' => 'Logout failed'], $response->status());
@@ -190,13 +189,13 @@ class AuthController extends Controller
     /** Discord #new-users — minimal PII unless DISCORD_REGISTRATION_INCLUDE_EMAIL=true */
     private function notifyDiscordRegistration(AppUser $appUser): void
     {
-        $lines = ['`app_user_id`: '.$appUser->id];
+        $lines = ['`app_user_id`: ' . $appUser->id];
         if (config('services.discord.registration_include_email')) {
             if ($appUser->email) {
                 $lines[] = $appUser->email;
             }
         } elseif ($appUser->email && str_contains($appUser->email, '@')) {
-            $lines[] = '`domain`: `@'.Str::after($appUser->email, '@').'`';
+            $lines[] = '`domain`: `@' . Str::after($appUser->email, '@') . '`';
         }
 
         DiscordNotifier::registration('New user registered', implode("\n", $lines));
@@ -209,7 +208,7 @@ class AuthController extends Controller
         return Http::withHeaders([
             'apiKey' => config('services.supabase.anon_key'),
             'Content-Type' => 'application/json',
-        ])->post($url.$path, $body);
+        ])->post($url . $path, $body);
     }
 
     /** Supabase returns msg (old API) or message (new API). Maps common codes to user-friendly text. */
