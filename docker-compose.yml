@@ -2,6 +2,8 @@ services:
   app:
     image: ai-budget-back
     build: .
+    environment:
+      CLAUDE_CODE: "1"
     ports:
       - "8080:8080"
     depends_on:

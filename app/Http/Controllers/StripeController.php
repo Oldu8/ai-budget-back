@@ -434,11 +434,42 @@ class StripeController extends Controller
         $local->load('plan');
         $planLabel = $local->plan->label ?? $local->plan->type->value ?? '?';
 
-        $local->update(['status_id' => $canceledId]);
+        // carbonFromStripeTimestamp handles null safely without extra Stripe API calls
+        $periodEnd = $this->carbonFromStripeTimestamp($subscription->current_period_end);
+
+        if ($periodEnd?->isFuture()) {
+            // Immediate cancellation — billing period hasn't ended yet.
+            // Preserve access until period end; middleware will provision free plan on next request.
+            $local->update([
+                'status_id' => $canceledId,
+                'current_period_end' => $periodEnd,
+                'cancel_at_period_end' => true,
+            ]);
+        } else {
+            // Period already ended (cancel_at_period_end portal flow) or timestamp missing.
+            // Revoke paid access immediately and provision free plan.
+            $local->update(['status_id' => $canceledId]);
+        }
 
         $user = $local->appUser;
         if ($user) {
-            $this->ensureDefaultSubscription->ensureFreeSubscription($user);
+            if ($periodEnd?->isFuture()) {
+                Log::info('Stripe: subscription.deleted — access deferred to period end', [
+                    'app_user_id' => $user->id,
+                    'current_period_end' => $periodEnd,
+                    'payment_subscription_id' => $subscription->id,
+                    'event_id' => $eventId,
+                ]);
+            } else {
+                $this->ensureDefaultSubscription->ensureFreeSubscription($user);
+                Log::info('Stripe: subscription.deleted — free plan created immediately', [
+                    'app_user_id' => $user->id,
+                    'current_period_end' => $periodEnd,
+                    'payment_subscription_id' => $subscription->id,
+                    'event_id' => $eventId,
+                ]);
+            }
+
             DiscordNotifier::payment(
                 'Subscription canceled',
                 sprintf('User `%d` — was **%s**', $user->id, $planLabel),

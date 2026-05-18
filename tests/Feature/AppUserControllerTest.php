@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Enums\PlanType;
 use App\Models\AppUserSettings;
+use App\Models\Status;
+use App\Models\UserSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -50,6 +52,56 @@ class AppUserControllerTest extends TestCase
             ->assertJsonPath('scan_usage.scans_limit', 50)
             ->assertJsonPath('scan_usage.scans_remaining', 40)
             ->assertJsonPath('subscription_status', 'active');
+    }
+
+    public function test_show_returns_canceled_within_period_subscription(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus, 50);
+        $canceledStatus = Status::firstOrCreate(['name' => 'canceled']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $canceledStatus->id,
+            'payment_subscription_id' => 'sub_show_001',
+            'current_period_end' => now()->addDays(15),
+            'cancel_at_period_end' => true,
+            'used_checks_count' => 5,
+        ]);
+
+        $response = $this->apiAs($user)->getJson('/api/me');
+
+        $response->assertOk()
+            ->assertJsonPath('subscription_status', 'canceled')
+            ->assertJsonPath('subscription.cancel_at_period_end', true)
+            ->assertJsonPath('scan_usage.scans_limit', 50)
+            ->assertJsonPath('scan_usage.scans_remaining', 45);
+
+        $this->assertNotNull($response->json('subscription'));
+        $this->assertNotNull($response->json('scan_usage.period_end'));
+    }
+
+    public function test_show_returns_null_subscription_for_canceled_past_period_user(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus, 50);
+        $canceledStatus = Status::firstOrCreate(['name' => 'canceled']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $canceledStatus->id,
+            'payment_subscription_id' => 'sub_show_002',
+            'current_period_end' => now()->subDay(),
+            'cancel_at_period_end' => true,
+            'used_checks_count' => 5,
+        ]);
+
+        $this->apiAs($user)->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('subscription', null)
+            ->assertJsonPath('subscription_status', null);
     }
 
     // ── PUT /api/me ───────────────────────────────────────────────────────────

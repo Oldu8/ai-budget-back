@@ -46,6 +46,30 @@ final class StripeControllerTest extends TestCase
             ->assertStatus(409);
     }
 
+    public function test_checkout_not_blocked_for_canceled_within_period_user(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus);
+        $canceledStatus = Status::firstOrCreate(['name' => 'canceled']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $canceledStatus->id,
+            'payment_subscription_id' => 'sub_ck_001',
+            'current_period_end' => now()->addDays(10),
+            'cancel_at_period_end' => true,
+            'used_checks_count' => 0,
+        ]);
+
+        // Clear prices so the check-wall at 409 is passed and 422 is returned instead
+        config(['services.stripe.prices' => []]);
+
+        // Must be 422 (no price configured), NOT 409 (active subscription guard)
+        $this->apiAs($user)->postJson('/api/stripe/checkout', ['plan_type' => 'basic'])
+            ->assertStatus(422);
+    }
+
     public function test_checkout_returns_422_when_no_stripe_price_configured(): void
     {
         $user = $this->makeAppUser();

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Log;
 
 /** @property \App\Models\AppUserSettings|null $settings */
 final class AppUser extends Authenticatable
@@ -58,13 +59,34 @@ final class AppUser extends Authenticatable
         return $this->hasMany(UserSubscription::class, 'app_user_id');
     }
 
-    /** Current active subscription (filters by status name 'active' or 'trialing'). */
+    /**
+     * Current active subscription.
+     * Returns active/trialing subscriptions, and also canceled subscriptions
+     * that are still within their paid billing period (current_period_end > now).
+     */
     public function activeSubscription(): ?UserSubscription
     {
-        return $this->userSubscriptions()
-            ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing']))
+        $subscription = $this->userSubscriptions()
+            ->where(fn ($q) => $q
+                ->whereHas('status', fn ($sq) => $sq->whereIn('name', ['active', 'trialing']))
+                ->orWhere(fn ($sq) => $sq
+                    ->whereHas('status', fn ($ssq) => $ssq->where('name', 'canceled'))
+                    ->where('current_period_end', '>', now())
+                )
+            )
             ->latest('current_period_end')
             ->first();
+
+        if ($subscription !== null) {
+            Log::debug('AppUser: activeSubscription resolved', [
+                'user_id' => $this->id,
+                'subscription_id' => $subscription->id,
+                'current_period_end' => $subscription->current_period_end,
+                'payment_subscription_id' => $subscription->payment_subscription_id,
+            ]);
+        }
+
+        return $subscription;
     }
 
     /** @return HasMany<Payment, $this> */

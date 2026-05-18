@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\Status;
 use App\Models\UserSubscription;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 final class EnsureDefaultSubscriptionService
 {
@@ -22,12 +23,24 @@ final class EnsureDefaultSubscriptionService
         DB::transaction(function () use ($user) {
             AppUser::whereKey($user->id)->lockForUpdate()->first();
 
+            // Also treat canceled subscriptions still within their paid period as "active"
+            // to avoid creating a premature free plan while the user still has access.
             $hasActive = UserSubscription::query()
                 ->where('app_user_id', $user->id)
-                ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing']))
+                ->where(fn ($q) => $q
+                    ->whereHas('status', fn ($sq) => $sq->whereIn('name', ['active', 'trialing']))
+                    ->orWhere(fn ($sq) => $sq
+                        ->whereHas('status', fn ($ssq) => $ssq->where('name', 'canceled'))
+                        ->where('current_period_end', '>', now())
+                    )
+                )
                 ->exists();
 
             if ($hasActive) {
+                Log::debug('EnsureDefaultSubscriptionService: user has active or within-period subscription, skipping free plan', [
+                    'user_id' => $user->id,
+                ]);
+
                 return;
             }
 
