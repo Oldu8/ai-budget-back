@@ -287,6 +287,43 @@ final class SubscriptionCancelAccessTest extends TestCase
         $this->assertSame(1, UserSubscription::where('app_user_id', $user->id)->count());
     }
 
+    /** @test */
+    public function test_active_paid_subscription_takes_priority_over_free_plan_after_resubscribe(): void
+    {
+        $statuses = $this->seedStatuses();
+        $user = $this->makeAppUser();
+        $freePlan = $this->makePlan(PlanType::Free);
+        $plusPlan = $this->makePlan(PlanType::Plus);
+
+        // Free plan exists (provisioned after previous cancellation period expired)
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $freePlan->id,
+            'status_id' => $statuses['active'],
+            'payment_subscription_id' => null,
+            'current_period_end' => null,
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        // User re-subscribes — new paid subscription created
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plusPlan->id,
+            'status_id' => $statuses['active'],
+            'payment_subscription_id' => 'sub_resubscribe_001',
+            'current_period_end' => now()->addMonth(),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $active = $user->activeSubscription();
+
+        $this->assertNotNull($active);
+        $this->assertSame('sub_resubscribe_001', $active->payment_subscription_id);
+        $this->assertSame(PlanType::Plus, $active->plan->type);
+    }
+
     // ──────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────

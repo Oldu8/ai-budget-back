@@ -73,7 +73,7 @@ final class AppUser extends Authenticatable
                     ->where('current_period_end', '>', now())
                 )
             )
-            ->latest('current_period_end')
+            ->orderByRaw('current_period_end DESC NULLS LAST')
             ->first();
 
         return $subscription;
