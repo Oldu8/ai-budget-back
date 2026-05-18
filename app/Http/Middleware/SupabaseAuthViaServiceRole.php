@@ -8,7 +8,6 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class SupabaseAuthViaServiceRole
 {
@@ -77,7 +76,6 @@ class SupabaseAuthViaServiceRole
         // Self-healing: provision free plan on first request after period expires.
         // The service is idempotent and protected by a transaction + row lock.
         if ($user->activeSubscription() === null) {
-            Log::debug('SupabaseAuth: no active subscription, ensuring free plan', ['user_id' => $user->id]);
             $this->ensureDefaultSubscription->ensureFreeSubscription($user);
         }
 

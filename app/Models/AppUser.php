@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Support\Facades\Log;
 
 /** @property \App\Models\AppUserSettings|null $settings */
 final class AppUser extends Authenticatable
@@ -76,15 +75,6 @@ final class AppUser extends Authenticatable
             )
             ->latest('current_period_end')
             ->first();
-
-        if ($subscription !== null) {
-            Log::debug('AppUser: activeSubscription resolved', [
-                'user_id' => $this->id,
-                'subscription_id' => $subscription->id,
-                'current_period_end' => $subscription->current_period_end,
-                'payment_subscription_id' => $subscription->payment_subscription_id,
-            ]);
-        }
 
         return $subscription;
     }

@@ -10,7 +10,6 @@ use App\Models\Plan;
 use App\Models\Status;
 use App\Models\UserSubscription;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class EnsureDefaultSubscriptionService
 {
@@ -37,10 +36,6 @@ final class EnsureDefaultSubscriptionService
                 ->exists();
 
             if ($hasActive) {
-                Log::debug('EnsureDefaultSubscriptionService: user has active or within-period subscription, skipping free plan', [
-                    'user_id' => $user->id,
-                ]);
-
                 return;
             }
 
