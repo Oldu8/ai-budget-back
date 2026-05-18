@@ -434,8 +434,7 @@ class StripeController extends Controller
         $local->load('plan');
         $planLabel = $local->plan->label ?? $local->plan->type->value ?? '?';
 
-        // carbonFromStripeTimestamp handles null safely without extra Stripe API calls
-        $periodEnd = $this->carbonFromStripeTimestamp($subscription->current_period_end);
+        $periodEnd = $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.deleted');
 
         if ($periodEnd?->isFuture()) {
             // Immediate cancellation — billing period hasn't ended yet.
