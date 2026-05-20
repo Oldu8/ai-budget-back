@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\AppUser;
+use App\Services\EnsureDefaultSubscriptionService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\Http;
 
 class SupabaseAuthViaServiceRole
 {
+    public function __construct(
+        private readonly EnsureDefaultSubscriptionService $ensureDefaultSubscription,
+    ) {}
+
     public function handle(Request $request, Closure $next)
     {
         $authHeader = $request->header('Authorization');
@@ -67,6 +72,12 @@ class SupabaseAuthViaServiceRole
         }
 
         Auth::setUser($user);
+
+        // Self-healing: provision free plan on first request after period expires.
+        // The service is idempotent and protected by a transaction + row lock.
+        if ($user->activeSubscription() === null) {
+            $this->ensureDefaultSubscription->ensureFreeSubscription($user);
+        }
 
         return $next($request);
     }

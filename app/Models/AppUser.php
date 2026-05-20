@@ -58,13 +58,25 @@ final class AppUser extends Authenticatable
         return $this->hasMany(UserSubscription::class, 'app_user_id');
     }
 
-    /** Current active subscription (filters by status name 'active' or 'trialing'). */
+    /**
+     * Current active subscription.
+     * Returns active/trialing subscriptions, and also canceled subscriptions
+     * that are still within their paid billing period (current_period_end > now).
+     */
     public function activeSubscription(): ?UserSubscription
     {
-        return $this->userSubscriptions()
-            ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing']))
-            ->latest('current_period_end')
+        $subscription = $this->userSubscriptions()
+            ->where(fn ($q) => $q
+                ->whereHas('status', fn ($sq) => $sq->whereIn('name', ['active', 'trialing']))
+                ->orWhere(fn ($sq) => $sq
+                    ->whereHas('status', fn ($ssq) => $ssq->where('name', 'canceled'))
+                    ->where('current_period_end', '>', now())
+                )
+            )
+            ->orderByRaw('current_period_end DESC NULLS LAST')
             ->first();
+
+        return $subscription;
     }
 
     /** @return HasMany<Payment, $this> */

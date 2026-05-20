@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\PlanType;
 use App\Models\AppUser;
+use App\Models\Status;
+use App\Models\UserSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -155,6 +158,38 @@ final class AuthControllerTest extends TestCase
         $this->postJson('/api/auth/login', ['email' => 'new@test.com', 'password' => 'password123']);
 
         $this->assertSame('new@test.com', $appUser->fresh()->email);
+    }
+
+    public function test_login_does_not_create_free_plan_for_canceled_within_period_user(): void
+    {
+        $userId = Str::uuid()->toString();
+        $user = AppUser::create(['supabase_user_id' => $userId, 'email' => 'user@test.com']);
+        $plan = $this->makePlan(PlanType::Plus);
+        $canceledStatus = Status::firstOrCreate(['name' => 'canceled']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $canceledStatus->id,
+            'payment_subscription_id' => 'sub_login_001',
+            'current_period_end' => now()->addDays(10),
+            'cancel_at_period_end' => true,
+            'used_checks_count' => 0,
+        ]);
+
+        Http::fake([
+            $this->supabaseUrl.'/auth/v1/token*' => Http::response([
+                'access_token' => 'tok',
+                'refresh_token' => 'ref',
+                'user' => ['id' => $userId, 'email' => 'user@test.com', 'email_confirmed_at' => null],
+            ], 200),
+        ]);
+
+        $this->postJson('/api/auth/login', ['email' => 'user@test.com', 'password' => 'password123'])
+            ->assertOk();
+
+        // Free plan must NOT be created — user still has paid access within the billing period
+        $this->assertSame(1, UserSubscription::where('app_user_id', $user->id)->count());
     }
 
     public function test_login_syncs_email_verified_at(): void
