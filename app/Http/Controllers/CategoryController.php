@@ -37,12 +37,16 @@ class CategoryController extends Controller
 
         $data = $categories->map(fn (Category $c) => [
             'id' => $c->id,
-            'slug' => $c->name,
+            'name' => $c->name,
             'label' => $c->label,
+            'category_id' => null,
+            'visibility_tag' => $c->visibility_tag,
             'children' => $c->children->map(fn (Category $child) => [
                 'id' => $child->id,
-                'slug' => $child->name,
+                'name' => $child->name,
                 'label' => $child->label,
+                'category_id' => $child->category_id,
+                'visibility_tag' => $child->visibility_tag,
             ])->values()->all(),
         ])->values()->all();
 

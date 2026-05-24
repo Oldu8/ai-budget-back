@@ -43,7 +43,7 @@ class ManualTransactionController extends Controller
 
         $transactions = $query->paginate($filters['per_page'] ?? 20);
 
-        return response()->json($transactions);
+        return TransactionResource::collection($transactions)->response();
     }
 
     public function store(StoreTransactionRequest $request): JsonResponse
@@ -68,7 +68,7 @@ class ManualTransactionController extends Controller
 
         $transaction->load('items.category');
 
-        return response()->json($transaction, 201);
+        return TransactionResource::make($transaction)->response()->setStatusCode(201);
     }
 
     public function show(Request $request, Transaction $transaction): JsonResponse
@@ -104,7 +104,7 @@ class ManualTransactionController extends Controller
 
         $transaction->load('items.category');
 
-        return response()->json($transaction);
+        return TransactionResource::make($transaction)->response();
     }
 
     public function destroy(Request $request, Transaction $transaction): JsonResponse

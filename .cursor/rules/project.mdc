@@ -1,5 +1,7 @@
 ---
 description: Project conventions for ai-budget-backend
+globs: ai-budget-back/**
+alwaysApply: false
 ---
 
 # ai-budget-backend
@@ -35,8 +37,8 @@ description: Project conventions for ai-budget-backend
 
 ### 6. General
 
-- Always refer to backend-spec.md for the database schema, table naming conventions, and business logic before generating any backend code.
-- When implementing new features or significant changes, update the documentation (e.g. backend-spec.md) so it stays accurate and up to date.
+- Always refer to `.cursor/frontend-backend-spec.en.md` (repo root) and `ai-budget-back/.cursor/backend-spec.md` for the database schema, table naming conventions, and business logic before generating any backend code.
+- When implementing new features or significant changes, update `ai-budget-back/.cursor/backend-spec.md` (and the root shared spec when API/domain changes affect the frontend).
 
 ### 7. COMMENTS FOR COMPLEX LOGIC
 
