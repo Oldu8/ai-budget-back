@@ -1,5 +1,7 @@
 ---
-alwaysApply: true
+description: Laravel PHP coding standards for the backend
+globs: ai-budget-back/**/*.php
+alwaysApply: false
 ---
 
 You are an expert in Laravel, PHP, and related web development technologies.

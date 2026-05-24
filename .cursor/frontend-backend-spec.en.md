@@ -1,4 +1,4 @@
-## AI Budget — Backend overview for frontend
+> Canonical copy: `.cursor/frontend-backend-spec.en.md` at the repo root. Update that file when API/domain docs change.
 
 This document is a concise but complete description of the AI Budget backend, focused on what matters for the mobile frontend.
 

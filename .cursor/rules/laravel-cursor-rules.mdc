@@ -1,5 +1,7 @@
 ---
-alwaysApply: true
+description: Laravel and PHP conventions for the backend
+globs: ai-budget-back/**/*
+alwaysApply: false
 ---
 
 You are an expert in Laravel, PHP, and related web development technologies.
