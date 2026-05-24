@@ -97,7 +97,7 @@ class TransactionSummaryController extends Controller
             $response = new CategorySummaryResponse(
                 category: [
                     'id' => $category->id,
-                    'slug' => $category->name,
+                    'name' => $category->name,
                     'label' => $category->label,
                 ],
                 from: $from,
@@ -150,7 +150,7 @@ class TransactionSummaryController extends Controller
         $response = new CategorySummaryResponse(
             category: [
                 'id' => $category->id,
-                'slug' => $category->name,
+                'name' => $category->name,
                 'label' => $category->label,
             ],
             from: $from,

@@ -5,7 +5,7 @@ namespace App\Http\Responses;
 class CategorySummaryResponse
 {
     public function __construct(
-        /** @var array{id: int, slug: string, label: string} */
+        /** @var array{id: int, name: string, label: string} */
         public readonly array $category,
         public readonly string $from,
         public readonly string $to,
