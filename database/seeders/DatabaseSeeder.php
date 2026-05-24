@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             PlanSeeder::class,
             CategorySeeder::class,
             VisibilityQuestionSeeder::class,
+            TestUsersSeeder::class,
         ]);
     }
 }
