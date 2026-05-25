@@ -74,7 +74,7 @@ class AppUserControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('subscription_status', 'canceled')
-            ->assertJsonPath('subscription.cancel_at_period_end', true)
+            ->assertJsonPath('subscription.status', 'canceled')
             ->assertJsonPath('scan_usage.scans_limit', 50)
             ->assertJsonPath('scan_usage.scans_remaining', 45);
 

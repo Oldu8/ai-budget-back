@@ -236,6 +236,7 @@ Mobile App                     Backend API                     Supabase
 
 - `POST /api/me/settings` — onboarding after registration. Creates settings once; duplicate call → 409.
 - `PUT /api/me/settings` — update existing settings.
+- Success responses (GET/POST/PUT): `{ currency, language, timezone }` only — no `id` or `app_user_id`.
 
 ### 3.6. Email Confirmation (Supabase)
 
@@ -701,11 +702,19 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 - If `used_checks_count >= plan.check_limit` → 403 with message "Scan limit reached for this billing period."
 - After successfully creating the transaction and items (inside the same DB transaction), call `$subscription->increment('used_checks_count')`.
 
-**GET /api/me response** includes subscription and scan usage so the client can show remaining scans without a separate endpoint:
+**GET /api/me response** — flat JSON (no `data` envelope). Explicit API payload only (not raw Eloquent):
 
-- **`subscription`**: The active subscription with nested `plan` (id, type, label, check_limit, etc.), plus `current_period_end`, `used_checks_count`, etc.; or `null` if the user has no active subscription. (Only subscriptions with status `active` or `trialing` are selected; see `AppUser::activeSubscription()`.)
-- **`subscription_status`**: String — the `statuses.name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no active subscription row.
-- **`scan_usage`**: Object `{ scans_remaining, scans_limit, period_end }`. If no subscription: `scans_remaining: 0`, `scans_limit: 0`, `period_end: null`. If subscription exists: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = end of current billing period (ISO 8601).
+- **User fields** (top-level): `id`, `email`, `first_name`, `last_name`, `email_verified_at` (ISO 8601 or `null`). Omits `created_at`, `updated_at`, `supabase_user_id`, `payment_customer_id`.
+- **`settings`**: `{ currency, language, timezone }` or `null` if not configured. Omits `id`, `app_user_id`.
+- **`subscription`**: Active subscription per `AppUser::activeSubscription()` (status `active`, `trialing`, or `canceled` within period), or `null`. Shape:
+  - `id`, `status` (string — same value as `subscription_status`), `used_checks_count`, `current_period_end` (ISO 8601 or `null`)
+  - `plan`: `{ type, price, check_limit, label, description }` — omits internal ids and Stripe fields
+- **`subscription_status`**: String — `statuses.name` for the subscription above; `null` if no active row.
+- **`scan_usage`**: `{ scans_remaining, scans_limit, period_end }`. If no subscription: zeros and `period_end: null`. Otherwise: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = billing period end (ISO 8601).
+
+**PUT /api/me response** — user fields only (same five fields as GET, no settings/subscription/scan_usage).
+
+**GET / POST / PUT /api/me/settings response** — `{ currency, language, timezone }` only (no `id`, `app_user_id`).
 
 ### 5.8. Stripe Integration (StripeController)
 
