@@ -28,7 +28,7 @@ AI Budget is a personal budget tracker:
 
 - Table `app_users`:
   - `id` — internal user id.
-  - `supabase_user_id` — id in Supabase Auth.
+  - `supabase_user_id` — id in Supabase Auth (**DB only; not exposed in JSON API responses**).
   - `email`, `first_name`, `last_name`.
   - `email_verified_at` — whether email is verified.
 - Table `app_user_settings` (1:1 with `app_users`):
@@ -39,6 +39,8 @@ AI Budget is a personal budget tracker:
 Frontend:
 
 - After register / login the client should create or update settings via `/api/me/settings`.
+- **`GET /api/me`** returns user fields at the top level plus `settings`, `subscription`, `subscription_status`, `scan_usage` (exact shapes in [`backend-spec.md`](./backend-spec.md) §5.7). Client consumes the payload directly without defensive parsing.
+- **`GET|POST|PUT /api/me/settings`** return `{ currency, language, timezone }` only.
 - Currency from settings is used in the UI and in CSV export.
 
 ### 2.2. Categories
@@ -137,8 +139,10 @@ Frontend:
 Frontend:
 
 - `/api/me` returns:
-  - `subscription` — the **active** subscription with nested `plan` (or `null`). Only rows whose status is `active` or `trialing` are selected. Users who completed **`POST /api/auth/register`** get a **free** subscription auto-created on register and on **successful login** (`EnsureDefaultSubscriptionService`); if data is inconsistent, `subscription` can be `null`.
-  - `subscription_status` — string, the status `name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no such subscription.
+  - **User** — `id`, `email`, `first_name`, `last_name`, `email_verified_at`
+  - **`settings`** — `{ currency, language, timezone }` or `null`
+  - `subscription` — the **active** subscription with nested `plan` (or `null`). Shape: `{ id, status, used_checks_count, current_period_end, plan: { type, price, check_limit, label, description } }`. Only rows whose status is `active` or `trialing` are selected (plus `canceled` within period). Users who completed **`POST /api/auth/register`** get a **free** subscription auto-created on register and on **successful login** (`EnsureDefaultSubscriptionService`); if data is inconsistent, `subscription` can be `null`.
+  - `subscription_status` — string, the status `name` for that subscription (typically `active` or `trialing` when `subscription` is non-null); `null` if there is no such subscription. Same value as `subscription.status` when present.
   - `scan_usage` — `{ scans_remaining, scans_limit, period_end }`. For free plan `period_end` is `null` (no expiration).
 - Use `subscription.plan.label` (and related plan fields) plus `subscription_status` for subscription UI (badges, “Manage plan” screens).
 - For AI scans the client should:
