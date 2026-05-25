@@ -17,7 +17,7 @@ use App\Http\Middleware\EnsureApiKey;
 use Illuminate\Support\Facades\Route;
 
 // Healthcheck for Railway — no session, no DB, always 200
-Route::get('/health', fn () => response('OK', 200));
+Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
 // Stripe webhook — no JWT, no API key; authenticated solely by Stripe signature
 Route::post('/stripe/webhook', [StripeController::class, 'webhook'])
