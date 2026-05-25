@@ -6,11 +6,52 @@ use App\Http\Requests\AppUserSettingsRequest;
 use App\Http\Requests\UpdateMeRequest;
 use App\Models\AppUser;
 use App\Models\AppUserSettings;
+use App\Models\UserSubscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AppUserController extends Controller
 {
+    /** @return array<string, mixed> */
+    private function userPayload(AppUser $user): array
+    {
+        return [
+            'id' => $user->id,
+            'email' => $user->email,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function settingsPayload(AppUserSettings $settings): array
+    {
+        return $settings->only(['currency', 'language', 'timezone']);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function subscriptionPayload(?UserSubscription $subscription): ?array
+    {
+        if (! $subscription || ! $subscription->relationLoaded('plan') || ! $subscription->relationLoaded('status')) {
+            return null;
+        }
+
+        return [
+            'id' => $subscription->id,
+            'status' => $subscription->status->name,
+            'used_checks_count' => $subscription->used_checks_count,
+            'current_period_end' => $subscription->current_period_end?->toIso8601String(),
+            'plan' => [
+                'type' => $subscription->plan->type->value,
+                'price' => $subscription->plan->price,
+                'check_limit' => $subscription->plan->check_limit,
+                'label' => $subscription->plan->label,
+                'description' => $subscription->plan->description ?? '',
+            ],
+        ];
+    }
+
     public function show(Request $request): JsonResponse
     {
         /** @var AppUser $user */
@@ -33,17 +74,15 @@ class AppUserController extends Controller
             ];
         }
 
-        $subscriptionPayload = null;
-        if ($subscription) {
-            $subscriptionPayload = $subscription->toArray();
-            unset($subscriptionPayload['status']);
-        }
+        $subscriptionPayload = $this->subscriptionPayload($subscription);
 
-        return response()->json(array_merge($user->toArray(), [
+        return response()->json([
+            ...$this->userPayload($user),
+            'settings' => $user->settings ? $this->settingsPayload($user->settings) : null,
             'subscription' => $subscriptionPayload,
             'subscription_status' => $subscription?->status?->name,
             'scan_usage' => $scanUsage,
-        ]));
+        ]);
     }
 
     public function update(UpdateMeRequest $request): JsonResponse
@@ -52,7 +91,7 @@ class AppUserController extends Controller
         $user = $request->user();
         $user->update($request->validated());
 
-        return response()->json($user);
+        return response()->json($this->userPayload($user->refresh()));
     }
 
     public function destroy(Request $request): JsonResponse
@@ -70,7 +109,7 @@ class AppUserController extends Controller
             return response()->json(['message' => 'Settings not configured'], 404);
         }
 
-        return response()->json($settings);
+        return response()->json($this->settingsPayload($settings));
     }
 
     public function createSettings(AppUserSettingsRequest $request): JsonResponse
@@ -87,7 +126,7 @@ class AppUserController extends Controller
             ...$request->validated(),
         ]);
 
-        return response()->json($settings, 201);
+        return response()->json($this->settingsPayload($settings), 201);
     }
 
     public function updateSettings(AppUserSettingsRequest $request): JsonResponse
@@ -105,6 +144,6 @@ class AppUserController extends Controller
 
         $settings->update($safeData);
 
-        return response()->json($settings);
+        return response()->json($this->settingsPayload($settings));
     }
 }
