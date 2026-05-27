@@ -22,12 +22,14 @@ final class UserSubscription extends Model
         'current_period_end',
         'cancel_at_period_end',
         'used_checks_count',
+        'scans_reset_at',
     ];
 
     protected $casts = [
         'trial_start' => 'datetime',
         'trial_end' => 'datetime',
         'current_period_end' => 'datetime',
+        'scans_reset_at' => 'datetime',
     ];
 
     /** PG returns 't'/'f' strings; normalize to PHP bool. */

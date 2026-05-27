@@ -18,7 +18,7 @@ class FeatureAccessServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new FeatureAccessService;
+        $this->service = $this->app->make(FeatureAccessService::class);
     }
 
     public function test_denied_when_no_subscription(): void

@@ -64,6 +64,7 @@ final class EnsureDefaultSubscriptionService
                 'status_id' => $activeStatus->id,
                 'payment_subscription_id' => null,
                 'used_checks_count' => 0,
+                'scans_reset_at' => now()->addDays(30),
                 'current_period_end' => null,
                 'cancel_at_period_end' => false,
             ]);
