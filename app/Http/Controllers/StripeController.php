@@ -333,6 +333,7 @@ class StripeController extends Controller
                 'current_period_end' => $this->resolveSubscriptionCurrentPeriodEnd($subscription, $eventId, 'customer.subscription.created'),
                 'cancel_at_period_end' => $this->stripeBool($subscription->cancel_at_period_end),
                 'used_checks_count' => 0,
+                'scans_reset_at' => now()->addDays(30),
                 'trial_start' => $this->carbonFromStripeTimestamp($subscription->trial_start),
                 'trial_end' => $this->carbonFromStripeTimestamp($subscription->trial_end),
             ],
@@ -543,7 +544,10 @@ class StripeController extends Controller
         }
 
         if ($invoice->billing_reason === 'subscription_cycle') {
-            $local->update(['used_checks_count' => 0]);
+            $local->update([
+                'used_checks_count' => 0,
+                'scans_reset_at' => now()->addDays(30),
+            ]);
         }
     }
 

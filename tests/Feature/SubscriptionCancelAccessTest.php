@@ -197,7 +197,7 @@ final class SubscriptionCancelAccessTest extends TestCase
             'used_checks_count' => 0,
         ]);
 
-        $result = (new FeatureAccessService)->canAccess($user, 'recurring_expenses');
+        $result = (new FeatureAccessService($this->app->make(\App\Services\ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
 
         $this->assertTrue($result->allowed);
     }
@@ -218,7 +218,7 @@ final class SubscriptionCancelAccessTest extends TestCase
             'used_checks_count' => 0,
         ]);
 
-        $result = (new FeatureAccessService)->canAccess($user, 'recurring_expenses');
+        $result = (new FeatureAccessService($this->app->make(\App\Services\ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
 
         $this->assertFalse($result->allowed);
     }

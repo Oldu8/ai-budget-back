@@ -376,6 +376,7 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 - `payment_subscription_id` — Stripe Subscription ID
 - `status_id` — FK to statuses
 - `used_checks_count` — incremented after each successful AI scan
+- `scans_reset_at` — next rolling quota reset for free plans (nullable; paid rows set on Stripe checkout/renewal for UI)
 - `current_period_end` — billing cycle end
 - `cancel_at_period_end` — boolean
 - Trial fields: `trial_start`, `trial_end`
@@ -694,7 +695,12 @@ On the client, map `category_id` → `category_name` (or use `name` as key). Pro
 
 ### 5.7. Scan quota (plan-based limit)
 
-Each plan defines `check_limit` (max AI scans per billing period). The count is stored in `user_subscriptions.used_checks_count` and is incremented after each successful scan (when a transaction is created); it is reset to 0 by the Stripe `invoice.paid` webhook at the start of a new billing cycle.
+Each plan defines `check_limit` (max AI scans per billing period). The count is stored in `user_subscriptions.used_checks_count` and is incremented after each successful scan (when a transaction is created).
+
+**Reset rules:**
+
+- **Free plan:** rolling 30-day reset via `ScanQuotaResetService::ensureReset()` — called lazily before quota checks (`FeatureAccessService`) and in `GET /api/me`. When `scans_reset_at` is in the past, `used_checks_count` is set to 0 and `scans_reset_at` is advanced by 30 days. New free subscriptions get `scans_reset_at = now() + 30 days` from `EnsureDefaultSubscriptionService`.
+- **Paid plans:** reset only on Stripe `invoice.paid` with `billing_reason = subscription_cycle` (and on initial paid subscription creation). `scans_reset_at` is updated alongside the counter for display in `scan_usage`.
 
 **Before calling OpenAI (in `ScanController::scan()`):**
 
@@ -710,7 +716,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
   - `id`, `status` (string — same value as `subscription_status`), `used_checks_count`, `current_period_end` (ISO 8601 or `null`)
   - `plan`: `{ type, price, check_limit, label, description }` — omits internal ids and Stripe fields
 - **`subscription_status`**: String — `statuses.name` for the subscription above; `null` if no active row.
-- **`scan_usage`**: `{ scans_remaining, scans_limit, period_end }`. If no subscription: zeros and `period_end: null`. Otherwise: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = billing period end (ISO 8601).
+- **`scan_usage`**: `{ scans_remaining, scans_limit, period_end, scans_reset_at }`. If no subscription: zeros and `period_end` / `scans_reset_at`: null. Otherwise: `scans_remaining = max(0, plan.check_limit - used_checks_count)`, `scans_limit = plan.check_limit`, `period_end` = billing period end (ISO 8601), `scans_reset_at` = next quota reset (ISO 8601 or `null`).
 
 **PUT /api/me response** — user fields only (same five fields as GET, no settings/subscription/scan_usage).
 
@@ -738,13 +744,13 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
   - `customer.subscription.created` — upserts `user_subscriptions` (plan, status, period end, usage = 0). Cancels local free subscription. With Stripe **flexible billing**, root `current_period_end` may be absent; period is read from `items.data[0].current_period_end` (and API retrieve as fallback).
   - `customer.subscription.updated` — updates status, period end, cancel_at_period_end, plan if price changed.
   - `customer.subscription.deleted` — sets status to `canceled`, creates fallback free subscription via `EnsureDefaultSubscriptionService`.
-  - `invoice.paid` — creates/updates `payments` record. Subscription id is taken from `subscription`, or `parent.subscription_details.subscription`, or line `parent.subscription_item_details.subscription` when the top-level `subscription` field is missing. Recovers subscription from `past_due`/`pending` to `active`. Resets `used_checks_count` only on renewal (`billing_reason = subscription_cycle`).
+  - `invoice.paid` — creates/updates `payments` record. Subscription id is taken from `subscription`, or `parent.subscription_details.subscription`, or line `parent.subscription_item_details.subscription` when the top-level `subscription` field is missing. Recovers subscription from `past_due`/`pending` to `active`. Resets `used_checks_count` and updates `scans_reset_at` only on renewal (`billing_reason = subscription_cycle`).
   - `invoice.payment_failed` — sets subscription status to `past_due`.
 - Missing AppUser for a customer ID is logged and reported via `ErrorNotifier`, webhook returns 200 without throwing.
 
 **Free Plan Auto-Creation** (`EnsureDefaultSubscriptionService`):
 - Called in `AuthController::register()` and **after successful** `login()` (when `AppUser` already exists).
-- Ensures every user has an active subscription. If no active subscription exists, creates a local-only free subscription (`payment_subscription_id = null`, `current_period_end = null`, `used_checks_count = 0`).
+- Ensures every user has an active subscription. If no active subscription exists, creates a local-only free subscription (`payment_subscription_id = null`, `current_period_end = null`, `used_checks_count = 0`, `scans_reset_at = now() + 30 days`).
 - Free plan is local-only — no Stripe Product/Price. When paid subscription activates, free is canceled. When paid is deleted, free is re-created with fresh usage.
 
 **Plans** (`GET /api/plans`):

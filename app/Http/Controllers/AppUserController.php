@@ -7,11 +7,15 @@ use App\Http\Requests\UpdateMeRequest;
 use App\Models\AppUser;
 use App\Models\AppUserSettings;
 use App\Models\UserSubscription;
+use App\Services\ScanQuotaResetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AppUserController extends Controller
 {
+    public function __construct(
+        private ScanQuotaResetService $scanQuotaReset,
+    ) {}
     /** @return array<string, mixed> */
     private function userPayload(AppUser $user): array
     {
@@ -63,14 +67,18 @@ class AppUserController extends Controller
             'scans_remaining' => 0,
             'scans_limit' => 0,
             'period_end' => null,
+            'scans_reset_at' => null,
         ];
         if ($subscription && $subscription->relationLoaded('plan')) {
+            $this->scanQuotaReset->ensureReset($subscription);
+
             $limit = $subscription->plan->check_limit;
             $used = $subscription->used_checks_count;
             $scanUsage = [
                 'scans_remaining' => max(0, $limit - $used),
                 'scans_limit' => $limit,
                 'period_end' => $subscription->current_period_end?->toIso8601String(),
+                'scans_reset_at' => $subscription->scans_reset_at?->toIso8601String(),
             ];
         }
 

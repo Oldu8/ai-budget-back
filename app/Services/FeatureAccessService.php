@@ -11,6 +11,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class FeatureAccessService
 {
+    public function __construct(
+        // [SOLID:D] Reset logic injected — this service only gates access
+        private ScanQuotaResetService $scanQuotaReset,
+    ) {}
+
     public function canAccess(AppUser $user, string $feature): FeatureAccessResult
     {
         $config = Config::get("feature_access.features.{$feature}");
@@ -34,6 +39,8 @@ final class FeatureAccessService
         }
 
         if (! empty($config['requires_quota'])) {
+            $this->scanQuotaReset->ensureReset($subscription);
+
             $used = $subscription->used_checks_count;
             $limit = $plan->check_limit;
             if ($used >= $limit) {
