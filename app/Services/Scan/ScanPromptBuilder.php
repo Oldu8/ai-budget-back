@@ -20,20 +20,32 @@ Analyze the image. Is it a receipt-like financial document?
 
 Acceptable sources: paper receipt, receipt photo, app screenshot (order summary, delivery, banking), email screenshot, invoice, bill, or payment confirmation — anything that shows line items with prices and a total amount.
 
-If NOT a receipt-like document: set is_receipt to false and message to a short user-facing reason. Do not invent receipt fields.
+If NOT a receipt-like document: set is_receipt to false and message to a one-sentence English reason to show the user.
 
-If YES: set is_receipt to true, then locate the total amount shown on the document — use that as total_amount. Extract the date and line items. Match each item to the best category below. If no specific subcategory fits, use the "Other" subcategory of the most relevant group. Use ONLY category_id values from this list. Each Level 2 entry is [id, label] (integer id then display label):
+If YES: set is_receipt to true, then extract:
+
+DATE — use the transaction (purchase) date, not the print or issue date. Format: YYYY-MM-DD. If unreadable, use today.
+
+TOTAL AMOUNT — use the final printed total (the "Total" or "Grand Total" line, not the subtotal). Express in smallest currency unit (e.g. 150.00 → 15000). If no total line exists, sum the item amounts.
+
+ITEMS — one entry per line item:
+  - product: item name as printed on the receipt
+  - amount: integer in smallest currency unit
+  - category_id + category_label: best match from the list below
+
+Special lines:
+  - Taxes, delivery fees, service charges → include as separate items; assign the most relevant category
+  - Discounts and promotions → ignore these lines; use the net amount actually paid for each item
+  - If line items are indistinguishable → single item with total_amount and the most relevant category
+
+CATEGORIES — the keys below (e.g. "Food", "Housing") are group names, NOT valid category_id values. Use ONLY the integer IDs from the nested [id, label] pairs. Set category_label to the label from the same pair. If no specific subcategory fits, use the "Other" subcategory of the most relevant group:
 
 {$categoriesJson}
 
-Rules for receipt responses:
-- Amounts as integers in smallest currency unit (e.g. 150.00 = 15000)
-- total_amount MUST be the total shown on the document, not a sum computed from items
-- After extracting items, verify: sum(item amounts) == total_amount
-  If they differ, re-read each item amount carefully (watch for common OCR errors: 6↔8, 1↔7, 0↔9) and adjust until the sum matches
-- If no total is shown, compute total_amount from items
-- If date unreadable, use today
-- If items indistinguishable, single item with total
+AMOUNT CONSISTENCY:
+- After extracting items verify: sum(item amounts) == total_amount
+- If they differ, re-read each item carefully (common OCR errors: 6↔8, 1↔7, 0↔9)
+- If still mismatched, proportionally scale item amounts to match — never change total_amount
 PROMPT;
     }
 
