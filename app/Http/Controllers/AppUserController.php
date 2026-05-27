@@ -16,6 +16,7 @@ class AppUserController extends Controller
     public function __construct(
         private ScanQuotaResetService $scanQuotaReset,
     ) {}
+
     /** @return array<string, mixed> */
     private function userPayload(AppUser $user): array
     {
