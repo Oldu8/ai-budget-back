@@ -71,6 +71,7 @@ class StripeController extends Controller
                 'customer' => $customerId,
                 'client_reference_id' => (string) $user->id,
                 'line_items' => [['price' => $priceId, 'quantity' => 1]],
+                'allow_promotion_codes' => true,
                 'success_url' => config('services.stripe.success_url'),
                 'cancel_url' => config('services.stripe.cancel_url'),
                 'metadata' => [
