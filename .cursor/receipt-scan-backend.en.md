@@ -2,7 +2,7 @@
 
 ## Overview
 
-Receipt scanning is **not** a separate OCR service. The backend uploads the photo to **Supabase Storage**, sends the image as **base64** to **OpenAI `gpt-4o-mini`** in **JSON mode** with a **system prompt** that includes allowed categories, then **creates an expense transaction** with line items. The user **saves edits and confirms** in one step (`PUT .../update`) before the transaction appears in the main transaction list and summaries.
+Receipt scanning is **not** a separate OCR service. The backend uploads the photo to **Supabase Storage**, sends the image as **base64** to **OpenAI `gpt-4o-mini`** with **Structured Outputs** (JSON Schema) and a **system prompt** that includes allowed categories, then **creates an expense transaction** with line items. The user **saves edits and confirms** in one step (`PUT .../update`) before the transaction appears in the main transaction list and summaries.
 
 **Product / plans:** Free and Basic: **one** image per scan. Plus and Premium: **multiple** photos per scan (e.g. long receipts); see `docs/plans.md`. The documented HTTP shape below reflects the current **`image`** field; extend when multi-upload is implemented.
 
@@ -45,17 +45,18 @@ Both routes sit behind **`supabase.auth`** (same as the rest of the authenticate
 
 4. **OpenAI call** (`ScanService::scan`)  
    - Model: **`gpt-4o-mini`**
-   - **`response_format`: JSON object**
+   - **`response_format`**: **Structured Outputs** (`type: json_schema`, `strict: true`) from `ScanResponseSchemaBuilder` — discriminated `oneOf`: not-receipt `{ is_receipt: false, message }` **or** receipt with `date`, `total_amount`, `items[]`
    - **`max_tokens`: 2048**
-   - **User message** contains one `image_url` with `data:{mime};base64,...` plus text: *"Analyze this image and return a structured JSON response."*
+   - **User message** contains one `image_url` with `data:{mime};base64,...` plus text: *"Analyze this image."*
    - **System message** is built by `ScanPromptBuilder` and embeds the **JSON of categories grouped by parent label** (`id` + `label` per subcategory).
 
 5. **AI contract (what the model is asked to return)**  
-   From `ScanPromptBuilder`:
-   - If the image is **not** a financial document → `{"is_receipt": false, "message": "reason"}`
+   Response shape is enforced by JSON Schema; prompt carries business rules:
+   - If the image is **not** a receipt-like document (no item list + total) → `{"is_receipt": false, "message": "reason"}` only (no receipt fields)
    - If it **is** → `{"is_receipt": true, "date": "YYYY-MM-DD", "total_amount": <int minor units>, "items": [...]}`
+   - Acceptable inputs: paper receipt, receipt photo, **app screenshot**, **email screenshot**, invoice, bill, payment confirmation — any image with line items, prices, and a total
    - Each item: `product`, `amount` (minor units), `category_id`, `category_label`
-   - Rules: amounts in **smallest currency unit**; **sum of item amounts = total_amount**; if date unreadable use today; if line items unclear, single item with total; **JSON only**.
+   - Rules: amounts in **smallest currency unit**; **`total_amount` must be the total shown on the document** (not computed from items); after extracting items, **verify sum(item amounts) == total_amount** and re-read amounts on mismatch (common OCR confusions: 6↔8, 1↔7, 0↔9); if no total shown, compute from items; if date unreadable use today; if line items unclear, single item with total; **JSON only**.
 
 6. **Backend handling of the AI response**
 
@@ -235,29 +236,7 @@ Use this to show remaining scans and to align with 403 messages.
     }
 ```
 
-`ScanPromptBuilder` — AI JSON contract:
-
-```16:34:app/Services/Scan/ScanPromptBuilder.php
-        return <<<PROMPT
-Analyze the image. Is it a financial document (receipt, invoice, bill, payment confirmation)?
-
-If NOT: return {"is_receipt": false, "message": "reason"}
-
-If YES: extract date, total, and line items. Match each item to the best category below. If no specific subcategory fits, use the "Other" subcategory of the most relevant group. Use ONLY category_id values from this list:
-
-{$categoriesJson}
-
-Return strict JSON:
-{"is_receipt": true, "date": "YYYY-MM-DD", "total_amount": <int cents>, "items": [{"product": "<name>", "amount": <int cents>, "category_id": <int>, "category_label": "<label>"}]}
-
-Rules:
-- Amounts as integers in smallest currency unit (e.g. 150.00 = 15000)
-- Sum of item amounts must equal total_amount
-- If date unreadable, use today
-- If items indistinguishable, single item with total
-- JSON only, no extra text
-PROMPT;
-```
+`ScanPromptBuilder` + `ScanResponseSchemaBuilder` — business rules in prompt; response shape enforced by OpenAI JSON Schema (`oneOf`: not-receipt `{ is_receipt, message }` or full receipt object). See `app/Services/Scan/ScanResponseSchemaBuilder.php` and `app/Services/Scan/ScanPromptBuilder.php`.
 
 `ScanRequest` — image rules:
 

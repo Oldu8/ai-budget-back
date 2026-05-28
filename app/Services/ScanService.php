@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\Scan\ScanPromptBuilder;
+use App\Services\Scan\ScanResponseSchemaBuilder;
 use Illuminate\Support\Collection;
 use OpenAI\Laravel\Facades\OpenAI;
 use RuntimeException;
@@ -13,13 +14,14 @@ final class ScanService
 {
     public function __construct(
         private ScanPromptBuilder $promptBuilder,
+        private ScanResponseSchemaBuilder $responseSchemaBuilder,
     ) {}
 
     public function scan(string $base64Image, string $mimeType, Collection $categories): array
     {
         $response = OpenAI::chat()->create([
             'model' => 'gpt-4o-mini',
-            'response_format' => ['type' => 'json_object'],
+            'response_format' => $this->responseSchemaBuilder->buildResponseFormat(),
             'max_tokens' => 2048,
             'messages' => [
                 [
@@ -37,7 +39,7 @@ final class ScanService
                         ],
                         [
                             'type' => 'text',
-                            'text' => 'Analyze this image and return a structured JSON response.',
+                            'text' => 'Analyze this image.',
                         ],
                     ],
                 ],

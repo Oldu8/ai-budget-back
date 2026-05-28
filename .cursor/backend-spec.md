@@ -11,7 +11,7 @@ Users can manually log income/expenses, run **AI receipt scan** (single image on
 
 - Authenticate mobile app users via Supabase Auth (JWT validation through service role)
 - Authenticate admin users via standard Laravel Auth (session-based)
-- Process receipt images using OpenAI GPT-4o-mini (JSON mode)
+- Process receipt images using OpenAI GPT-4o-mini (Structured Outputs)
 - Manage hierarchical expense/income categories
 - Handle subscription billing and AI-scan usage limits via Stripe
 - CRUD for transactions (manual + AI-created)
@@ -25,7 +25,7 @@ Users can manually log income/expenses, run **AI receipt scan** (single image on
 | ORM        | Eloquent ORM                                  |
 | Migrations | Laravel Migrations (`php artisan migrate`)    |
 | Auth       | Supabase Auth (mobile) + Laravel Auth (admin) |
-| AI         | OpenAI SDK (gpt-4o-mini, JSON mode)           |
+| AI         | OpenAI SDK (gpt-4o-mini, Structured Outputs)  |
 | Payments   | Stripe SDK (Subscriptions & Webhooks)         |
 | Storage    | Supabase Storage (receipt images)             |
 | Host       | Railway.app                                   |
@@ -627,9 +627,9 @@ On the client, map `category_id` → `category_name` (or use `name` as key). Pro
 3. Base64-encode the uploaded file (still in memory)
 4. Upload original to Supabase Storage (private bucket `receipts`, service role key, path: `{userId}/{uuid}.{ext}`)
 5. Fetch all Level 2 categories from DB that are not in the user's `app_user_category_settings` (disabled list); then with('parent').
-6. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (JSON mode)
-7. Validate AI response structure (`is_receipt`, `total_amount`, `date`, `items` must be present)
-8. If `is_receipt = false` → delete image from Storage, return 422
+6. Build prompt with categories grouped by parent (ScanPromptBuilder), send base64 image to OpenAI GPT-4o-mini (**Structured Outputs** via `ScanResponseSchemaBuilder`)
+7. Parse AI response: if `is_receipt = false` → only `{ is_receipt, message }` (no receipt fields); if `is_receipt = true` → full receipt shape enforced by JSON Schema
+8. If `is_receipt = false` → delete image from Storage, return 422 with AI `message`
 9. If AI call fails → keep image in Storage (ops); return 503 **without** `img_path` (no retry endpoint; client uploads again).
 10. If valid → in one DB transaction: create Transaction (`created_by = 'ai'`, `confirmed_at = null`, `type = expense`) + N TransactionItems, then increment `user_subscriptions.used_checks_count` for the active subscription.
 11. Return 201 with unconfirmed transaction (invisible in lists/aggregations until saved via receipt update)
@@ -639,12 +639,23 @@ On the client, map `category_id` → `category_name` (or use `name` as key). Pro
 **Key implementation details:**
 
 - **Category fallback:** if AI returns an invalid `category_id`, the item falls back to `finance_other_misc`. The prompt also instructs AI to use `*_other` subcategories when no specific match fits.
-- **Prompt (ScanPromptBuilder):** categories are passed grouped by parent label. AI must return strict JSON with amounts in smallest currency unit (cents/kopecks).
+- **Prompt (ScanPromptBuilder):** categories are passed grouped by parent label. Accepts receipt-like images (paper receipt, app/email screenshot, invoice, etc.) with line items and a total. Business rules (amounts in minor units, document total as ground truth, item sum check) stay in the prompt; response shape is enforced by OpenAI Structured Outputs (`ScanResponseSchemaBuilder`).
 - **Type is always `expense`** — hardcoded in controller, not requested from AI.
 - **Private bucket** — Supabase Storage bucket `receipts` is private. All access (upload, download, delete) uses the service role key. No public URLs, no RLS policies needed. OpenAI receives image as base64, not URL.
 - **`raw_ai_data`** stores the full OpenAI response JSON for debugging.
 
-**AI response schema (from OpenAI):**
+**AI response schema (OpenAI Structured Outputs — `oneOf`):**
+
+Not a financial document:
+
+```json
+{
+  "is_receipt": false,
+  "message": "This looks like a photo, not a receipt."
+}
+```
+
+Valid receipt:
 
 ```json
 {
@@ -667,6 +678,7 @@ On the client, map `category_id` → `category_name` (or use `name` as key). Pro
 - `app/Http/Controllers/ScanController.php` — scan(), updateReceipt(), image()
 - `app/Services/ScanService.php` — OpenAI API call orchestration
 - `app/Services/Scan/ScanPromptBuilder.php` — prompt construction and category grouping
+- `app/Services/Scan/ScanResponseSchemaBuilder.php` — OpenAI Structured Outputs JSON Schema (`oneOf`: not-receipt vs receipt)
 - `app/Services/SupabaseStorageService.php` — Supabase Storage REST API (upload, delete, signed URLs)
 - `app/Http/Requests/ScanRequest.php` — image validation
 
