@@ -25,7 +25,9 @@ php artisan key:generate
 
 Fill in the required env vars (see [Configuration](configuration.md)):
 - `DB_*` — PostgreSQL connection
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE`
+- `JWT_SECRET` — signs our access tokens (required)
+- `GOOGLE_CLIENT_IDS`, `APPLE_CLIENT_IDS` — social sign-in (optional until enabled)
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE` — Storage only
 - `OPENAI_API_KEY`
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 

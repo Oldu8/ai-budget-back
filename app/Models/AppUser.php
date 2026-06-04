@@ -17,8 +17,8 @@ final class AppUser extends Authenticatable
     protected $table = 'app_users';
 
     protected $fillable = [
-        'supabase_user_id',
         'email',
+        'password',
         'first_name',
         'last_name',
         'email_verified_at',
@@ -26,18 +26,31 @@ final class AppUser extends Authenticatable
     ];
 
     protected $hidden = [
-        'supabase_user_id',
+        'password',
         'payment_customer_id',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'password' => 'hashed',
     ];
 
     /** @return HasOne<AppUserSettings, $this> */
     public function settings(): HasOne
     {
         return $this->hasOne(AppUserSettings::class, 'app_user_id');
+    }
+
+    /** @return HasMany<AppUserIdentity, $this> */
+    public function identities(): HasMany
+    {
+        return $this->hasMany(AppUserIdentity::class, 'app_user_id');
+    }
+
+    /** @return HasMany<AppUserRefreshToken, $this> */
+    public function refreshTokens(): HasMany
+    {
+        return $this->hasMany(AppUserRefreshToken::class, 'app_user_id');
     }
 
     /** @return HasMany<Transaction, $this> */

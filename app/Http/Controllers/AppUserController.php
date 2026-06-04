@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AppUserSettingsRequest;
+use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\UpdateMeRequest;
 use App\Models\AppUser;
 use App\Models\AppUserSettings;
 use App\Models\UserSubscription;
+use App\Services\Auth\RefreshTokenStore;
 use App\Services\ScanQuotaResetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class AppUserController extends Controller
 {
@@ -26,6 +29,8 @@ class AppUserController extends Controller
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            // Lets the client hide "change password" for social-only accounts.
+            'has_password' => $user->password !== null,
         ];
     }
 
@@ -108,6 +113,34 @@ class AppUserController extends Controller
         $request->user()->delete();
 
         return response()->json(['message' => 'Account deleted'], 200);
+    }
+
+    /**
+     * Change password for a logged-in user who already has one.
+     * Social-only accounts (no password) are rejected — setting a first password is a
+     * separate, deferred flow. No email is sent here.
+     */
+    public function changePassword(ChangePasswordRequest $request, RefreshTokenStore $refreshTokens): JsonResponse
+    {
+        /** @var AppUser $user */
+        $user = $request->user();
+        $validated = $request->validated();
+
+        if ($user->password === null) {
+            return response()->json(['message' => 'No password is set for this account.'], 409);
+        }
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect.'], 422);
+        }
+
+        $user->password = $validated['new_password']; // hashed via model cast
+        $user->save();
+
+        // Log out other sessions; keep this device signed in via its presented refresh token.
+        $refreshTokens->revokeOthersForUser($user, $validated['refresh_token'] ?? null);
+
+        return response()->json(['message' => 'Password updated']);
     }
 
     public function showSettings(Request $request): JsonResponse

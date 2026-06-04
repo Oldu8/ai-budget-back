@@ -50,8 +50,29 @@ return [
     'supabase' => [
         'url' => env('SUPABASE_URL'),
         'service_role' => env('SUPABASE_SERVICE_ROLE'),
-        'anon_key' => env('SUPABASE_ANON_KEY'),
         'storage_bucket' => env('SUPABASE_STORAGE_BUCKET', 'receipts'),
+    ],
+
+    /*
+    | Own JWT auth (issued by Laravel). access = short-lived bearer; refresh = opaque DB token.
+    */
+    'jwt' => [
+        'secret' => env('JWT_SECRET'),
+        'ttl' => (int) env('JWT_TTL', 900),               // access token, seconds (default 15 min)
+        'refresh_ttl' => (int) env('JWT_REFRESH_TTL', 2592000), // refresh token, seconds (default 30 days)
+        'issuer' => env('JWT_ISSUER', env('APP_URL', 'ai-budget')),
+    ],
+
+    /*
+    | Social sign-in (native flow: client sends id_token, server verifies via JWKS).
+    | audiences = allowed `aud` client ids (iOS / Android / Web can differ → comma-separated).
+    */
+    'google' => [
+        'audiences' => array_values(array_filter(array_map('trim', explode(',', (string) env('GOOGLE_CLIENT_IDS', ''))))),
+    ],
+
+    'apple' => [
+        'audiences' => array_values(array_filter(array_map('trim', explode(',', (string) env('APPLE_CLIENT_IDS', ''))))),
     ],
 
     'openai' => [

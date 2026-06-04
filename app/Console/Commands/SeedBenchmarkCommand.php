@@ -6,7 +6,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Generates a realistic dataset for EXPLAIN ANALYZE and performance testing.
@@ -93,7 +92,6 @@ class SeedBenchmarkCommand extends Command
         }
 
         $userId = DB::table('app_users')->insertGetId([
-            'supabase_user_id' => (string) Str::uuid(),
             'email' => self::EMAIL,
             'created_at' => now(),
             'updated_at' => now(),
@@ -158,9 +156,8 @@ class SeedBenchmarkCommand extends Command
 
         // Create all background users in one INSERT … SELECT
         DB::statement("
-            INSERT INTO app_users (supabase_user_id, email, created_at, updated_at)
+            INSERT INTO app_users (email, created_at, updated_at)
             SELECT
-                gen_random_uuid(),
                 'bg-' || n || '@bench.local',
                 NOW(),
                 NOW()

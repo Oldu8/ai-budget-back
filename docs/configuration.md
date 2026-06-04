@@ -26,13 +26,22 @@ All configuration is driven by environment variables. Copy `.env.example` to `.e
 | `DB_USERNAME` | Database user |
 | `DB_PASSWORD` | Database password |
 
-### Supabase
+### Auth (our own JWT)
 
 | Variable | Description |
 |----------|-------------|
-| `SUPABASE_URL` | Your Supabase project URL (e.g. `https://xxxx.supabase.co`) |
-| `SUPABASE_ANON_KEY` | Public anon key (used by mobile client) |
-| `SUPABASE_SERVICE_ROLE` | Service role key — used server-side to validate JWT tokens |
+| `JWT_SECRET` | Secret for signing access tokens (required). Generate a long random string. |
+| `JWT_TTL` | Access token lifetime, seconds (default `900`) |
+| `JWT_REFRESH_TTL` | Refresh token lifetime, seconds (default `2592000`) |
+| `GOOGLE_CLIENT_IDS` | Comma-separated allowed Google OAuth client ids (the `aud` of the id_token) |
+| `APPLE_CLIENT_IDS` | Comma-separated allowed Apple client/bundle ids |
+
+### Supabase (Postgres + Storage only — not auth)
+
+| Variable | Description |
+|----------|-------------|
+| `SUPABASE_URL` | Your Supabase project URL (e.g. `https://xxxx.supabase.co`) — used for Storage |
+| `SUPABASE_SERVICE_ROLE` | Service role key — server-side Storage access (never expose) |
 | `SUPABASE_STORAGE_BUCKET` | Storage bucket name for receipt images (default: `receipts`) |
 
 ### OpenAI

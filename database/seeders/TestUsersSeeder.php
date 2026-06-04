@@ -18,10 +18,12 @@ use App\Models\UserSubscription;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class TestUsersSeeder extends Seeder
 {
+    /** Shared password for all seeded test users (hashed via the AppUser `password` cast). */
+    private const TEST_PASSWORD = 'password123';
+
     public function run(): void
     {
         Log::info('TestUsersSeeder: starting');
@@ -46,8 +48,8 @@ class TestUsersSeeder extends Seeder
         }
 
         $user = AppUser::create([
-            'supabase_user_id' => (string) Str::uuid(),
             'email' => $email,
+            'password' => self::TEST_PASSWORD,
         ]);
 
         AppUserSettings::create([

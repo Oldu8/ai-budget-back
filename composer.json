@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "firebase/php-jwt": "^7.0",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
         "openai-php/laravel": "^0.19.1",
