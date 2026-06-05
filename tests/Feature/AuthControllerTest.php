@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Enums\PlanType;
 use App\Models\AppUser;
+use App\Models\Status;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -41,6 +42,7 @@ final class AuthControllerTest extends TestCase
     public function test_register_provisions_free_subscription(): void
     {
         $this->makePlan(PlanType::Free);
+        Status::firstOrCreate(['name' => 'active']); // EnsureDefaultSubscriptionService needs both
 
         $this->postJson('/api/auth/register', [
             'email' => 'sub@test.com',
