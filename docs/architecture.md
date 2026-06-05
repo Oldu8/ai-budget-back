@@ -7,11 +7,11 @@
 Laravel 13 REST API with a **Layered Architecture** — HTTP, Service, and Data layers strictly separated. Controllers are thin HTTP adapters; all business logic lives in Services.
 
 ```
-Mobile App (Supabase JWT)
-    ↓ Authorization: Bearer <token>
+Mobile App (our JWT)
+    ↓ Authorization: Bearer <access_token>
 API Routes (/api/*)
     ↓
-SupabaseAuthViaServiceRole middleware → validates token, syncs AppUser
+AuthenticateAppUser middleware → verifies our JWT locally, loads AppUser by sub
     ↓
 Controllers → Services → Eloquent → PostgreSQL (Supabase)
 
@@ -29,11 +29,11 @@ The project has two completely separate authentication paths. Never mix them.
 | | Mobile API | Admin Panel |
 |---|---|---|
 | Model | `AppUser` (`app_users`) | `User` (`users`) |
-| Auth | Supabase JWT | Laravel session |
-| Middleware | `supabase.auth` | `auth` |
+| Auth | Our own JWT (email/password + Google/Apple) | Laravel session |
+| Middleware | `auth.app` | `auth` |
 | Guard | `app` | `web` |
 
-The `SupabaseAuthViaServiceRole` middleware validates the Bearer token against Supabase `/auth/v1/user`, auto-creates/syncs `AppUser` by `supabase_user_id`, and lazily provisions a free plan on first request.
+The `AuthenticateAppUser` middleware verifies our access JWT locally (signature + exp — no network call), loads the `AppUser` by the `sub` claim (rejecting missing/soft-deleted users), and lazily provisions a free plan on first request.
 
 ## Folder Structure
 
@@ -43,7 +43,7 @@ app/
 │   ├── Controllers/          # HTTP layer — validate, call service, return response
 │   │   └── Admin/            # Admin panel (Blade)
 │   ├── Middleware/
-│   │   ├── SupabaseAuthViaServiceRole.php   # JWT validation + AppUser sync
+│   │   ├── AuthenticateAppUser.php          # Our JWT validation + load AppUser
 │   │   ├── EnsureFeatureAccess.php          # Plan quota enforcement
 │   │   └── EnsureApiKey.php                 # Optional X-API-Key guard
 │   └── Requests/             # Form Requests for input validation

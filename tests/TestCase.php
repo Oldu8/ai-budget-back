@@ -3,7 +3,7 @@
 namespace Tests;
 
 use App\Enums\PlanType;
-use App\Http\Middleware\SupabaseAuthViaServiceRole;
+use App\Http\Middleware\AuthenticateAppUser;
 use App\Models\AppUser;
 use App\Models\AppUserSettings;
 use App\Models\Category;
@@ -17,20 +17,20 @@ abstract class TestCase extends BaseTestCase
 {
     /**
      * Return a test client authenticated as the given AppUser,
-     * with Supabase middleware bypassed.
+     * with the JWT auth middleware bypassed.
      */
     protected function apiAs(AppUser $user): static
     {
         return $this
-            ->withoutMiddleware(SupabaseAuthViaServiceRole::class)
+            ->withoutMiddleware(AuthenticateAppUser::class)
             ->actingAs($user, 'app');
     }
 
     protected function makeAppUser(): AppUser
     {
         return AppUser::create([
-            'supabase_user_id' => Str::uuid()->toString(),
             'email' => Str::random(8).'@test.com',
+            'password' => 'password123',
         ]);
     }
 

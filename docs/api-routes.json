@@ -1,5 +1,6 @@
 {
   "baseUrl": "/api",
+  "auth": "Laravel-issued JWT. Send `Authorization: Bearer <access_token>` on protected routes. access_token is short-lived (~15 min); refresh via /api/auth/refresh. Supabase is used only as Postgres + Storage, not for auth.",
   "commonHeaders": {
     "X-API-Key": "Required when API_SECRET is set on backend. Value = API_SECRET from env. For server-side calls (cron, webhooks) only — do not store in client apps."
   },
@@ -9,10 +10,13 @@
       "method": "POST",
       "path": "/api/auth/register",
       "auth": "public",
-      "description": "Register AppUser via Supabase Auth (proxy).",
+      "description": "Register a new AppUser locally (email + password hashed in app_users). Returns own tokens. 422 if email already registered. Throttled 5/min.",
       "body": {
         "email": "string",
-        "password": "string"
+        "password": "string (min 6)"
+      },
+      "response": {
+        "201": { "access_token": "string (JWT)", "refresh_token": "string", "expires_in": "int (seconds)", "user": "AppUser" }
       }
     },
     {
@@ -20,10 +24,29 @@
       "method": "POST",
       "path": "/api/auth/login",
       "auth": "public",
-      "description": "Log in AppUser via Supabase Auth (proxy).",
+      "description": "Log in with email + password against app_users (Hash::check). 401 on bad credentials or social-only account (no password). Throttled 5/min.",
       "body": {
         "email": "string",
         "password": "string"
+      },
+      "response": {
+        "200": { "access_token": "string (JWT)", "refresh_token": "string", "expires_in": "int", "user": "AppUser" }
+      }
+    },
+    {
+      "name": "auth.social",
+      "method": "POST",
+      "path": "/api/auth/social",
+      "auth": "public",
+      "description": "Exchange a provider id_token for our own tokens. Backend verifies the id_token signature via the provider's JWKS (aud/iss/exp), then finds/creates the AppUser and links the identity. Links to an existing email account only when the provider reports the email as verified. Throttled 5/min.",
+      "body": {
+        "provider": "string (google | apple)",
+        "id_token": "string (provider id_token)",
+        "name": "string (optional; Apple sends the full name only on first sign-in)"
+      },
+      "response": {
+        "200": { "access_token": "string (JWT)", "refresh_token": "string", "expires_in": "int", "user": "AppUser" },
+        "401": { "message": "Could not verify your sign-in. Please try again." }
       }
     },
     {
@@ -31,26 +54,29 @@
       "method": "POST",
       "path": "/api/auth/refresh",
       "auth": "public",
-      "description": "Refresh access_token using refresh_token.",
+      "description": "Rotate tokens: validates the refresh_token, revokes it, and issues a fresh access_token + refresh_token. 401 if the token is invalid, expired, or already used. Throttled 5/min.",
       "body": {
         "refresh_token": "string"
+      },
+      "response": {
+        "200": { "access_token": "string (JWT)", "refresh_token": "string", "expires_in": "int", "user": "AppUser" }
       }
     },
     {
       "name": "auth.logout",
       "method": "POST",
       "path": "/api/auth/logout",
-      "auth": "supabase",
-      "description": "Log out the current AppUser in Supabase.",
-      "headers": {
-        "Authorization": "Bearer <access_token>"
+      "auth": "public",
+      "description": "Revoke the given refresh_token server-side. Public endpoint; the access_token stays valid until it expires (stateless). Throttled 5/min.",
+      "body": {
+        "refresh_token": "string"
       }
     },
     {
       "name": "me.show",
       "method": "GET",
       "path": "/api/me",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "User profile + subscription + scan_usage.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -60,7 +86,7 @@
       "name": "me.update",
       "method": "PUT",
       "path": "/api/me",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Update profile (first_name, last_name). Validation: required, min:2, max:50, regex for Unicode letters, spaces, hyphen, apostrophe.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -71,10 +97,25 @@
       }
     },
     {
+      "name": "me.changePassword",
+      "method": "PUT",
+      "path": "/api/me/password",
+      "auth": "jwt",
+      "description": "Change password for a user who already has one. 422 if current_password is wrong or new_password is invalid (min 6, must differ). 409 for social-only accounts (no password set — setting a first password is a separate, deferred flow). Pass this device's refresh_token to keep it signed in while other sessions are revoked. No email is sent.",
+      "headers": {
+        "Authorization": "Bearer <access_token>"
+      },
+      "body": {
+        "current_password": "string",
+        "new_password": "string (min 6, different from current)",
+        "refresh_token": "string (optional; this device's token, kept alive)"
+      }
+    },
+    {
       "name": "me.destroy",
       "method": "DELETE",
       "path": "/api/me",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Soft-delete AppUser account.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -84,7 +125,7 @@
       "name": "me.settings.show",
       "method": "GET",
       "path": "/api/me/settings",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Get user settings (currency, language, timezone).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -94,7 +135,7 @@
       "name": "me.settings.create",
       "method": "POST",
       "path": "/api/me/settings",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Create settings (onboarding). Returns 409 if settings already exist. currency/language/timezone — Rule::in against allowed lists.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -109,7 +150,7 @@
       "name": "me.settings.update",
       "method": "PUT",
       "path": "/api/me/settings",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Update existing settings. Fields optional (sometimes) — partial updates allowed.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -124,7 +165,7 @@
       "name": "categories.index",
       "method": "GET",
       "path": "/api/categories",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "List categories and subcategories; excludes user-disabled categories.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -137,7 +178,7 @@
       "name": "funnel.visibilityQuestions",
       "method": "GET",
       "path": "/api/funnel/visibility-questions",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Onboarding funnel questions. Backend returns structure; frontend translates via i18n: t(translation_key + '.title'), t(translation_key + '.description').",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -158,7 +199,7 @@
       "name": "visibilityTags.index",
       "method": "GET",
       "path": "/api/visibility-tags",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "List visibility tags with enabled and translation_key for the current user. Frontend: t(translation_key) for toggle labels.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -177,7 +218,7 @@
       "name": "me.categoryVisibility.update",
       "method": "PATCH",
       "path": "/api/me/category-visibility",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Enable/disable category sets by visibility_tag. enabled: false — inserts rows into app_user_category_settings; enabled: true — deletes them. 422 if no categories exist for the tag (run php artisan categories:seed).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -195,7 +236,7 @@
       "name": "transactions.scan",
       "method": "POST",
       "path": "/api/transactions/scan",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "AI receipt scan: upload image, returns proposed transaction. Requires active subscription and available scan quota.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -208,7 +249,7 @@
       "name": "transactions.voice",
       "method": "POST",
       "path": "/api/transactions/voice",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Premium: voice expense entry. Multipart audio → draft expense (same TransactionResource as scan). Counts against the same AI scan quota as receipt scan (increment used_checks_count on success; 403 Scan limit reached when exhausted). Requires feature voice_expense (Premium plan).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -221,7 +262,7 @@
       "name": "transactions.confirm",
       "method": "POST",
       "path": "/api/transactions/{transaction}/confirm",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Confirm AI-generated transaction (makes it visible in lists and summaries).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -231,7 +272,7 @@
       "name": "transactions.index",
       "method": "GET",
       "path": "/api/transactions",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "List confirmed transactions for the current user (pagination and filters).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -247,7 +288,7 @@
       "name": "transactions.store",
       "method": "POST",
       "path": "/api/transactions",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Create manual transaction (1 transaction + 1 item).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -263,7 +304,7 @@
       "name": "transactions.show",
       "method": "GET",
       "path": "/api/transactions/{transaction}",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Get a single transaction by id for the current user.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -273,7 +314,7 @@
       "name": "transactions.update",
       "method": "PUT",
       "path": "/api/transactions/{transaction}",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Update manual transaction (total_amount/date/type/category).",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -283,7 +324,7 @@
       "name": "transactions.destroy",
       "method": "DELETE",
       "path": "/api/transactions/{transaction}",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Soft-delete transaction for the current user.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -293,7 +334,7 @@
       "name": "transactions.summary.index",
       "method": "GET",
       "path": "/api/transactions/summary",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Expense summary by Level 1 categories for date range.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -307,7 +348,7 @@
       "name": "transactions.summary.show",
       "method": "GET",
       "path": "/api/transactions/summary/{category}",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Expense summary by subcategories for the selected category over date range.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -321,7 +362,7 @@
       "name": "transactions.export",
       "method": "GET",
       "path": "/api/transactions/export",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "CSV export of expenses for date range. Basic/Plus/Premium only.",
       "headers": {
         "Authorization": "Bearer <access_token>"
@@ -337,7 +378,7 @@
       "name": "analytics.dashboard",
       "method": "GET",
       "path": "/api/analytics/dashboard",
-      "auth": "supabase",
+      "auth": "jwt",
       "description": "Analytics for a calendar month (confirmed expenses, minor units). Plus/Premium only.",
       "headers": {
         "Authorization": "Bearer <access_token>"

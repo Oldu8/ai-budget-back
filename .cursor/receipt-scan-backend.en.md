@@ -16,7 +16,7 @@ Receipt scanning is **not** a separate OCR service. The backend uploads the phot
 | `PUT` | `/api/transactions/{transaction}/update` | Save `date` + `items[]` (sync lines, recalc total); first save on a draft sets `confirmed_at`; edits to confirmed transactions keep existing `confirmed_at` |
 | `GET` | `/api/transactions/{transaction}/image` | Signed URL JSON for receipt preview |
 
-Both routes sit behind **`supabase.auth`** (same as the rest of the authenticated API).
+Both routes sit behind **`auth.app`** (same as the rest of the authenticated API).
 
 ### Scan request
 

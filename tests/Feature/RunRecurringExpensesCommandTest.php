@@ -168,7 +168,6 @@ class RunRecurringExpensesCommandTest extends TestCase
     private function makePlusUser(): AppUser
     {
         $user = AppUser::create([
-            'supabase_user_id' => Str::uuid()->toString(),
             'email' => Str::random(8).'@test.com',
         ]);
 
@@ -196,7 +195,6 @@ class RunRecurringExpensesCommandTest extends TestCase
     private function makeFreeUser(): AppUser
     {
         $user = AppUser::create([
-            'supabase_user_id' => Str::uuid()->toString(),
             'email' => Str::random(8).'@test.com',
         ]);
 

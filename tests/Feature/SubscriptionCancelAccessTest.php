@@ -9,7 +9,6 @@ use App\Models\Status;
 use App\Models\UserSubscription;
 use App\Services\FeatureAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Stripe\ApiRequestor;
 use Tests\Support\StripePayloadBuilder;
 use Tests\TestCase;
@@ -233,16 +232,9 @@ final class SubscriptionCancelAccessTest extends TestCase
         $this->makePlan(PlanType::Free);
         Status::firstOrCreate(['name' => 'active']);
 
-        $supabaseUrl = rtrim(config('services.supabase.url'), '/');
-        Http::fake([
-            $supabaseUrl.'/auth/v1/user' => Http::response([
-                'id' => $user->supabase_user_id,
-                'email' => $user->email,
-                'email_confirmed_at' => now()->toIso8601String(),
-            ], 200),
-        ]);
+        $token = app(\App\Services\Auth\JwtTokenIssuer::class)->issue($user);
 
-        $this->withHeaders(['Authorization' => 'Bearer test-token'])
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])
             ->getJson('/api/me')
             ->assertOk();
 
@@ -270,16 +262,9 @@ final class SubscriptionCancelAccessTest extends TestCase
             'used_checks_count' => 0,
         ]);
 
-        $supabaseUrl = rtrim(config('services.supabase.url'), '/');
-        Http::fake([
-            $supabaseUrl.'/auth/v1/user' => Http::response([
-                'id' => $user->supabase_user_id,
-                'email' => $user->email,
-                'email_confirmed_at' => now()->toIso8601String(),
-            ], 200),
-        ]);
+        $token = app(\App\Services\Auth\JwtTokenIssuer::class)->issue($user);
 
-        $this->withHeaders(['Authorization' => 'Bearer test-token'])
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])
             ->getJson('/api/me')
             ->assertOk();
 

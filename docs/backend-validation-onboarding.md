@@ -6,9 +6,9 @@ Reference for onboarding-related validation. The production app implements these
 
 Not FormRequest validation — **business rule** documented for frontend/backends in sync:
 
-- After Supabase `grant_type=password` succeeds, the backend **must** find an existing `AppUser` with the same `supabase_user_id` (row created by `POST /api/auth/register`).
-- If no row exists → **401** JSON: `message` e.g. `This email is not registered. Please sign up before signing in.` — **do not** issue tokens or create `app_users` in the login handler.
-- **Middleware** `supabase.auth` may still use `firstOrCreate` on protected routes when a valid JWT is presented (see `.cursor/backend-spec.md` §3).
+- The backend finds the `AppUser` by email and verifies the password with `Hash::check`.
+- If the email is unknown, the password is wrong, or the account is social-only (no password) → **401** JSON `message` e.g. `Invalid email or password.` — no tokens issued.
+- The `auth.app` middleware only verifies our JWT and loads the user by `sub`; it never creates users (see `.cursor/backend-spec.md` §3).
 
 ## PUT /api/me (Profile Update)
 

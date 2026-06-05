@@ -20,7 +20,9 @@ Railway runs the app from the `Dockerfile` (multi-stage: Node/Vite → Composer 
    | `APP_URL` | ✅ Full URL, no trailing slash |
    | `DB_CONNECTION=pgsql` | ✅ |
    | `DB_URL` | ✅ Supabase connection string |
-   | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE` | ✅ |
+   | `JWT_SECRET` | ✅ Signs access tokens |
+   | `GOOGLE_CLIENT_IDS`, `APPLE_CLIENT_IDS` | For social sign-in |
+   | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE` | ✅ Storage only |
    | `OPENAI_API_KEY` | ✅ |
    | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | ✅ |
    | `ADMIN_PASSWORD` | ✅ |

@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'supabase.auth' => \App\Http\Middleware\SupabaseAuthViaServiceRole::class,
+            'auth.app' => \App\Http\Middleware\AuthenticateAppUser::class,
             'feature.access' => \App\Http\Middleware\EnsureFeatureAccess::class,
             'api.key' => \App\Http\Middleware\EnsureApiKey::class,
         ]);

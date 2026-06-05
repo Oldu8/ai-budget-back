@@ -34,7 +34,7 @@ class AppUserSettingsRequest extends FormRequest
 
     private function allowedCurrencies(): array
     {
-        return ['USD', 'EUR', 'GBP', 'UAH', 'PLN', 'CHF', 'CAD', 'AUD', 'JPY', 'CNY', 'RUB', 'MXN', 'INR', 'BRL'];
+        return ['USD', 'EUR', 'UAH', 'PLN'];
     }
 
     private function allowedLanguages(): array

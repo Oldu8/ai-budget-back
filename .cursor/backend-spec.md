@@ -9,7 +9,7 @@ Users can manually log income/expenses, run **AI receipt scan** (single image on
 
 ### Core Responsibilities
 
-- Authenticate mobile app users via Supabase Auth (JWT validation through service role)
+- Authenticate mobile app users with our own Laravel-issued JWT (email/password + Google/Apple)
 - Authenticate admin users via standard Laravel Auth (session-based)
 - Process receipt images using OpenAI GPT-4o-mini (Structured Outputs)
 - Manage hierarchical expense/income categories
@@ -24,7 +24,7 @@ Users can manually log income/expenses, run **AI receipt scan** (single image on
 | Database   | PostgreSQL (managed via Supabase)             |
 | ORM        | Eloquent ORM                                  |
 | Migrations | Laravel Migrations (`php artisan migrate`)    |
-| Auth       | Supabase Auth (mobile) + Laravel Auth (admin) |
+| Auth       | Laravel-issued JWT (mobile) + Laravel Auth (admin) |
 | AI         | OpenAI SDK (gpt-4o-mini, Structured Outputs)  |
 | Payments   | Stripe SDK (Subscriptions & Webhooks)         |
 | Storage    | Supabase Storage (receipt images)             |
@@ -38,9 +38,9 @@ The system has two separate user entities with different auth mechanisms:
 
 **AppUser (`app_users`)** — Mobile application users.
 
-- Authenticated via Supabase Auth (JWT tokens)
-- Custom middleware `supabase.auth` validates token against Supabase `/auth/v1/user`
-- **Normal lifecycle:** row is created in `POST /api/auth/register` after Supabase signup. **`POST /api/auth/login` does not create** a missing row — if Supabase accepts the password but no `AppUser` exists yet, the API returns **401** (user must register via the backend first). The `supabase.auth` middleware still **syncs** `AppUser` with `firstOrCreate` when a valid JWT hits a protected route (edge cases, e.g. tokens issued outside this API).
+- Authenticated via our **own Laravel-issued JWT** (no Supabase Auth). The `auth.app` middleware verifies the JWT locally (signature + exp) and loads the `AppUser` by `sub`.
+- **Lifecycle:** the row is created on `POST /api/auth/register` (email + password hashed in `app_users`) or on first social sign-in (`POST /api/auth/social`). There is no Supabase round-trip and no `firstOrCreate` in the middleware.
+- Credentials live in `app_users.password` (bcrypt). Social-only accounts have `password = null`.
 - Used for: transactions, subscriptions, payments, AI features
 - Model: `App\Models\AppUser` (extends Authenticatable)
 
@@ -58,112 +58,80 @@ The system has two separate user entities with different auth mechanisms:
 | `web` | session | `users`     | Admin panel     |
 | `app` | session | `app_users` | Mobile (backup) |
 
-Mobile API routes use the `supabase.auth` middleware (not Laravel guards).
+Mobile API routes use the `auth.app` middleware (not Laravel guards).
 
-### 3.3. AppUser Auth Flow (Backend Proxy)
+### 3.3. AppUser Auth Flow (Laravel-issued JWT)
 
-All auth goes through the backend. The client never talks to Supabase directly.
-Backend proxies requests to Supabase Auth API and returns tokens to the client.
+All authentication lives in Laravel. We issue our **own** tokens for every path:
 
-**Registration:**
+- **access_token** — short-lived JWT (HS256, `sub = app_user.id`, default ~15 min). Sent as `Authorization: Bearer <token>` on protected routes; verified locally (no DB/network round-trip).
+- **refresh_token** — opaque random string stored only as a sha256 hash in `app_user_refresh_tokens`. Rotated on every use and revocable (logout, password change).
 
-```
-Mobile App                     Backend API                     Supabase
-    |                              |                               |
-    |-- POST /api/auth/register -->|                               |
-    |   { email, password }        |                               |
-    |                              |-- POST /auth/v1/signup -----> |
-    |                              |   apiKey: SUPABASE_ANON_KEY   |
-    |                              |<-- { user, access_token } --- |
-    |                              |                               |
-    |                              |   Ensures AppUser for supabase_user_id |
-    |                              |   (new row in app_users if needed)    |
-    |                              |                               |
-    |<-- 201 --------------------- |                               |
-    |   { access_token,            |                               |
-    |     refresh_token,           |                               |
-    |     user }                   |                               |
-```
+Supabase is used only as Postgres + Storage; Supabase Auth is not involved.
 
-1. Client sends `POST /api/auth/register` with `{ email, password }`
-2. Backend validates input, sends signup request to Supabase Auth API
-3. Supabase creates the auth user, returns JWT tokens
-4. Backend creates or finds `AppUser` via `firstOrCreate(supabase_user_id)`, runs `EnsureDefaultSubscriptionService`, registration notifications
-5. Backend returns `access_token`, `refresh_token`, and user profile to client
-
-**Login:**
+**Email / password (register, login):**
 
 ```
-Mobile App                     Backend API                     Supabase
-    |                              |                               |
-    |-- POST /api/auth/login ----> |                               |
-    |   { email, password }        |                               |
-    |                              |-- POST /auth/v1/token ------> |
-    |                              |   ?grant_type=password        |
-    |                              |<-- { user, access_token } --- |
-    |                              |                               |
-    |                              |   Load AppUser by supabase_user_id |
-    |                              |   (must exist — no login-time create) |
-    |                              |                               |
-    |<-- 200 --------------------- |                               |
-    |   { access_token,            |                               |
-    |     refresh_token,           |                               |
-    |     user + settings }        |                               |
+Mobile App                          Backend API                         Postgres
+    |                                   |                                   |
+    |-- POST /api/auth/register ------->|                                   |
+    |   { email, password }             |-- create app_users (Hash::make) ->|
+    |                                   |   ensure free subscription        |
+    |<-- 201 { access_token,            |                                   |
+    |          refresh_token,           |                                   |
+    |          expires_in, user } ------|                                   |
+    |                                   |                                   |
+    |-- POST /api/auth/login ---------->|                                   |
+    |   { email, password }             |-- find by email + Hash::check --->|
+    |<-- 200 { access_token, refresh_token, expires_in, user }              |
 ```
 
-1. Client sends `POST /api/auth/login` with `{ email, password }`
-2. Backend sends credentials to Supabase `/auth/v1/token?grant_type=password`
-3. Supabase validates credentials, returns JWT tokens
-4. Backend **requires** an existing `AppUser` with the same `supabase_user_id` (created via `POST /api/auth/register`). If missing → **401** JSON: `This email is not registered. Please sign up before signing in.` (no tokens issued for app provisioning via login alone)
-5. Backend syncs email / `email_verified_at` from Supabase, runs `EnsureDefaultSubscriptionService`, loads settings
-6. Backend returns tokens + user profile to client
+- `register`: validates input, creates the `AppUser` with a hashed password (model cast `password => hashed`), provisions the free plan, sends the registration notification, returns tokens. **422** if the email is already registered.
+- `login`: finds the `AppUser` by email and verifies with `Hash::check`. **401** on bad credentials or for a social-only account (password is `null`).
 
-**Token refresh:**
+**Social (Google / Apple):**
 
 ```
-Mobile App                     Backend API                     Supabase
-    |                              |                               |
-    |-- POST /api/auth/refresh --> |                               |
-    |   { refresh_token }          |-- POST /auth/v1/token ------> |
-    |                              |   ?grant_type=refresh_token   |
-    |                              |<-- { new tokens } ----------- |
-    |<-- { access_token,           |                               |
-    |      refresh_token } ------- |                               |
+Mobile App            Provider SDK          Backend API                 Provider JWKS
+    |  native sign-in -->  |                    |                            |
+    |<-- id_token -------- |                    |                            |
+    |-- POST /api/auth/social { provider, id_token, name? } -->|             |
+    |                                           |-- verify id_token (aud/iss/exp) -->|
+    |                                           |   find/create AppUser, link identity
+    |<-- 200 { access_token, refresh_token, expires_in, user } |            |
 ```
 
-**Logout:**
+- The client obtains an `id_token` from the native Google/Apple SDK and posts it. The backend verifies its signature against the provider's published JWKS and checks `aud` / `iss` / `exp`.
+- User resolution: by linked identity (`app_user_identities`) → by **verified** email → otherwise create. Linking to an existing email account happens **only** when the provider reports the email as verified (prevents account takeover via an unverified email).
 
-```
-Mobile App                     Backend API                     Supabase
-    |                              |                               |
-    |-- POST /api/auth/logout ---> |                               |
-    |   Authorization: Bearer <t>  |-- POST /auth/v1/logout -----> |
-    |<-- { message: "Logged out" } |                               |
-```
+**Token refresh / logout:**
+
+- `POST /api/auth/refresh { refresh_token }` → validates + rotates: the presented token is revoked and a fresh `access_token` + `refresh_token` are returned. **401** if invalid, expired, or already used.
+- `POST /api/auth/logout { refresh_token }` → revokes that refresh token. The access_token remains valid until it expires (stateless).
+
+**Change password:** `PUT /api/me/password` (protected). Verifies `current_password`, sets the new one, and revokes other sessions (the current device's `refresh_token`, if supplied, is kept). **409** for social-only accounts. No email is sent. Password reset by email and "set password" for social users are deferred.
 
 **Key points:**
 
-- Client stores `access_token` and `refresh_token` locally (e.g. SecureStorage)
-- `access_token` is sent as `Authorization: Bearer <token>` on all protected routes
-- When `access_token` expires → client calls `/api/auth/refresh` with `refresh_token`
-- Auth routes (`/api/auth/*`) are public — no middleware required
-- Protected routes (`/api/me/*`) use `supabase.auth` middleware that validates the token
-- `supabase_user_id` is the bridge between Supabase Auth and `app_users` table
-- **Login vs orphans:** Supabase may have an auth user (e.g. old test) without an `app_user` row. `POST /api/auth/login` then returns **401** so the app cannot “bootstrap” an account through login alone. **`supabase.auth` middleware** still uses `firstOrCreate` when a valid JWT reaches a protected route — operators should treat out-of-band Supabase users separately if that must be disabled.
-- Sensitive fields (`supabase_user_id`, `payment_customer_id`) are hidden from JSON responses
+- Client stores `access_token` and `refresh_token` locally (e.g. SecureStorage).
+- When `access_token` expires → client calls `/api/auth/refresh`.
+- Auth routes (`/api/auth/*`) are public and throttled (5/min).
+- Protected routes use the `auth.app` middleware, which verifies our JWT and loads the `AppUser` by `sub`. A token for a missing/soft-deleted user → **401**.
+- Sensitive fields (`password`, `payment_customer_id`) are hidden from JSON responses.
 
 ### 3.4. API Routes
 
 **Public (no auth required):**
 
-| Method | Route                | Action            | Body                     |
-| ------ | -------------------- | ----------------- | ------------------------ |
-| `POST` | `/api/auth/register` | Register new user | `{ email, password }`    |
-| `POST` | `/api/auth/login`    | Login             | `{ email, password }`    |
-| `POST` | `/api/auth/refresh`  | Refresh tokens    | `{ refresh_token }`      |
-| `POST` | `/api/auth/logout`   | Logout            | Header: `Bearer <token>` |
+| Method | Route                | Action            | Body                                  |
+| ------ | -------------------- | ----------------- | ------------------------------------- |
+| `POST` | `/api/auth/register` | Register new user | `{ email, password }`                 |
+| `POST` | `/api/auth/login`    | Login             | `{ email, password }`                 |
+| `POST` | `/api/auth/social`   | Social sign-in    | `{ provider, id_token, name? }`       |
+| `POST` | `/api/auth/refresh`  | Refresh tokens    | `{ refresh_token }`                   |
+| `POST` | `/api/auth/logout`   | Logout            | `{ refresh_token }`                   |
 
-**`POST /api/auth/login` responses:** **200** when Supabase password grant succeeds **and** a local `AppUser` exists for that `supabase_user_id`. **401** for invalid Supabase credentials **or** when the Supabase user exists but **no `AppUser` row** yet — client must call `POST /api/auth/register` first (login no longer creates `app_users`).
+All `/api/auth/*` routes are throttled (5/min) and return `{ access_token, refresh_token, expires_in, user }` (except `logout`). **`POST /api/auth/login`** returns **401** for an unknown email, a wrong password, or a social-only account (no password set).
 
 **Protected (requires `Authorization: Bearer <token>`):**
 
@@ -171,6 +139,7 @@ Mobile App                     Backend API                     Supabase
 | -------- | ------------------ | ---------------------------- |
 | `GET`    | `/api/me`          | Get profile, settings, subscription, `subscription_status`, and scan_usage (scans remaining/limit, period_end) |
 | `PUT`    | `/api/me`          | Update profile               |
+| `PUT`    | `/api/me/password` | Change password (`{ current_password, new_password, refresh_token? }`); 409 for social-only accounts |
 | `DELETE` | `/api/me`          | Soft-delete account          |
 | `GET`    | `/api/me/settings` | Get user settings            |
 | `POST`   | `/api/me/settings` | Create settings (onboarding) |
@@ -267,13 +236,17 @@ Email confirmation is handled entirely by Supabase. The backend does not expose 
 
 ### 4.1. Users & Settings
 
-**app_users** — mobile user profile linked to Supabase Auth and Stripe.
+**app_users** — mobile user profile (local auth) and Stripe link.
 
-- `supabase_user_id` (uuid, unique) — link to Supabase Auth
 - `email` (unique)
+- `password` (nullable, bcrypt) — `null` for social-only accounts
 - `first_name`, `last_name` (nullable)
 - `payment_customer_id` (nullable) — Stripe customer ID
 - Soft deletes enabled
+
+**app_user_identities** — linked social logins: `app_user_id`, `provider` (`google`|`apple`), `provider_user_id`, unique(`provider`, `provider_user_id`).
+
+**app_user_refresh_tokens** — opaque refresh tokens: `app_user_id`, `token_hash` (sha256), `expires_at`, `revoked_at`. Rotated on use.
 
 **users** — admin panel users (standard Laravel).
 
@@ -486,7 +459,7 @@ Endpoints for the category tree and expense aggregates for a range. Only **confi
 
 **API: recurring rules**
 
-- Endpoints require `supabase.auth` and current `AppUser` context only.
+- Endpoints require `auth.app` and current `AppUser` context only.
 - **Routes:**
   - `GET /api/recurring-expenses` — list rules for the user.
   - `POST /api/recurring-expenses` — create.
@@ -722,7 +695,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 
 **GET /api/me response** — flat JSON (no `data` envelope). Explicit API payload only (not raw Eloquent):
 
-- **User fields** (top-level): `id`, `email`, `first_name`, `last_name`, `email_verified_at` (ISO 8601 or `null`). Omits `created_at`, `updated_at`, `supabase_user_id`, `payment_customer_id`.
+- **User fields** (top-level): `id`, `email`, `first_name`, `last_name`, `email_verified_at` (ISO 8601 or `null`), `has_password` (bool — `false` for social-only accounts; lets the client hide "change password"). Omits `created_at`, `updated_at`, `password`, `payment_customer_id`.
 - **`settings`**: `{ currency, language, timezone }` or `null` if not configured. Omits `id`, `app_user_id`.
 - **`subscription`**: Active subscription per `AppUser::activeSubscription()` (status `active`, `trialing`, or `canceled` within period), or `null`. Shape:
   - `id`, `status` (string — same value as `subscription_status`), `used_checks_count`, `current_period_end` (ISO 8601 or `null`)
@@ -790,9 +763,11 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 | ----------------------- | ------------------------------------------------------------------------------------- |
 | `DB_CONNECTION`         | Set to `pgsql` for PostgreSQL                                                        |
 | `DB_URL`                | Supabase Postgres connection URI (Dashboard → Database)                               |
-| `SUPABASE_URL`          | Project URL (Settings → API → Project URL)                                            |
-| `SUPABASE_ANON_KEY`     | Used by AuthController for register/login/refresh (Supabase anon public key)           |
-| `SUPABASE_SERVICE_ROLE` | Middleware + logout: JWT validation (Supabase **service_role** — never expose)      |
+| `SUPABASE_URL`          | Project URL — used for Storage only (Settings → API → Project URL)                    |
+| `SUPABASE_SERVICE_ROLE` | Supabase **Storage** access (service_role — never expose). Not used for auth.         |
+| `JWT_SECRET`            | Secret for signing our access JWT (required). Generate a long random string.          |
+| `JWT_TTL` / `JWT_REFRESH_TTL` | Access / refresh token lifetimes in seconds (defaults 900 / 2592000)            |
+| `GOOGLE_CLIENT_IDS` / `APPLE_CLIENT_IDS` | Comma-separated allowed OAuth client ids (the `aud` of the id_token) for social sign-in |
 | `OPENAI_API_KEY`        | OpenAI key for receipt scan                                                           |
 | `SUPABASE_STORAGE_BUCKET` | Supabase Storage bucket name (default: `receipts`)                                  |
 | `OPENAI_REQUEST_TIMEOUT`| OpenAI request timeout in seconds (default: 60)                                       |
@@ -811,15 +786,14 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 
 **Supabase keys:**
 
-- `SUPABASE_ANON_KEY` — proxied signup/token calls to Supabase
-- `SUPABASE_SERVICE_ROLE` — JWT validation + logout (**never ship to clients**)
+- `SUPABASE_SERVICE_ROLE` — Supabase Storage access only (**never ship to clients**). Supabase Auth is no longer used.
 
 ## 7. MVP Scope
 
 Included:
 
-- Auth proxy: register, login, refresh, logout (AuthController)
-- Supabase Auth middleware (mobile users)
+- Local auth: register, login, social (Google/Apple), refresh, logout, change password (AuthController + AppUserController)
+- `auth.app` JWT middleware (mobile users)
 - Laravel Auth (admin users)
 - Manual transaction CRUD
 - AI receipt scanning (single photo → transaction suggestion → `PUT .../update` to save + confirm)
