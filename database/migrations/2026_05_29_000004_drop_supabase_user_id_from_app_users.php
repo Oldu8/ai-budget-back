@@ -12,6 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Drop the unique index first: SQLite can't drop a column that still has a
+        // dependent index (it leaves a dangling reference during the table rebuild).
+        Schema::table('app_users', function (Blueprint $table) {
+            $table->dropUnique('app_users_supabase_user_id_unique');
+        });
+
         Schema::table('app_users', function (Blueprint $table) {
             $table->dropColumn('supabase_user_id');
         });
