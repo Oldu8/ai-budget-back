@@ -21,13 +21,12 @@ final class CategoryControllerTest extends TestCase
         $response = $this->apiAs($user)->getJson('/api/categories');
 
         $response->assertOk()->assertJsonStructure([
-            'data' => [['id', 'name', 'label', 'category_id', 'visibility_tag', 'children']],
+            'data' => [['id', 'name', 'label', 'children']],
         ]);
         $child = $response->json('data.0.children.0');
         $this->assertArrayHasKey('id', $child);
         $this->assertArrayHasKey('name', $child);
         $this->assertArrayHasKey('label', $child);
-        $this->assertArrayHasKey('category_id', $child);
         $this->assertSame($leaf->id, $child['id']);
     }
 

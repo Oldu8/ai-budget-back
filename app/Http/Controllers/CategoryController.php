@@ -39,14 +39,10 @@ class CategoryController extends Controller
             'id' => $c->id,
             'name' => $c->name,
             'label' => $c->label,
-            'category_id' => null,
-            'visibility_tag' => $c->visibility_tag,
             'children' => $c->children->map(fn (Category $child) => [
                 'id' => $child->id,
                 'name' => $child->name,
                 'label' => $child->label,
-                'category_id' => $child->category_id,
-                'visibility_tag' => $child->visibility_tag,
             ])->values()->all(),
         ])->values()->all();
 
