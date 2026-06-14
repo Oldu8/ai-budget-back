@@ -12,6 +12,7 @@ services:
       - ./config:/app/config
       - ./database:/app/database
       - ./resources/views:/app/resources/views
+      - ./lang:/app/lang
       - ./bootstrap/app.php:/app/bootstrap/app.php
       - ./storage:/app/storage
       - ./phpstan.neon:/app/phpstan.neon
@@ -22,6 +23,7 @@ services:
     command: >
       sh -c "
         php artisan package:discover --ansi &&
+        php artisan storage:link --force &&
         php artisan migrate --force --no-interaction &&
         php artisan serve --host=0.0.0.0 --port=$${PORT:-8080}
       "
