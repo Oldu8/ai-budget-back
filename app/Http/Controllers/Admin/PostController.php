@@ -27,7 +27,7 @@ class PostController extends Controller
 
     public function store(PostRequest $request): RedirectResponse
     {
-        $post = new Post();
+        $post = new Post;
         $this->fill($post, $request);
         $post->translation_group_id = $request->input('translation_group_id') ?: (string) Str::uuid();
         $post->save();
