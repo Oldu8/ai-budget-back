@@ -4,17 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin – {{ config('app.name') }}</title>
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @else
-        <script src="https://cdn.tailwindcss.com"></script>
-    @endif
+    {{-- Admin uses the Tailwind Play CDN: internal tooling (no SEO/perf concern), so no asset rebuild is needed when adding views. --}}
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-gray-100 text-gray-900 flex">
     {{-- Left sidebar --}}
     <aside class="w-64 min-h-screen bg-gray-800 text-white flex flex-col shrink-0">
         <div class="p-4 border-b border-gray-700">
-            <a href="{{ route('admin.dashboard') }}" class="text-xl font-semibold tracking-tight text-white">Anton</a>
+            <a href="{{ route('admin.dashboard') }}" class="text-xl font-semibold tracking-tight text-white">AI Budget</a>
         </div>
         <div class="p-3 border-b border-gray-700">
             <div class="flex rounded-md bg-gray-700/50 focus-within:ring-1 focus-within:ring-gray-500">
@@ -41,6 +38,10 @@
                 <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Funnel questions
             </a>
+            <a href="{{ route('admin.posts.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium {{ request()->routeIs('admin.posts.*') ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }}">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m0 0a2 2 0 012 2v9a2 2 0 01-2 2m0-13h-3m-2 4h.01M9 16h.01M9 12h.01M9 8h.01"/></svg>
+                Articles
+            </a>
         </nav>
         <div class="p-3 border-t border-gray-700">
             <form method="POST" action="{{ route('admin.logout') }}">
@@ -54,13 +55,6 @@
     </aside>
     {{-- Main content --}}
     <main class="flex-1 min-w-0 flex flex-col">
-        <header class="bg-white border-b border-gray-200 shrink-0">
-            <div class="px-6 py-4 flex items-center justify-end">
-                <button type="button" class="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100" aria-label="Menu">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                </button>
-            </div>
-        </header>
         <div class="flex-1 p-6">
             @yield('content')
         </div>

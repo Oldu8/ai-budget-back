@@ -1,0 +1,770 @@
+<!doctype html>
+
+<html class="scroll-smooth" lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <title>Blog - AI Budget</title>
+        <meta
+            content="Expert tips on smart budgeting and achieving financial serenity."
+            name="description"
+        />
+        <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            .material-symbols-outlined {
+                font-variation-settings:
+                    "FILL" 0,
+                    "wght" 400,
+                    "GRAD" 0,
+                    "opsz" 24;
+            }
+            .backdrop-blur-xl {
+                backdrop-filter: blur(24px);
+                -webkit-backdrop-filter: blur(24px);
+            }
+        </style>
+        <script id="tailwind-config">
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            "tertiary-fixed": "#ffdbcd",
+                            "surface-variant": "#e2e3e2",
+                            "on-primary-container": "#75a5a2",
+                            "on-error": "#ffffff",
+                            "surface-container-low": "#f3f4f3",
+                            "secondary-fixed": "#a0f1eb",
+                            "on-background": "#191c1c",
+                            background: "#f9f9f8",
+                            "inverse-surface": "#2e3130",
+                            "tertiary-container": "#512a19",
+                            "surface-container": "#edeeed",
+                            "on-secondary": "#ffffff",
+                            "primary-container": "#003b39",
+                            error: "#ba1a1a",
+                            "surface-bright": "#f9f9f8",
+                            "secondary-fixed-dim": "#84d4cf",
+                            "on-tertiary-fixed-variant": "#673c29",
+                            "error-container": "#ffdad6",
+                            outline: "#707978",
+                            "on-tertiary-container": "#c99079",
+                            "secondary-container": "#9deee8",
+                            primary: "#002422",
+                            "on-primary-fixed": "#00201f",
+                            "tertiary-fixed-dim": "#f6b8a0",
+                            "surface-container-lowest": "#ffffff",
+                            "on-error-container": "#93000a",
+                            secondary: "#006a66",
+                            tertiary: "#371606",
+                            "surface-container-highest": "#e2e3e2",
+                            "inverse-primary": "#9ed0cc",
+                            "on-secondary-container": "#0c6e6a",
+                            "on-primary-fixed-variant": "#1c4e4c",
+                            "on-primary": "#ffffff",
+                            "surface-tint": "#366664",
+                            "on-tertiary-fixed": "#321204",
+                            "on-secondary-fixed": "#00201e",
+                            "on-secondary-fixed-variant": "#00504d",
+                            "on-tertiary": "#ffffff",
+                            "primary-fixed": "#baece8",
+                            "inverse-on-surface": "#f0f1f0",
+                            "primary-fixed-dim": "#9ed0cc",
+                            "surface-container-high": "#e7e8e7",
+                            surface: "#f9f9f8",
+                            "on-surface": "#191c1c",
+                            "surface-dim": "#d9dad9",
+                            "outline-variant": "#c0c8c7",
+                            "on-surface-variant": "#404848",
+                        },
+                        borderRadius: {
+                            DEFAULT: "0.25rem",
+                            lg: "0.5rem",
+                            xl: "0.75rem",
+                            full: "9999px",
+                        },
+                        spacing: {
+                            base: "8px",
+                            "section-padding-mobile": "64px",
+                            "container-max": "1200px",
+                            "section-padding-desktop": "120px",
+                            gutter: "24px",
+                        },
+                        fontFamily: {
+                            "headline-lg": ["Inter"],
+                            "display-lg-mobile": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "label-lg": ["Inter"],
+                            "body-md": ["Inter"],
+                            "headline-md": ["Inter"],
+                            "display-lg": ["Inter"],
+                            "body-lg": ["Inter"],
+                        },
+                        fontSize: {
+                            "headline-lg": [
+                                "32px",
+                                { lineHeight: "40px", fontWeight: "700" },
+                            ],
+                            "display-lg-mobile": [
+                                "40px",
+                                {
+                                    lineHeight: "48px",
+                                    letterSpacing: "-0.02em",
+                                    fontWeight: "800",
+                                },
+                            ],
+                            "label-sm": [
+                                "12px",
+                                { lineHeight: "16px", fontWeight: "500" },
+                            ],
+                            "label-lg": [
+                                "14px",
+                                {
+                                    lineHeight: "20px",
+                                    letterSpacing: "0.1px",
+                                    fontWeight: "600",
+                                },
+                            ],
+                            "body-md": [
+                                "16px",
+                                { lineHeight: "24px", fontWeight: "400" },
+                            ],
+                            "headline-md": [
+                                "28px",
+                                { lineHeight: "36px", fontWeight: "700" },
+                            ],
+                            "display-lg": [
+                                "57px",
+                                {
+                                    lineHeight: "64px",
+                                    letterSpacing: "-0.02em",
+                                    fontWeight: "800",
+                                },
+                            ],
+                            "body-lg": [
+                                "18px",
+                                { lineHeight: "28px", fontWeight: "400" },
+                            ],
+                        },
+                    },
+                },
+            };
+        </script>
+    </head>
+    <body
+        class="bg-background text-on-background font-body-md selection:bg-secondary-fixed selection:text-on-secondary-fixed"
+    >
+        <!-- TopNavBar -->
+        <nav
+            class="fixed top-0 w-full h-[72px] bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-outline/10 shadow-sm z-50 transition-all duration-300"
+        >
+            <div
+                class="flex justify-between items-center max-w-[1200px] mx-auto px-gutter w-full h-full"
+            >
+                <!-- Brand Logo -->
+                <a
+                    class="text-headline-md font-headline-md text-primary dark:text-primary-fixed tracking-tight hover:opacity-90 transition-opacity"
+                    href="#"
+                >
+                    AI Budget
+                </a>
+                <!-- Navigation Links -->
+                <div class="hidden md:flex items-center gap-8">
+                    <a
+                        class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-primary dark:hover:text-primary-fixed transition-colors duration-200 font-label-lg text-label-lg"
+                        href="#"
+                        >Features</a
+                    >
+                    <a
+                        class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-primary dark:hover:text-primary-fixed transition-colors duration-200 font-label-lg text-label-lg"
+                        href="#"
+                        >Solutions</a
+                    >
+                    <a
+                        class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-primary dark:hover:text-primary-fixed transition-colors duration-200 font-label-lg text-label-lg"
+                        href="#"
+                        >Pricing</a
+                    >
+                    <a
+                        class="text-on-surface-variant dark:text-surface-variant font-medium hover:text-primary dark:hover:text-primary-fixed transition-colors duration-200 font-label-lg text-label-lg"
+                        href="#"
+                        >About</a
+                    >
+                </div>
+                <!-- Actions -->
+                <div class="flex items-center gap-4">
+                    <button
+                        class="hidden md:flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-lg text-label-lg"
+                    >
+                        <span class="material-symbols-outlined text-[20px]"
+                            >language</span
+                        >
+                        Language
+                    </button>
+                    <button
+                        class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-label-lg text-label-lg hover:brightness-110 active:scale-95 transition-all duration-200"
+                    >
+                        Get Started
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <main class="pt-[150px] pb-section-padding-desktop">
+            <div class="max-w-[1200px] mx-auto px-gutter">
+                <!-- Header Section -->
+                <header class="mb-16 text-center md:text-left">
+                    <h1
+                        class="font-display-lg text-display-lg text-primary mb-4 tracking-tight"
+                    >
+                        Blog
+                    </h1>
+                    <p
+                        class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl"
+                    >
+                        Expert tips on smart budgeting and achieving financial
+                        serenity.
+                    </p>
+                </header>
+                <!-- Article Grid -->
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter"
+                >
+                    <!-- Card 1 -->
+                    <article
+                        class="group bg-surface-container-lowest rounded-[12px] overflow-hidden flex flex-col border border-outline-variant/10 shadow-[0px_10px_30px_-15px_rgba(0,59,57,0.15)] hover:-translate-y-2 hover:shadow-[0px_20px_40px_-10px_rgba(0,59,57,0.18)] transition-all duration-300"
+                    >
+                        <div class="aspect-[1.75] overflow-hidden">
+                            <img
+                                alt="Growth and digital coins illustration"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQQkgFnJZoYz6qCOqovtO2Tu2-AP2gLMLuHVrJ2cgDHMbRCno24zH8YpYR04zm9hwQbZytomyojgXlr-tbYJZ20-k-xk2ApAhDHW6uKZkfU_qSP_azRz9biR0A6SFEPZ69OsFWTU7NIP1mfKAcVeAp_m6Dwe75i0OiMNCGf9zWX0lO12JQlVkxcAoe2oPTXhV_gu0MjkRupg7jKqYKEPCeXAYtnQidWXEEn6uJPrcXJ6x4fNAQfrcKgoChUzTvl4RKSAcQ0PdA11vw"
+                            />
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-4 mb-3">
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >Oct 24, 2023</span
+                                >
+                                <span
+                                    class="w-1 h-1 rounded-full bg-outline/40"
+                                ></span>
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >5 min read</span
+                                >
+                            </div>
+                            <h3
+                                class="font-headline-md text-[22px] leading-[28px] text-primary mb-3 line-clamp-2 group-hover:text-secondary transition-colors"
+                            >
+                                5 Ways to Save More This Month Without Feeling
+                                Deprived
+                            </h3>
+                            <p
+                                class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6"
+                            >
+                                Smart budgeting doesn't mean cutting out
+                                everything you love. Discover how to optimize
+                                your spending while maintaining your lifestyle.
+                            </p>
+                            <div class="mt-auto">
+                                <button
+                                    class="text-primary font-label-lg text-label-lg flex items-center gap-1 group/btn"
+                                >
+                                    Read Article
+                                    <span
+                                        class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    <!-- Card 2 -->
+                    <article
+                        class="group bg-surface-container-lowest rounded-[12px] overflow-hidden flex flex-col border border-outline-variant/10 shadow-[0px_10px_30px_-15px_rgba(0,59,57,0.15)] hover:-translate-y-2 hover:shadow-[0px_20px_40px_-10px_rgba(0,59,57,0.18)] transition-all duration-300"
+                    >
+                        <div class="aspect-[1.75] overflow-hidden">
+                            <img
+                                alt="Organized workspace with laptop and coffee"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAznYJxtoc6oJr6OBngPuY57Xc74yZmlSV7itLtDoAq0R8b2MTpDe3lmsVeM2Vb-Vj8g-Vch8-2w6plOZUboXEuGosyObAkualNOPso34lUavXWC17kT9VA5xvPjj1lBMoDOF4WHDYJGIXQBg8-3uNUo6_-1I4yfjJ66PkRoUtpR-Vj_PHTljx4pSpsT8VX027Kkq63Bq9Fc8Kv-XnJaFBLNUco4V8kG55T3siYT_sEVEL4H7EWeyNRc30IDvHNovKXNgSlClc00N_8"
+                            />
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-4 mb-3">
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >Oct 22, 2023</span
+                                >
+                                <span
+                                    class="w-1 h-1 rounded-full bg-outline/40"
+                                ></span>
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >8 min read</span
+                                >
+                            </div>
+                            <h3
+                                class="font-headline-md text-[22px] leading-[28px] text-primary mb-3 line-clamp-2 group-hover:text-secondary transition-colors"
+                            >
+                                Mastering Focus: How a Clear Desk Leads to Clear
+                                Finances
+                            </h3>
+                            <p
+                                class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6"
+                            >
+                                Environmental psychological plays a massive role
+                                in financial decision-making. Learn how to
+                                curate your space for serenity.
+                            </p>
+                            <div class="mt-auto">
+                                <button
+                                    class="text-primary font-label-lg text-label-lg flex items-center gap-1 group/btn"
+                                >
+                                    Read Article
+                                    <span
+                                        class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    <!-- Card 3 -->
+                    <article
+                        class="group bg-surface-container-lowest rounded-[12px] overflow-hidden flex flex-col border border-outline-variant/10 shadow-[0px_10px_30px_-15px_rgba(0,59,57,0.15)] hover:-translate-y-2 hover:shadow-[0px_20px_40px_-10px_rgba(0,59,57,0.18)] transition-all duration-300"
+                    >
+                        <div class="aspect-[1.75] overflow-hidden">
+                            <img
+                                alt="Person using smartphone for financial management"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAn8Z58bb7EaHX4a5VI9T5xvBxdRYNcSF5oSL4l_mFMLCDAab2PgmVz-I0Cc-Hseh-y6D0PyVaGm_iDBwVbDC1iRSyabd37hhKwWH6rsa0EEucPH2FNLFPlw0aURGUsyjIuZ1fOqLFj4yaitoKIHKiVjoJbCeYxv6LUN6vPLmW0ncj3ebcBjl2ZrItiYCDBcknYGMMO0dv_ICUDxNZnoCRCAxRXglxFz5Bcl3ilkrcVzYGSV_NAll0prK-AINtap0kgjfV9kh2_YABT"
+                            />
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-4 mb-3">
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >Oct 19, 2023</span
+                                >
+                                <span
+                                    class="w-1 h-1 rounded-full bg-outline/40"
+                                ></span>
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >4 min read</span
+                                >
+                            </div>
+                            <h3
+                                class="font-headline-md text-[22px] leading-[28px] text-primary mb-3 line-clamp-2 group-hover:text-secondary transition-colors"
+                            >
+                                The Future of Budgeting: AI and Your Personal
+                                Growth
+                            </h3>
+                            <p
+                                class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6"
+                            >
+                                Artificial Intelligence is transforming how we
+                                interact with money. Explore the tools that take
+                                the heavy lifting out of planning.
+                            </p>
+                            <div class="mt-auto">
+                                <button
+                                    class="text-primary font-label-lg text-label-lg flex items-center gap-1 group/btn"
+                                >
+                                    Read Article
+                                    <span
+                                        class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    <!-- More Card Placeholders for Grid Visual -->
+                    <article
+                        class="group bg-surface-container-lowest rounded-[12px] overflow-hidden flex flex-col border border-outline-variant/10 shadow-[0px_10px_30px_-15px_rgba(0,59,57,0.15)] hover:-translate-y-2 hover:shadow-[0px_20px_40px_-10px_rgba(0,59,57,0.18)] transition-all duration-300"
+                    >
+                        <div
+                            class="aspect-[1.75] overflow-hidden bg-secondary-container flex items-center justify-center"
+                        >
+                            <span
+                                class="material-symbols-outlined text-primary text-[48px] opacity-20"
+                                >savings</span
+                            >
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-4 mb-3">
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >Oct 15, 2023</span
+                                >
+                                <span
+                                    class="w-1 h-1 rounded-full bg-outline/40"
+                                ></span>
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >6 min read</span
+                                >
+                            </div>
+                            <h3
+                                class="font-headline-md text-[22px] leading-[28px] text-primary mb-3 line-clamp-2 group-hover:text-secondary transition-colors"
+                            >
+                                The Psychology of Panic Spending and How to
+                                Avoid It
+                            </h3>
+                            <p
+                                class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6"
+                            >
+                                Emotional spending can derail the best financial
+                                plans. Learn to recognize triggers and stay on
+                                course for your goals.
+                            </p>
+                            <div class="mt-auto">
+                                <button
+                                    class="text-primary font-label-lg text-label-lg flex items-center gap-1 group/btn"
+                                >
+                                    Read Article
+                                    <span
+                                        class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    <article
+                        class="group bg-surface-container-lowest rounded-[12px] overflow-hidden flex flex-col border border-outline-variant/10 shadow-[0px_10px_30px_-15px_rgba(0,59,57,0.15)] hover:-translate-y-2 hover:shadow-[0px_20px_40px_-10px_rgba(0,59,57,0.18)] transition-all duration-300"
+                    >
+                        <div
+                            class="aspect-[1.75] overflow-hidden bg-primary-container flex items-center justify-center"
+                        >
+                            <span
+                                class="material-symbols-outlined text-on-primary-container text-[48px] opacity-40"
+                                >account_balance_wallet</span
+                            >
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-4 mb-3">
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >Oct 12, 2023</span
+                                >
+                                <span
+                                    class="w-1 h-1 rounded-full bg-outline/40"
+                                ></span>
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >10 min read</span
+                                >
+                            </div>
+                            <h3
+                                class="font-headline-md text-[22px] leading-[28px] text-primary mb-3 line-clamp-2 group-hover:text-secondary transition-colors"
+                            >
+                                Debt Consolidation 101: A Path to Financial
+                                Freedom
+                            </h3>
+                            <p
+                                class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6"
+                            >
+                                Feeling overwhelmed by multiple payments?
+                                Discover if consolidation is the right strategy
+                                for your recovery journey.
+                            </p>
+                            <div class="mt-auto">
+                                <button
+                                    class="text-primary font-label-lg text-label-lg flex items-center gap-1 group/btn"
+                                >
+                                    Read Article
+                                    <span
+                                        class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                    <article
+                        class="group bg-surface-container-lowest rounded-[12px] overflow-hidden flex flex-col border border-outline-variant/10 shadow-[0px_10px_30px_-15px_rgba(0,59,57,0.15)] hover:-translate-y-2 hover:shadow-[0px_20px_40px_-10px_rgba(0,59,57,0.18)] transition-all duration-300"
+                    >
+                        <div
+                            class="aspect-[1.75] overflow-hidden bg-tertiary-fixed flex items-center justify-center"
+                        >
+                            <span
+                                class="material-symbols-outlined text-tertiary text-[48px] opacity-40"
+                                >query_stats</span
+                            >
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex items-center gap-4 mb-3">
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >Oct 08, 2023</span
+                                >
+                                <span
+                                    class="w-1 h-1 rounded-full bg-outline/40"
+                                ></span>
+                                <span
+                                    class="font-label-sm text-label-sm text-outline"
+                                    >5 min read</span
+                                >
+                            </div>
+                            <h3
+                                class="font-headline-md text-[22px] leading-[28px] text-primary mb-3 line-clamp-2 group-hover:text-secondary transition-colors"
+                            >
+                                Investing for Beginners: Calmly Navigating the
+                                Markets
+                            </h3>
+                            <p
+                                class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-6"
+                            >
+                                Market volatility doesn't have to cause stress.
+                                Learn the fundamentals of long-term wealth
+                                building with a serene mindset.
+                            </p>
+                            <div class="mt-auto">
+                                <button
+                                    class="text-primary font-label-lg text-label-lg flex items-center gap-1 group/btn"
+                                >
+                                    Read Article
+                                    <span
+                                        class="material-symbols-outlined text-[18px] group-hover/btn:translate-x-1 transition-transform"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <!-- Pagination -->
+                <nav class="mt-20 flex justify-center items-center gap-2">
+                    <button
+                        class="flex items-center justify-center p-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-30"
+                        disabled=""
+                    >
+                        <span class="material-symbols-outlined"
+                            >chevron_left</span
+                        >
+                        <span class="sr-only">Previous</span>
+                    </button>
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-on-primary font-label-lg text-label-lg transition-all"
+                        >
+                            1
+                        </button>
+                        <button
+                            class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container font-label-lg text-label-lg transition-all"
+                        >
+                            2
+                        </button>
+                        <button
+                            class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container font-label-lg text-label-lg transition-all"
+                        >
+                            3
+                        </button>
+                    </div>
+                    <button
+                        class="flex items-center justify-center p-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+                    >
+                        <span class="material-symbols-outlined"
+                            >chevron_right</span
+                        >
+                        <span class="sr-only">Next</span>
+                    </button>
+                </nav>
+            </div>
+        </main>
+        <!-- Footer -->
+        <footer
+            class="w-full py-section-padding-mobile md:py-section-padding-desktop bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container"
+        >
+            <div
+                class="grid grid-cols-1 md:grid-cols-4 gap-gutter max-w-[1200px] mx-auto px-gutter w-full"
+            >
+                <!-- Brand Column -->
+                <div class="col-span-1">
+                    <div
+                        class="text-headline-md font-headline-md text-white mb-6"
+                    >
+                        AI Budget
+                    </div>
+                    <p
+                        class="font-body-md text-body-md text-on-primary/70 mb-8 max-w-xs"
+                    >
+                        Empowering your financial journey with intelligent
+                        budgeting tools for lasting serenity.
+                    </p>
+                </div>
+                <!-- Links Columns -->
+                <div class="col-span-1">
+                    <h4
+                        class="font-label-lg text-label-lg text-secondary-fixed mb-6 uppercase tracking-wider"
+                    >
+                        Product
+                    </h4>
+                    <ul class="space-y-4">
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Features</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Security</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Pricing</a
+                            >
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-span-1">
+                    <h4
+                        class="font-label-lg text-label-lg text-secondary-fixed mb-6 uppercase tracking-wider"
+                    >
+                        Company
+                    </h4>
+                    <ul class="space-y-4">
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >About Us</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Careers</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Contact</a
+                            >
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-span-1">
+                    <h4
+                        class="font-label-lg text-label-lg text-secondary-fixed mb-6 uppercase tracking-wider"
+                    >
+                        Legal
+                    </h4>
+                    <ul class="space-y-4">
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Privacy Policy</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Terms of Service</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                class="text-on-primary/80 hover:text-secondary-fixed transition-colors font-body-md text-body-md"
+                                href="#"
+                                >Cookie Settings</a
+                            >
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div
+                class="max-w-[1200px] mx-auto px-gutter w-full mt-16 pt-8 border-t border-on-primary/10"
+            >
+                <div
+                    class="flex flex-col md:flex-row justify-between items-center gap-4"
+                >
+                    <p class="font-label-sm text-label-sm text-on-primary/60">
+                        © 2024 AI Budget. Financial Serenity Simplified.
+                    </p>
+                    <div class="flex gap-6">
+                        <a
+                            class="text-on-primary/60 hover:text-secondary-fixed transition-colors"
+                            href="#"
+                        >
+                            <span class="sr-only">Twitter</span>
+                            <svg
+                                class="w-5 h-5 fill-current"
+                                viewbox="0 0 24 24"
+                            >
+                                <path
+                                    d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"
+                                ></path>
+                            </svg>
+                        </a>
+                        <a
+                            class="text-on-primary/60 hover:text-secondary-fixed transition-colors"
+                            href="#"
+                        >
+                            <span class="sr-only">LinkedIn</span>
+                            <svg
+                                class="w-5 h-5 fill-current"
+                                viewbox="0 0 24 24"
+                            >
+                                <path
+                                    d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
+                                ></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <script>
+            // Simple Micro-interactions
+            document.addEventListener("DOMContentLoaded", () => {
+                const cards = document.querySelectorAll("article");
+                cards.forEach((card) => {
+                    card.addEventListener("mouseenter", () => {
+                        // Logic for card entrance animations if needed
+                    });
+                });
+
+                // Sticky Header Tonal Shift on Scroll
+                const nav = document.querySelector("nav");
+                window.addEventListener("scroll", () => {
+                    if (window.scrollY > 20) {
+                        nav.classList.add("shadow-md", "bg-surface/95");
+                        nav.classList.remove("shadow-sm", "bg-surface/80");
+                    } else {
+                        nav.classList.remove("shadow-md", "bg-surface/95");
+                        nav.classList.add("shadow-sm", "bg-surface/80");
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
