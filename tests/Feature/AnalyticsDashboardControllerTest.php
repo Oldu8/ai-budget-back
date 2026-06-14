@@ -50,8 +50,9 @@ class AnalyticsDashboardControllerTest extends TestCase
             'month',
             'currency',
             'period' => ['from', 'to', 'previous_from', 'previous_to'],
-            'overview' => ['total_spent', 'previous_month_total', 'average_per_day', 'biggest_category',
-                'difference_amount', 'difference_percent', 'direction'],
+            'overview' => ['total_spent', 'previous_month_total', 'average_per_day',
+                'average_per_day_diff' => ['previous_amount', 'difference_amount', 'difference_percent', 'direction'],
+                'biggest_category', 'difference_amount', 'difference_percent', 'direction'],
             'categories',
             'trends' => ['categories', 'subcategories'],
         ]);

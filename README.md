@@ -82,7 +82,7 @@ Web admin at `/admin` (Blade + Tailwind). Single admin; login uses table `users`
 - Create/update admin user: `php artisan db:seed --class=AdminUserSeeder` (email: oldu2002@gmail.com).
 - Open `/admin` and sign in with that email and `ADMIN_PASSWORD`.
 
-**UI:** Left sidebar (dark) with branding **Anton**, search field, navigation (Dashboard, Users, Subscriptions, Funnel questions) with icons, and Logout at the bottom. Main content area is light; layout uses `resources/views/admin/layout.blade.php`.
+**UI:** Left sidebar (dark) with branding **AI Budget**, search field, navigation (Dashboard, Users, Subscriptions, Funnel questions) with icons, and Logout at the bottom. Main content area is light; layout uses `resources/views/admin/layout.blade.php`.
 
 **Pages:**
 
@@ -99,14 +99,15 @@ Run the app locally with Docker:
 1. **Prerequisites:** Docker Desktop (Windows/Mac) or Docker + Docker Compose (Linux).
 
 2. **Create `.env.docker`** — copy from `.env.example` and adjust:
-   - `APP_URL=http://localhost:8080`
-   - `DB_HOST=host.docker.internal` (if PostgreSQL runs on your host)
-   - Or use your cloud DB credentials as-is.
+    - `APP_URL=http://localhost:8080`
+    - `DB_HOST=host.docker.internal` (if PostgreSQL runs on your host)
+    - Or use your cloud DB credentials as-is.
 
 3. **Build and run:**
-   ```bash
-   docker compose up --build
-   ```
+
+    ```bash
+    docker compose up --build
+    ```
 
 4. **Access:** http://localhost:8080
 
@@ -119,7 +120,8 @@ Run the app locally with Docker:
 1. Connect the repo to [Railway](https://railway.app) (New Project → Deploy from GitHub).
 2. Add variables in the Web service (Variables tab): `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL`, `DB_CONNECTION=pgsql`, `DB_URL` (from Supabase), `SUPABASE_*`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`. Optional: `API_SECRET` — if set, all `/api/*` requests must include header `X-API-Key: <API_SECRET>` (restricts access to your app only).
 
-   **Admin styles not loading?** Set `APP_URL` to your full Railway URL (e.g. `https://ai-budget-back-production.up.railway.app`) with no trailing slash. The app trusts proxies so asset URLs use the correct scheme.
+    **Admin styles not loading?** Set `APP_URL` to your full Railway URL (e.g. `https://ai-budget-back-production.up.railway.app`) with no trailing slash. The app trusts proxies so asset URLs use the correct scheme.
+
 3. Set Pre-deploy Command: `php artisan migrate --force && php artisan app:seed-initial`
 4. Generate domain in Networking.
 5. Add Cron service: same repo, Start Command `php artisan schedule:work`, copy Variables from Web.

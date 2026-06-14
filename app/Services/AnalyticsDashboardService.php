@@ -38,6 +38,7 @@ final class AnalyticsDashboardService
         $previousFrom = $previousStart->toDateString();
         $previousTo = $previousEnd->toDateString();
         $daysInMonth = $currentStart->daysInMonth;
+        $daysInPreviousMonth = $previousStart->daysInMonth;
 
         $disabled = $user->disabledCategorySettings()->pluck('category_id')->all();
 
@@ -68,6 +69,10 @@ final class AnalyticsDashboardService
 
         $biggestCategory = $this->pickBiggestCategory($currentL1, $totalSpent);
 
+        $averagePerDay = $totalSpent === 0 ? 0 : intdiv($totalSpent, $daysInMonth);
+        $previousAveragePerDay = $previousMonthTotal === 0 ? 0 : intdiv($previousMonthTotal, $daysInPreviousMonth);
+        $averagePerDayDiff = $this->diffMeta($averagePerDay, $previousAveragePerDay);
+
         return [
             'month' => $month,
             'currency' => $currency,
@@ -81,7 +86,11 @@ final class AnalyticsDashboardService
                 'total_spent' => $totalSpent,
                 'previous_month_total' => $previousMonthTotal,
                 ...$overviewDiff,
-                'average_per_day' => $totalSpent === 0 ? 0 : intdiv($totalSpent, $daysInMonth),
+                'average_per_day' => $averagePerDay,
+                'average_per_day_diff' => [
+                    'previous_amount' => $previousAveragePerDay,
+                    ...$averagePerDayDiff,
+                ],
                 'biggest_category' => $biggestCategory,
             ],
             'categories' => $categoriesPayload,

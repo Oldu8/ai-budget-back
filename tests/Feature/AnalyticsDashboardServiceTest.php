@@ -268,6 +268,61 @@ class AnalyticsDashboardServiceTest extends TestCase
         $this->assertEquals(0, $result['overview']['average_per_day']);
     }
 
+    public function test_average_per_day_diff_compares_against_previous_month_average(): void
+    {
+        $user = $this->makeAppUser();
+        $child = $this->makeChildCategory($this->makeParentCategory());
+
+        // March: 3100 / 31 days = 100/day
+        $this->makeExpense($user, $child, 3100, '2024-03-10');
+        // February (leap year): 2900 / 29 days = 100/day
+        $this->makeExpense($user, $child, 2900, '2024-02-10');
+
+        $result = $this->service->build($user, '2024-03');
+        $diff = $result['overview']['average_per_day_diff'];
+
+        $this->assertEquals(100, $result['overview']['average_per_day']);
+        $this->assertEquals(100, $diff['previous_amount']);
+        $this->assertEquals(0, $diff['difference_amount']);
+        $this->assertEquals(0.0, $diff['difference_percent']);
+        $this->assertEquals('flat', $diff['direction']);
+    }
+
+    public function test_average_per_day_diff_direction_up_when_daily_average_grew(): void
+    {
+        $user = $this->makeAppUser();
+        $child = $this->makeChildCategory($this->makeParentCategory());
+
+        // March: 6200 / 31 = 200/day
+        $this->makeExpense($user, $child, 6200, '2024-03-10');
+        // February: 2900 / 29 = 100/day
+        $this->makeExpense($user, $child, 2900, '2024-02-10');
+
+        $result = $this->service->build($user, '2024-03');
+        $diff = $result['overview']['average_per_day_diff'];
+
+        $this->assertEquals(200, $result['overview']['average_per_day']);
+        $this->assertEquals(100, $diff['previous_amount']);
+        $this->assertEquals(100, $diff['difference_amount']);
+        $this->assertEquals(100.0, $diff['difference_percent']);
+        $this->assertEquals('up', $diff['direction']);
+    }
+
+    public function test_average_per_day_diff_percent_null_when_no_previous_spending(): void
+    {
+        $user = $this->makeAppUser();
+        $child = $this->makeChildCategory($this->makeParentCategory());
+
+        $this->makeExpense($user, $child, 3100, '2024-03-10');
+
+        $result = $this->service->build($user, '2024-03');
+        $diff = $result['overview']['average_per_day_diff'];
+
+        $this->assertEquals(0, $diff['previous_amount']);
+        $this->assertNull($diff['difference_percent']);
+        $this->assertEquals('up', $diff['direction']);
+    }
+
     public function test_biggest_category_is_highest_spending_parent(): void
     {
         $user = $this->makeAppUser();
