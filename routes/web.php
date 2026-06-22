@@ -11,8 +11,8 @@ use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
-});
+    return view('public.landing');
+})->name('home');
 
 // Stripe Checkout redirect targets (override with STRIPE_SUCCESS_URL / STRIPE_CANCEL_URL)
 Route::view('/stripe/checkout/success', 'stripe.checkout-success');
@@ -23,6 +23,10 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 Route::get('/robots.txt', [SitemapController::class, 'robots']);
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
+// Legal pages (static, content authored directly in the Blade views)
+Route::view('/privacy', 'public.privacy')->name('privacy');
+Route::view('/terms', 'public.terms')->name('terms');
 
 // Admin login (guest only)
 Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('login');
