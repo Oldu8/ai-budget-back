@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bgC" x1="0.12" y1="0" x2="0.72" y2="1">
+      <stop offset="0" stop-color="#0e5b56"></stop><stop offset=".6" stop-color="#00302d"></stop><stop offset="1" stop-color="#001f1d"></stop>
+    </linearGradient>
+    <linearGradient id="glossC" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".26"></stop>
+      <stop offset=".45" stop-color="#ffffff" stop-opacity="0"></stop>
+      <stop offset="1" stop-color="#000000" stop-opacity=".30"></stop>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d6fbf6"></stop><stop offset=".5" stop-color="#84d4cf"></stop><stop offset="1" stop-color="#3a9d97"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="52" fill="url(#bgC)"></rect>
+  <rect width="256" height="256" rx="52" fill="url(#glossC)"></rect>
+  <g transform="translate(43.52,35.60) scale(2.6400)">
+    
+    <path d="M19 9 H45 V44 q-3.25 5 -6.5 0 q-3.25 5 -6.5 0 q-3.25 5 -6.5 0 q-3.25 5 -6.5 0 Z" stroke="#fff" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" fill="none"></path>
+    
+    <rect x="9" y="30.5" width="46" height="6" rx="3" fill="url(#beam)"></rect>
+    <rect x="11" y="31.4" width="42" height="1.6" rx=".8" fill="#fff" opacity=".55"></rect>
+  </g>
+</svg>
