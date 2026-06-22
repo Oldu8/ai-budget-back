@@ -4,6 +4,17 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
 
+    {{-- Google Analytics 4 (gtag.js) — prod only; also serves as Search Console verification --}}
+    @if($gaId = config('services.google_analytics.measurement_id'))
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $gaId }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '{{ $gaId }}');
+        </script>
+    @endif
+
     {{-- Favicons / app icons (SnapSpend brand) --}}
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any" />
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml" />

@@ -106,4 +106,12 @@ return [
 
     'api_secret' => env('API_SECRET', ''),
 
+    /*
+    | Google Analytics 4 (gtag.js) for the public marketing site / blog.
+    | Set GA_MEASUREMENT_ID (e.g. G-XXXXXXXXXX) only in prod so local/dev doesn't send hits.
+    */
+    'google_analytics' => [
+        'measurement_id' => env('GA_MEASUREMENT_ID'),
+    ],
+
 ];
