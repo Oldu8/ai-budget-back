@@ -19,22 +19,22 @@
                     <p class="font-body-lg text-body-lg text-on-surface-variant mb-8 max-w-md mx-auto lg:mx-0">
                         Take control of your finances with AI-powered categorization and beautiful, intuitive insights.
                     </p>
-                    {{-- App store buttons (CSS-based; swap for official badge images when ready) --}}
+                    {{-- App store badges — disabled "Coming soon" state until the apps are published --}}
                     <div id="download" class="flex flex-wrap justify-center lg:justify-start gap-3 scroll-mt-[88px]">
-                        <a href="#" class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+                        <div class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 opacity-60 cursor-not-allowed select-none">
                             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">apps</span>
                             <span class="flex flex-col items-start leading-none">
-                                <span class="text-[10px] font-label-sm uppercase opacity-80">Download on the</span>
+                                <span class="text-[10px] font-label-sm uppercase opacity-80">Coming soon</span>
                                 <span class="text-sm font-bold">App Store</span>
                             </span>
-                        </a>
-                        <a href="#" class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+                        </div>
+                        <div class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 opacity-60 cursor-not-allowed select-none">
                             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>
                             <span class="flex flex-col items-start leading-none">
-                                <span class="text-[10px] font-label-sm uppercase opacity-80">Get it on</span>
+                                <span class="text-[10px] font-label-sm uppercase opacity-80">Coming soon</span>
                                 <span class="text-sm font-bold">Google Play</span>
                             </span>
-                        </a>
+                        </div>
                     </div>
                 </div>
                 <div class="relative flex justify-center lg:justify-end">
@@ -227,20 +227,20 @@
                     Start tracking your spending in minutes — no spreadsheets, no manual sorting.
                 </p>
                 <div class="flex flex-col sm:flex-row justify-center gap-4">
-                    <a href="#" class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 hover:bg-white active:scale-95 transition-all">
+                    <div class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 opacity-70 cursor-not-allowed select-none">
                         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">apps</span>
                         <span class="flex flex-col items-start leading-none">
-                            <span class="text-[10px] font-label-sm uppercase opacity-70">Download on the</span>
+                            <span class="text-[10px] font-label-sm uppercase opacity-70">Coming soon</span>
                             <span class="text-sm font-bold">App Store</span>
                         </span>
-                    </a>
-                    <a href="#" class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 hover:bg-white active:scale-95 transition-all">
+                    </div>
+                    <div class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 opacity-70 cursor-not-allowed select-none">
                         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>
                         <span class="flex flex-col items-start leading-none">
-                            <span class="text-[10px] font-label-sm uppercase opacity-70">Get it on</span>
+                            <span class="text-[10px] font-label-sm uppercase opacity-70">Coming soon</span>
                             <span class="text-sm font-bold">Google Play</span>
                         </span>
-                    </a>
+                    </div>
                 </div>
             </div>
             <div class="absolute inset-0 opacity-10 pointer-events-none">

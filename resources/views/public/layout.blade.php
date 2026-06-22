@@ -146,9 +146,7 @@
     <header class="fixed top-0 w-full z-50 glass-header h-[72px]">
         <div class="max-w-container-max mx-auto px-gutter h-full flex justify-between items-center">
             <a href="{{ url('/') }}" class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center text-white">
-                    <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">spa</span>
-                </div>
+                <img src="{{ asset('favicon.svg') }}" alt="{{ config('app.name') }}" class="w-8 h-8 rounded-lg" />
                 <span class="font-headline-md text-headline-md text-primary tracking-tight">{{ config('app.name') }}</span>
             </a>
 
@@ -159,8 +157,8 @@
             </nav>
 
             <div class="flex items-center gap-4 md:gap-6">
-                <a href="{{ route('home') }}#download" class="bg-primary-container text-white px-5 md:px-6 py-2.5 rounded-full font-label-lg text-label-lg hover:opacity-90 active:scale-95 transition-all shadow-sm whitespace-nowrap">
-                    Get the app
+                <a href="{{ route('home') }}#download" class="bg-primary-container/80 text-white px-5 md:px-6 py-2.5 rounded-full font-label-lg text-label-lg hover:opacity-90 active:scale-95 transition-all shadow-sm whitespace-nowrap inline-flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">schedule</span> Coming soon
                 </a>
             </div>
         </div>
@@ -177,9 +175,7 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-12 mb-12">
                 <div class="col-span-2 md:col-span-2">
                     <div class="flex items-center gap-2 mb-6">
-                        <div class="w-8 h-8 bg-on-primary rounded-lg flex items-center justify-center text-primary">
-                            <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">spa</span>
-                        </div>
+                        <img src="{{ asset('favicon.svg') }}" alt="{{ config('app.name') }}" class="w-8 h-8 rounded-lg" />
                         <span class="font-headline-md text-headline-md text-on-primary tracking-tight">{{ config('app.name') }}</span>
                     </div>
                     <p class="text-on-primary/60 font-body-md mb-6 max-w-xs">
