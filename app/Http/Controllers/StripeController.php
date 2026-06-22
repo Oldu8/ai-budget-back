@@ -18,11 +18,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Stripe\BillingPortal\Session as PortalSession;
+use Stripe\Checkout\Session;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\Customer;
+use Stripe\Event;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Invoice;
 use Stripe\Stripe;
+use Stripe\Subscription;
 use Stripe\Subscription as StripeSubscription;
 use Stripe\Webhook;
 
@@ -174,38 +177,38 @@ class StripeController extends Controller
     // Event dispatcher
     // ──────────────────────────────────────────────
 
-    private function handleEvent(\Stripe\Event $event): void
+    private function handleEvent(Event $event): void
     {
         $object = $event->data->object;
 
         switch ($event->type) {
             case 'checkout.session.completed':
-                if ($object instanceof \Stripe\Checkout\Session) {
+                if ($object instanceof Session) {
                     $this->onCheckoutSessionCompleted($object);
                 }
                 break;
             case 'customer.subscription.created':
-                if ($object instanceof \Stripe\Subscription) {
+                if ($object instanceof Subscription) {
                     $this->onSubscriptionCreated($object, $event->id);
                 }
                 break;
             case 'customer.subscription.updated':
-                if ($object instanceof \Stripe\Subscription) {
+                if ($object instanceof Subscription) {
                     $this->onSubscriptionUpdated($object, $event->id);
                 }
                 break;
             case 'customer.subscription.deleted':
-                if ($object instanceof \Stripe\Subscription) {
+                if ($object instanceof Subscription) {
                     $this->onSubscriptionDeleted($object, $event->id);
                 }
                 break;
             case 'invoice.paid':
-                if ($object instanceof \Stripe\Invoice) {
+                if ($object instanceof Invoice) {
                     $this->onInvoicePaid($object);
                 }
                 break;
             case 'invoice.payment_failed':
-                if ($object instanceof \Stripe\Invoice) {
+                if ($object instanceof Invoice) {
                     $this->onInvoicePaymentFailed($object);
                 }
                 break;
@@ -216,7 +219,7 @@ class StripeController extends Controller
     // checkout.session.completed — traceability only
     // ──────────────────────────────────────────────
 
-    private function onCheckoutSessionCompleted(\Stripe\Checkout\Session $session): void
+    private function onCheckoutSessionCompleted(Session $session): void
     {
         $context = [
             'stripe_checkout_session_id' => $session->id,
@@ -273,7 +276,7 @@ class StripeController extends Controller
     // customer.subscription.created
     // ──────────────────────────────────────────────
 
-    private function onSubscriptionCreated(\Stripe\Subscription $subscription, string $eventId): void
+    private function onSubscriptionCreated(Subscription $subscription, string $eventId): void
     {
         $user = $this->resolveUserFromSubscription($subscription, $eventId, 'customer.subscription.created');
         if (! $user) {
@@ -356,7 +359,7 @@ class StripeController extends Controller
     // customer.subscription.updated
     // ──────────────────────────────────────────────
 
-    private function onSubscriptionUpdated(\Stripe\Subscription $subscription, string $eventId): void
+    private function onSubscriptionUpdated(Subscription $subscription, string $eventId): void
     {
         $local = UserSubscription::where('payment_subscription_id', $subscription->id)->first();
 
@@ -411,7 +414,7 @@ class StripeController extends Controller
     // customer.subscription.deleted
     // ──────────────────────────────────────────────
 
-    private function onSubscriptionDeleted(\Stripe\Subscription $subscription, string $eventId): void
+    private function onSubscriptionDeleted(Subscription $subscription, string $eventId): void
     {
         $local = UserSubscription::where('payment_subscription_id', $subscription->id)->first();
 
@@ -705,7 +708,7 @@ class StripeController extends Controller
     }
 
     /** Find the AppUser by Stripe customer ID. Logs + notifies if not found instead of throwing. */
-    private function resolveUserFromSubscription(\Stripe\Subscription $subscription, string $eventId, string $eventType): ?AppUser
+    private function resolveUserFromSubscription(Subscription $subscription, string $eventId, string $eventType): ?AppUser
     {
         $user = AppUser::where('payment_customer_id', $subscription->customer)->first();
 

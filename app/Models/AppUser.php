@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-/** @property \App\Models\AppUserSettings|null $settings */
+/** @property AppUserSettings|null $settings */
 final class AppUser extends Authenticatable
 {
     use SoftDeletes;

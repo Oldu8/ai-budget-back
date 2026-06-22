@@ -509,16 +509,16 @@ class AnalyticsDashboardServiceTest extends TestCase
         $child2 = $this->makeChildCategory($parent, 'Electronics');
 
         // One transaction split across two subcategories
-        $tx = \App\Models\Transaction::create([
+        $tx = Transaction::create([
             'app_user_id' => $user->id,
             'total_amount' => 3000,
             'date' => '2024-03-10',
-            'type' => \App\Enums\TransactionType::Expense,
-            'created_by' => \App\Enums\TransactionCreatedBy::User,
+            'type' => TransactionType::Expense,
+            'created_by' => TransactionCreatedBy::User,
             'confirmed_at' => now(),
         ]);
-        \App\Models\TransactionItem::create(['transaction_id' => $tx->id, 'category_id' => $child1->id, 'amount' => 2000]);
-        \App\Models\TransactionItem::create(['transaction_id' => $tx->id, 'category_id' => $child2->id, 'amount' => 1000]);
+        TransactionItem::create(['transaction_id' => $tx->id, 'category_id' => $child1->id, 'amount' => 2000]);
+        TransactionItem::create(['transaction_id' => $tx->id, 'category_id' => $child2->id, 'amount' => 1000]);
 
         $result = $this->service->build($user, '2024-03');
 

@@ -7,7 +7,9 @@ namespace Tests\Feature;
 use App\Enums\PlanType;
 use App\Models\Status;
 use App\Models\UserSubscription;
+use App\Services\Auth\JwtTokenIssuer;
 use App\Services\FeatureAccessService;
+use App\Services\ScanQuotaResetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Stripe\ApiRequestor;
 use Tests\Support\StripePayloadBuilder;
@@ -196,7 +198,7 @@ final class SubscriptionCancelAccessTest extends TestCase
             'used_checks_count' => 0,
         ]);
 
-        $result = (new FeatureAccessService($this->app->make(\App\Services\ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
+        $result = (new FeatureAccessService($this->app->make(ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
 
         $this->assertTrue($result->allowed);
     }
@@ -217,7 +219,7 @@ final class SubscriptionCancelAccessTest extends TestCase
             'used_checks_count' => 0,
         ]);
 
-        $result = (new FeatureAccessService($this->app->make(\App\Services\ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
+        $result = (new FeatureAccessService($this->app->make(ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
 
         $this->assertFalse($result->allowed);
     }
@@ -232,7 +234,7 @@ final class SubscriptionCancelAccessTest extends TestCase
         $this->makePlan(PlanType::Free);
         Status::firstOrCreate(['name' => 'active']);
 
-        $token = app(\App\Services\Auth\JwtTokenIssuer::class)->issue($user);
+        $token = app(JwtTokenIssuer::class)->issue($user);
 
         $this->withHeaders(['Authorization' => 'Bearer '.$token])
             ->getJson('/api/me')
@@ -262,7 +264,7 @@ final class SubscriptionCancelAccessTest extends TestCase
             'used_checks_count' => 0,
         ]);
 
-        $token = app(\App\Services\Auth\JwtTokenIssuer::class)->issue($user);
+        $token = app(JwtTokenIssuer::class)->issue($user);
 
         $this->withHeaders(['Authorization' => 'Bearer '.$token])
             ->getJson('/api/me')

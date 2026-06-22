@@ -6,11 +6,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $token_hash
- * @property \Illuminate\Support\Carbon $expires_at
- * @property \Illuminate\Support\Carbon|null $revoked_at
+ * @property Carbon $expires_at
+ * @property Carbon|null $revoked_at
  */
 final class AppUserRefreshToken extends Model
 {

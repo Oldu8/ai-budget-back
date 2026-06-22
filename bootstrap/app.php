@@ -1,8 +1,14 @@
 <?php
 
+use App\Http\Middleware\AuthenticateAppUser;
+use App\Http\Middleware\EnsureApiKey;
+use App\Http\Middleware\EnsureFeatureAccess;
+use App\Http\Middleware\ForceJsonResponse;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -15,23 +21,23 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'auth.app' => \App\Http\Middleware\AuthenticateAppUser::class,
-            'feature.access' => \App\Http\Middleware\EnsureFeatureAccess::class,
-            'api.key' => \App\Http\Middleware\EnsureApiKey::class,
+            'auth.app' => AuthenticateAppUser::class,
+            'feature.access' => EnsureFeatureAccess::class,
+            'api.key' => EnsureApiKey::class,
         ]);
         $middleware->api(prepend: [
-            \App\Http\Middleware\ForceJsonResponse::class,
+            ForceJsonResponse::class,
         ]);
         $middleware->api(append: [
-            \App\Http\Middleware\EnsureApiKey::class,
+            EnsureApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (\Illuminate\Http\Request $request, \Throwable $e) => $request->is('api/*')
+            fn (Request $request, Throwable $e) => $request->is('api/*')
         );
 
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (AuthorizationException $e, Request $request) {
             if ($request->is('api/*')) {
                 Log::debug('API: AuthorizationException rendered as JSON 403', [
                     'path' => $request->path(),

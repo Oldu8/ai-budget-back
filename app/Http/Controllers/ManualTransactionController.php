@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 /**
  * Manual transaction CRUD (user-created entries, confirmed immediately).
- * AI receipt scan and save flow: {@see \App\Http\Controllers\ScanController}.
+ * AI receipt scan and save flow: {@see ScanController}.
  */
 class ManualTransactionController extends Controller
 {

@@ -8,6 +8,7 @@ use App\Http\Responses\CategorySummaryResponse;
 use App\Http\Responses\SummaryResponse;
 use App\Models\Category;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 
@@ -39,7 +40,7 @@ class TransactionSummaryController extends Controller
         $grandTotal = 0;
 
         foreach ($rows as $row) {
-            $dateStr = $row->date instanceof \Carbon\Carbon
+            $dateStr = $row->date instanceof Carbon
                 ? $row->date->format('Y-m-d')
                 : $row->date;
             $catId = (string) $row->category_id;
@@ -125,7 +126,7 @@ class TransactionSummaryController extends Controller
         $grandTotal = 0;
 
         foreach ($rows as $row) {
-            $dateStr = $row->date instanceof \Carbon\Carbon
+            $dateStr = $row->date instanceof Carbon
                 ? $row->date->format('Y-m-d')
                 : $row->date;
             $subId = (string) $row->subcategory_id;

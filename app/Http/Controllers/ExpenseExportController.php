@@ -6,6 +6,7 @@ use App\Enums\TransactionType;
 use App\Http\Requests\SummaryRangeRequest;
 use App\Models\AppUser;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -53,7 +54,7 @@ class ExpenseExportController extends Controller
             fputcsv($out, ['Date', 'Category', 'Amount', 'Currency', 'Label']);
 
             foreach ($query->cursor() as $row) {
-                $dateStr = $row->date instanceof \Carbon\Carbon
+                $dateStr = $row->date instanceof Carbon
                     ? $row->date->format('Y-m-d')
                     : $row->date;
                 $amountFormatted = number_format((int) $row->amount / 100, 2, '.', '');

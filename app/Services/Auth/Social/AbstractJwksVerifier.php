@@ -6,6 +6,7 @@ namespace App\Services\Auth\Social;
 
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -72,7 +73,7 @@ abstract class AbstractJwksVerifier implements SocialIdentityVerifier
         return $this->toIdentity($claims);
     }
 
-    /** @return array<string, \Firebase\JWT\Key> */
+    /** @return array<string, Key> */
     private function keys(): array
     {
         $jwks = Cache::remember(
