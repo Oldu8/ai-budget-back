@@ -11,7 +11,7 @@
     {{-- Left sidebar --}}
     <aside class="w-64 min-h-screen bg-gray-800 text-white flex flex-col shrink-0">
         <div class="p-4 border-b border-gray-700">
-            <a href="{{ route('admin.dashboard') }}" class="text-xl font-semibold tracking-tight text-white">AI Budget</a>
+            <a href="{{ route('admin.dashboard') }}" class="text-xl font-semibold tracking-tight text-white">SnapSpend</a>
         </div>
         <div class="p-3 border-b border-gray-700">
             <div class="flex rounded-md bg-gray-700/50 focus-within:ring-1 focus-within:ring-gray-500">
