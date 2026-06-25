@@ -20,22 +20,23 @@ You receive plain text: a transcript of the user describing spending or unrelate
 
 Today is {$today}.
 
-The user's accounting currency is {$currencyCode} (ISO 4217). Use it only to interpret amounts correctly. Do not return a currency field or code in JSON — only integer amounts in minor units.
+The user's default currency is {$currencyCode} (ISO 4217). Detect the currency actually mentioned in the transcript (e.g. "гривень"/"грн" → UAH, "dollars"/"$" → USD, "euro"/"€" → EUR, "zloty"/"zł" → PLN, "yen"/"¥" → JPY). If no currency is stated, use {$currencyCode}. Do NOT convert amounts — return them exactly as spoken, in the smallest unit of THAT currency.
 
 Decide if the transcript describes a real expense made by the user. If not, return:
 {"is_expense": false, "message": "reason"}
 
-If it is an expense, extract date, total amount in minor units, and line items.
+If it is an expense, extract date, currency, total amount in minor units, and line items.
 
 Use ONLY category_id values from this allowed category list. Each Level 2 entry is [id, label] (integer id then display label):
 {$categoriesJson}
 
 Return strict JSON only:
-{"is_expense": true, "date": "YYYY-MM-DD", "total_amount": <int>, "items": [{"product": "<name>", "amount": <int>, "category_id": <int>, "category_label": "<label>"}]}
+{"is_expense": true, "date": "YYYY-MM-DD", "currency": "<ISO 4217>", "total_amount": <int>, "items": [{"product": "<name>", "amount": <int>, "category_id": <int>, "category_label": "<label>"}]}
 
 Rules:
 - Amounts must be integers in the smallest currency unit: 24.50 = 2450
-- Do not return currency in the JSON
+- currency is the ISO 4217 code detected in the transcript, or {$currencyCode} if none is stated
+- Never convert between currencies — amounts stay in the currency they were spoken in
 - Sum of item amounts must equal total_amount
 - If date is missing, use today's date: {$today}
 - If only a single lump sum is clear, create one item with that amount

@@ -9,6 +9,8 @@ use App\Http\Resources\TransactionResource;
 use App\Models\AppUser;
 use App\Models\Category;
 use App\Services\AiTransactionDraftService;
+use App\Services\Currency\Exceptions\RateDateTooEarlyException;
+use App\Services\Currency\Exceptions\UnsupportedCurrencyException;
 use App\Services\FeatureAccessService;
 use App\Services\Voice\VoiceExpenseParserService;
 use App\Services\Voice\VoiceTranscriptionService;
@@ -75,25 +77,34 @@ final class VoiceTransactionController extends Controller
             ], 422);
         }
 
-        $transaction = DB::transaction(function () use ($user, $aiResult, $transcript, $subscription) {
-            $tx = $this->draftService->createExpenseDraft(
-                $user,
-                [
-                    'total_amount' => $aiResult['total_amount'],
-                    'date' => $aiResult['date'],
-                    'items' => $aiResult['items'],
-                ],
-                [
-                    'source' => 'voice_expense',
-                    'transcript' => $transcript,
-                    'parsed' => $aiResult,
-                ],
-                null,
-            );
-            $subscription->increment('used_checks_count');
+        try {
+            $transaction = DB::transaction(function () use ($user, $aiResult, $transcript, $subscription) {
+                $tx = $this->draftService->createExpenseDraft(
+                    $user,
+                    [
+                        'total_amount' => $aiResult['total_amount'],
+                        'date' => $aiResult['date'],
+                        'currency' => $aiResult['currency'] ?? null,
+                        'items' => $aiResult['items'],
+                    ],
+                    [
+                        'source' => 'voice_expense',
+                        'transcript' => $transcript,
+                        'parsed' => $aiResult,
+                    ],
+                    null,
+                );
+                $subscription->increment('used_checks_count');
 
-            return $tx;
-        });
+                return $tx;
+            });
+        } catch (RateDateTooEarlyException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (UnsupportedCurrencyException) {
+            return response()->json([
+                'message' => 'This currency is not supported yet.',
+            ], 422);
+        }
 
         $transaction->load('items.category');
 

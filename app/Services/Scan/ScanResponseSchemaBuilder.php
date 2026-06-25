@@ -78,6 +78,10 @@ final class ScanResponseSchemaBuilder
                     'type' => 'string',
                     'description' => 'Transaction date in YYYY-MM-DD format.',
                 ],
+                'currency' => [
+                    'type' => 'string',
+                    'description' => 'ISO 4217 code the receipt is denominated in (detected, or the user default).',
+                ],
                 'total_amount' => [
                     'type' => 'integer',
                     'minimum' => 0,
@@ -112,7 +116,7 @@ final class ScanResponseSchemaBuilder
                     ],
                 ],
             ],
-            'required' => ['is_receipt', 'date', 'total_amount', 'items'],
+            'required' => ['is_receipt', 'date', 'currency', 'total_amount', 'items'],
             'additionalProperties' => false,
         ];
     }

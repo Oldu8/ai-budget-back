@@ -32,9 +32,11 @@ class AppUserSettingsRequest extends FormRequest
         ];
     }
 
+    /** @return list<string> */
     private function allowedCurrencies(): array
     {
-        return ['USD', 'EUR', 'UAH', 'PLN'];
+        // Single source of truth: the currencies we sync rates for.
+        return config('rates.supported');
     }
 
     private function allowedLanguages(): array

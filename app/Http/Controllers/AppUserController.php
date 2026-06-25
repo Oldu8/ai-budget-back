@@ -181,6 +181,13 @@ class AppUserController extends Controller
 
         $data = $request->validated();
 
+        // The accounting currency is locked once set: it is the conversion target
+        // for every stored amount, so changing it would make historical
+        // conversions inconsistent. Only the initial createSettings may set it.
+        if ($settings->currency) {
+            unset($data['currency']);
+        }
+
         // Never overwrite with null or empty - only update fields with valid values
         $safeData = array_filter($data, fn ($value) => $value !== null && $value !== '');
 

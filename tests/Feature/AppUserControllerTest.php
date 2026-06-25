@@ -232,7 +232,7 @@ class AppUserControllerTest extends TestCase
         $response->assertNotFound();
     }
 
-    public function test_update_settings_changes_currency(): void
+    public function test_update_settings_locks_currency_but_updates_other_fields(): void
     {
         $user = $this->makeAppUser();
         AppUserSettings::create([
@@ -242,16 +242,21 @@ class AppUserControllerTest extends TestCase
             'timezone' => 'UTC',
         ]);
 
+        // Currency is locked once set (it is the conversion target); a change to
+        // it is ignored, while other fields still update.
         $response = $this->apiAs($user)->putJson('/api/me/settings', [
             'currency' => 'EUR',
+            'language' => 'uk',
         ]);
 
         $response->assertOk()
-            ->assertJsonFragment(['currency' => 'EUR']);
+            ->assertJsonFragment(['currency' => 'USD'])
+            ->assertJsonFragment(['language' => 'uk']);
 
         $this->assertDatabaseHas('app_user_settings', [
             'app_user_id' => $user->id,
-            'currency' => 'EUR',
+            'currency' => 'USD',
+            'language' => 'uk',
         ]);
     }
 }

@@ -123,7 +123,7 @@ class ManualTransactionControllerTest extends TestCase
 
         $response = $this->apiAs($user)->postJson('/api/transactions', [
             'total_amount' => 2500,
-            'date' => '2024-06-01',
+            'date' => '2026-06-01',
             'type' => 'expense',
             'category_id' => $category->id,
         ]);

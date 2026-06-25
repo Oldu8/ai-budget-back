@@ -17,7 +17,7 @@ final class ScanService
         private ScanResponseSchemaBuilder $responseSchemaBuilder,
     ) {}
 
-    public function scan(string $base64Image, string $mimeType, Collection $categories): array
+    public function scan(string $base64Image, string $mimeType, Collection $categories, string $currencyCode): array
     {
         $response = OpenAI::chat()->create([
             'model' => 'gpt-4o-mini',
@@ -26,7 +26,7 @@ final class ScanService
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => $this->promptBuilder->build($categories),
+                    'content' => $this->promptBuilder->build($categories, $currencyCode),
                 ],
                 [
                     'role' => 'user',
