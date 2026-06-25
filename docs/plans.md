@@ -36,11 +36,11 @@ Seed data source: `database/data/plans.php`. Command: `php artisan plans:seed` (
 
 Guide for screens and comparison tables (column order from the spec): AI scans (photos per scan — see below), Manual transactions, History, Categories, Recurring, Analytics, CSV, other.
 
-| Plan    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics | CSV | Other                          |
-| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | --------- | --- | ------------------------------ |
-| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —         | —   | 1 photo per scan               |
-| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —         | yes | 1 photo per scan               |
-| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard | yes | multiple photos per scan       |
+| Plan    | Price | AI scans | Manual | History   | Categories | Recurring | Analytics | CSV | Other                           |
+| ------- | ----- | -------- | ------ | --------- | ---------- | --------- | --------- | --- | ------------------------------- |
+| Free    | $0    | 20/mo    | unlim  | 1 month   | basic only | —         | —         | —   | 1 photo per scan                |
+| Basic   | $3    | 200/mo   | unlim  | unlimited | custom     | —         | —         | yes | 1 photo per scan                |
+| Plus    | $5    | 500/mo   | unlim  | unlimited | custom     | yes       | dashboard | yes | multiple photos per scan        |
 | Premium | $10   | 2000/mo  | unlim  | unlimited | custom     | yes       | advanced  | yes | multiple photos; voice expenses |
 
 **Category visibility** (choosing groups to show or hide) is a **base capability on all tiers** — not shown in the table; there is no separate subscription gate.
@@ -66,13 +66,13 @@ Multi-line strings in `database/data/plans.php` (returned by `GET /api/plans`):
 
 Config: `config/feature_access.php`. Service: `App\Services\FeatureAccessService`.
 
-| Feature (`feature`)   | Allowed plans              | Quota                                      | Denied message(s)                                                               |
-| --------------------- | -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| `ai_scan`             | free, basic, plus, premium | yes (`used_checks_count` vs `check_limit`) | «Subscription required to scan.» / «Scan limit reached for this billing period.» |
+| Feature (`feature`)   | Allowed plans              | Quota                                      | Denied message(s)                                                                                   |
+| --------------------- | -------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `ai_scan`             | free, basic, plus, premium | yes (`used_checks_count` vs `check_limit`) | «Subscription required to scan.» / «Scan limit reached for this billing period.»                    |
 | `voice_expense`       | premium                    | yes (same counter as `ai_scan`)            | «Voice expense entry is only available on Premium.» / «Scan limit reached for this billing period.» |
-| `recurring_expenses`  | plus, premium              | no                                         | «Recurring expenses are not available on your plan.»                            |
-| `analytics_dashboard` | plus, premium              | no                                         | «Analytics dashboard is not available on your plan.»                          |
-| `csv_export`          | basic, plus, premium       | no                                         | «CSV export is not available on your plan.»                                   |
+| `recurring_expenses`  | plus, premium              | no                                         | «Recurring expenses are not available on your plan.»                                                |
+| `analytics_dashboard` | plus, premium              | no                                         | «Analytics dashboard is not available on your plan.»                                                |
+| `csv_export`          | basic, plus, premium       | no                                         | «CSV export is not available on your plan.»                                                         |
 
 **Analytics dashboard API:** `GET /api/analytics/dashboard?month=YYYY-MM` (details: `.cursor/backend-spec.md` §5.10). Marketing uses “dashboard” for Plus and “advanced” for Premium; **the current backend has one implementation and one response shape** for both. **Basic** has no access to this endpoint (`allowed_plans`: `plus` and `premium` only).
 
@@ -113,21 +113,21 @@ Usage counter: `user_subscriptions.used_checks_count`; reset on new period is ha
 
 ## Related files
 
-| Purpose                    | Path                                                                 |
-| -------------------------- | -------------------------------------------------------------------- |
-| Seed data                  | `database/data/plans.php`                                            |
-| Seed command               | `app/Console/Commands/SeedPlansCommand.php` (`plans:seed`)           |
-| Type enum                  | `app/Enums/PlanType.php`                                             |
-| Model                      | `app/Models/Plan.php`                                                |
-| Plans API                  | `app/Http/Controllers/PlanController.php`                            |
-| Feature access             | `config/feature_access.php`, `app/Services/FeatureAccessService.php` |
-| Stripe prices by currency  | `config/services.php` → `stripe.prices`                              |
-| Analytics dashboard (API)  | `app/Http/Controllers/AnalyticsDashboardController.php`, `app/Services/AnalyticsDashboardService.php` |
-| Full backend spec          | `.cursor/backend-spec.md` (subscriptions & billing sections)       |
+| Purpose                   | Path                                                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Seed data                 | `database/data/plans.php`                                                                             |
+| Seed command              | `app/Console/Commands/SeedPlansCommand.php` (`plans:seed`)                                            |
+| Type enum                 | `app/Enums/PlanType.php`                                                                              |
+| Model                     | `app/Models/Plan.php`                                                                                 |
+| Plans API                 | `app/Http/Controllers/PlanController.php`                                                             |
+| Feature access            | `config/feature_access.php`, `app/Services/FeatureAccessService.php`                                  |
+| Stripe prices by currency | `config/services.php` → `stripe.prices`                                                               |
+| Analytics dashboard (API) | `app/Http/Controllers/AnalyticsDashboardController.php`, `app/Services/AnalyticsDashboardService.php` |
+| Full backend spec         | `.cursor/backend-spec.md` (subscriptions & billing sections)                                          |
 
 ## Documentation sync notes (2026)
 
-- **Login:** `POST /api/auth/login` **does not** insert into `app_users`. The app row must exist from `POST /api/auth/register`. Otherwise **401** with a message like *«Please sign up before signing in»*.
+- **Login:** `POST /api/auth/login` **does not** insert into `app_users`. The app row must exist from `POST /api/auth/register`. Otherwise **401** with a message like _«Please sign up before signing in»_.
 - **Analytics:** besides `GET /api/transactions/summary` (all plans), the calendar dashboard is `GET /api/analytics/dashboard` for **Plus** and **Premium** only; one backend implementation for both (see `config/feature_access.php`).
 
 When plans change, update `database/data/plans.php`, this matrix and related specs (`.cursor/backend-spec.md`) as needed, and keep Stripe Price IDs in Stripe / env in sync.
