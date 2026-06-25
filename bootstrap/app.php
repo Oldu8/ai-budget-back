@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureApiKey;
 use App\Http\Middleware\EnsureFeatureAccess;
 use App\Http\Middleware\ForceJsonResponse;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -31,6 +32,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [
             EnsureApiKey::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        // Create transactions for due recurring expenses.
+        $schedule->command('app:run-recurring-expenses')
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // Refresh exchange rates after ECB publishes (~16:00 CET).
+        $schedule->command('rates:sync')
+            ->dailyAt('17:00')
+            ->timezone('Europe/Berlin')
+            ->withoutOverlapping()
+            ->onOneServer();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
