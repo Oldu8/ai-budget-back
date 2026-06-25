@@ -27,6 +27,13 @@ final class Transaction extends Model
     protected $fillable = [
         'app_user_id',
         'total_amount',
+        'currency',
+        'original_currency',
+        'original_total_amount',
+        'exchange_rate',
+        'rate_date',
+        'rate_source',
+        'rate_is_approximate',
         'recurring_expense_id',
         'date',
         'type',
@@ -39,6 +46,9 @@ final class Transaction extends Model
 
     protected $casts = [
         'date' => 'date',
+        'rate_date' => 'date',
+        'exchange_rate' => 'decimal:10',
+        'rate_is_approximate' => 'boolean',
         'type' => TransactionType::class,
         'created_by' => TransactionCreatedBy::class,
         'confirmed_at' => 'datetime',

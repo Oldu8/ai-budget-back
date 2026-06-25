@@ -31,7 +31,7 @@ final class ScanResponseSchemaBuilderTest extends TestCase
         $this->assertNotContains('items', array_keys($notReceipt['properties']));
 
         $receipt = $branches[1];
-        $this->assertSame(['is_receipt', 'date', 'total_amount', 'items'], $receipt['required']);
+        $this->assertSame(['is_receipt', 'date', 'currency', 'total_amount', 'items'], $receipt['required']);
         $this->assertTrue($receipt['properties']['is_receipt']['const']);
         $this->assertSame(1, $receipt['properties']['items']['minItems']);
     }

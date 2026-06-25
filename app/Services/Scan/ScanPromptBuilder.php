@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 final class ScanPromptBuilder
 {
-    public function build(Collection $categories): string
+    public function build(Collection $categories, string $currencyCode): string
     {
         $categoriesJson = json_encode(
             $this->groupByParent($categories),
@@ -25,6 +25,8 @@ If NOT a receipt-like document: set is_receipt to false and message to a one-sen
 If YES: set is_receipt to true, then extract:
 
 DATE — use the transaction (purchase) date, not the print or issue date. Format: YYYY-MM-DD. If unreadable, use today.
+
+CURRENCY — detect the currency the receipt is denominated in, from its symbol or code (₴/UAH, zł/PLN, \$/USD, €/EUR, ¥/JPY, ₺/TRY, etc.) and return it as an ISO 4217 code. If it cannot be read, use {$currencyCode}. Never convert amounts — keep them exactly as printed, in that currency's smallest unit.
 
 TOTAL AMOUNT — use the final printed total (the "Total" or "Grand Total" line, not the subtotal). Express in smallest currency unit (e.g. 150.00 → 15000). If no total line exists, sum the item amounts.
 
