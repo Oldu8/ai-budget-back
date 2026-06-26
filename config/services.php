@@ -88,6 +88,11 @@ return [
             ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/stripe/checkout/success',
         'cancel_url' => env('STRIPE_CANCEL_URL')
             ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/stripe/checkout/cancel',
+        // Where Stripe sends the user back after they close the billing portal.
+        // Falls back to success_url, then APP_URL, so behavior is unchanged until the env is set.
+        'portal_return_url' => env('STRIPE_PORTAL_RETURN_URL')
+            ?: env('STRIPE_SUCCESS_URL')
+            ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/stripe/checkout/success',
         'prices' => [
             'basic' => [
                 'eur' => env('STRIPE_BASIC_PRICE_EUR'),

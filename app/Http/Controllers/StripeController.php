@@ -115,7 +115,7 @@ class StripeController extends Controller
         try {
             $session = PortalSession::create([
                 'customer' => $user->payment_customer_id,
-                'return_url' => config('services.stripe.success_url'),
+                'return_url' => config('services.stripe.portal_return_url'),
             ]);
 
             return response()->json(['portal_url' => $session->url]);

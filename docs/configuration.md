@@ -60,6 +60,7 @@ All configuration is driven by environment variables. Copy `.env.example` to `.e
 | `STRIPE_WEBHOOK_SECRET` | Webhook signing secret (`whsec_...`) from Stripe dashboard |
 | `STRIPE_SUCCESS_URL` | Redirect after successful checkout (defaults to `APP_URL/stripe/checkout/success`) |
 | `STRIPE_CANCEL_URL` | Redirect after canceled checkout (defaults to `APP_URL/stripe/checkout/cancel`) |
+| `STRIPE_PORTAL_RETURN_URL` | Where the billing portal returns the user (defaults to `STRIPE_SUCCESS_URL`) |
 
 **Stripe Price IDs** — set one per plan per currency:
 

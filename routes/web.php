@@ -17,6 +17,8 @@ Route::get('/', function () {
 // Stripe Checkout redirect targets (override with STRIPE_SUCCESS_URL / STRIPE_CANCEL_URL)
 Route::view('/stripe/checkout/success', 'stripe.checkout-success');
 Route::view('/stripe/checkout/cancel', 'stripe.checkout-cancel');
+// Billing portal return target (override with STRIPE_PORTAL_RETURN_URL)
+Route::view('/stripe/portal/return', 'stripe.portal-return');
 
 // Public marketing site / SEO blog
 Route::get('/sitemap.xml', [SitemapController::class, 'index']);
