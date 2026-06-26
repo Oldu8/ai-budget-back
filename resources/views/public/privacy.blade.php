@@ -2,7 +2,7 @@
 
 @php
     $title = 'Privacy Policy';
-    $metaDescription = 'How SnapSpend collects, uses, and protects your personal and financial data.';
+    $metaDescription = 'How Vtrata collects, uses, and protects your personal and financial data.';
     $canonical = route('privacy');
 @endphp
 

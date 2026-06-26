@@ -1,6 +1,6 @@
 {
-  "name": "SnapSpend",
-  "short_name": "SnapSpend",
+  "name": "Vtrata",
+  "short_name": "Vtrata",
   "description": "Сканируй чеки и держи бюджет под контролем",
   "start_url": "/",
   "display": "standalone",

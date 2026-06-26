@@ -2,7 +2,7 @@
 
 @php
     $title = 'Terms of Service';
-    $metaDescription = 'The terms and conditions for using the SnapSpend app and services.';
+    $metaDescription = 'The terms and conditions for using the Vtrata app and services.';
     $canonical = route('terms');
 @endphp
 

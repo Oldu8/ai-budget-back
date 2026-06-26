@@ -2,7 +2,7 @@
 
 @php
     $title = 'AI Budget App — Scan Receipts & Track Spending';
-    $metaDescription = 'SnapSpend is an AI budgeting app that scans your receipts, logs expenses by voice, and tracks spending automatically. Get clear on your money — start free.';
+    $metaDescription = 'Vtrata is an AI budgeting app that scans your receipts, logs expenses by voice, and tracks spending automatically. Get clear on your money — start free.';
     $metaKeywords = 'budget app, AI budget app, receipt scanner app, expense tracker, spending tracker, personal finance app, money management, track expenses, budgeting app';
     $canonical = url('/');
 @endphp
@@ -201,9 +201,9 @@
                         $faqs = [
                             ['Is my data private?', 'Your financial data is yours. We don\'t sell it to anyone, traffic between the app and our servers is encrypted over HTTPS, and you can delete your account and data whenever you want.'],
                             ['How does AI receipt scanning work?', 'Take a photo of a receipt and the AI reads the merchant, date, total and individual items, then suggests categories. You always review the result and can edit anything before it is saved.'],
-                            ['Do I need to connect my bank account?', 'No. SnapSpend doesn\'t link to bank accounts. You add expenses by scanning receipts, entering them manually, or — on the Premium plan — by voice message.'],
+                            ['Do I need to connect my bank account?', 'No. Vtrata doesn\'t link to bank accounts. You add expenses by scanning receipts, entering them manually, or — on the Premium plan — by voice message.'],
                             ['Can I export my data?', 'Yes. On paid plans you can export your transactions to CSV at any time.'],
-                            ['Is there a web or desktop version?', 'Not yet. SnapSpend is currently a mobile app for iOS and Android. A web version may come later.'],
+                            ['Is there a web or desktop version?', 'Not yet. Vtrata is currently a mobile app for iOS and Android. A web version may come later.'],
                         ];
                     @endphp
                     @foreach ($faqs as [$q, $a])

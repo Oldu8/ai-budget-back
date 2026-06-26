@@ -15,7 +15,7 @@
         </script>
     @endif
 
-    {{-- Favicons / app icons (SnapSpend brand) --}}
+    {{-- Favicons / app icons (Vtrata brand) --}}
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any" />
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}" />

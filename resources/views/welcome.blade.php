@@ -61,7 +61,7 @@
 
 <body>
     <div class="container">
-        <h1>Hello SnapSpend</h1>
+        <h1>Hello Vtrata</h1>
         <p>Smart budget tracking powered by AI. Mobile apps coming soon.</p>
         <div class="links">
             <a href="{{ url('/admin') }}">Admin Panel</a>
