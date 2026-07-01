@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Services\VisibilityQuestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CategoryVisibilityController extends Controller
 {
@@ -45,30 +46,57 @@ class CategoryVisibilityController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    /**
+     * Batch update: accepts a list of { visibility_tag, enabled } preferences
+     * and applies them all in a single request.
+     */
     public function update(CategoryVisibilityRequest $request): JsonResponse
     {
         $user = $request->user();
-        $tag = $request->validated('visibility_tag');
-        $enabled = $request->validated('enabled');
 
-        if ($enabled) {
-            AppUserCategorySetting::where('app_user_id', $user->id)
-                ->where('visibility_tag', $tag)
-                ->delete();
-        } else {
-            $categories = Category::where('visibility_tag', $tag)->get();
-            if ($categories->isEmpty()) {
-                return response()->json([
-                    'message' => "No categories found for visibility_tag '{$tag}'. Run: php artisan categories:seed",
-                ], 422);
-            }
-            foreach ($categories as $category) {
-                AppUserCategorySetting::firstOrCreate(
-                    ['app_user_id' => $user->id, 'category_id' => $category->id],
-                    ['visibility_tag' => $tag]
-                );
-            }
+        // De-duplicate by tag (last one wins) so conflicting entries are safe.
+        $preferences = collect($request->validated('preferences'))
+            ->keyBy('visibility_tag')
+            ->values();
+
+        $disabledTags = $preferences->where('enabled', false)->pluck('visibility_tag');
+
+        // Categories that back the tags the user wants to hide, grouped by tag.
+        $categoriesByTag = Category::whereIn('visibility_tag', $disabledTags)
+            ->get()
+            ->groupBy('visibility_tag');
+
+        $missingTags = $disabledTags
+            ->reject(fn (string $tag) => $categoriesByTag->has($tag))
+            ->unique()
+            ->values();
+
+        if ($missingTags->isNotEmpty()) {
+            return response()->json([
+                'message' => "No categories found for visibility_tag(s): {$missingTags->implode(', ')}. Run: php artisan categories:seed",
+            ], 422);
         }
+
+        DB::transaction(function () use ($user, $preferences, $categoriesByTag) {
+            foreach ($preferences as $pref) {
+                $tag = $pref['visibility_tag'];
+
+                if ($pref['enabled']) {
+                    AppUserCategorySetting::where('app_user_id', $user->id)
+                        ->where('visibility_tag', $tag)
+                        ->delete();
+
+                    continue;
+                }
+
+                foreach ($categoriesByTag->get($tag) as $category) {
+                    AppUserCategorySetting::firstOrCreate(
+                        ['app_user_id' => $user->id, 'category_id' => $category->id],
+                        ['visibility_tag' => $tag]
+                    );
+                }
+            }
+        });
 
         return response()->json(['message' => 'OK']);
     }
