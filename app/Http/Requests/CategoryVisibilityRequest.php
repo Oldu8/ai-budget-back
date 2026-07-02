@@ -12,8 +12,9 @@ class CategoryVisibilityRequest extends FormRequest
         $allowedTags = app(VisibilityQuestionService::class)->getAllowedTags();
 
         return [
-            'visibility_tag' => ['required', 'string', 'in:'.implode(',', $allowedTags)],
-            'enabled' => ['required', 'boolean'],
+            'preferences' => ['required', 'array', 'min:1'],
+            'preferences.*.visibility_tag' => ['required', 'string', 'in:'.implode(',', $allowedTags)],
+            'preferences.*.enabled' => ['required', 'boolean'],
         ];
     }
 }

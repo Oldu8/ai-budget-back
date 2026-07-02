@@ -148,7 +148,7 @@ All `/api/auth/*` routes are throttled (5/min) and return `{ access_token, refre
 | `GET`    | `/api/categories`               | List categories and subcategories (id, slug, label, children); filtered by user's disabled list; optional `?visibility_tag=` for funnel preview     |
 | `GET`    | `/api/funnel/visibility-questions` | List funnel questions per visibility tag (visibility_tag, question_key, type, order, translation_key). Frontend uses `t(translation_key + '.title')`, `t(translation_key + '.description')` for i18n.     |
 | `GET`    | `/api/visibility-tags`         | List visibility tags with `enabled`, `translation_key` for current user (for settings toggles). Frontend uses `t(translation_key)` for i18n.     |
-| `PATCH`  | `/api/me/category-visibility`   | Set tag enabled/disabled: body `{ "visibility_tag", "enabled" }` — disabled = add all categories with tag to app_user_category_settings; enabled = delete those rows     |
+| `PATCH`  | `/api/me/category-visibility`   | Batch set tags enabled/disabled: body `{ "preferences": [{ "visibility_tag", "enabled" }, ...] }` — disabled = add all categories with tag to app_user_category_settings; enabled = delete those rows. Applied atomically in one request.     |
 | `GET`    | `/api/transactions`             | List transactions (paginated, filters: from, to, type)            |
 | `GET`    | `/api/transactions/summary`     | Expense summary by category for date range (query: from, to)      |
 | `GET`    | `/api/transactions/summary/{category}` | Expense summary by subcategory for one category (query: from, to) |

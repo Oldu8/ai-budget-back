@@ -82,8 +82,9 @@ final class CategoryVisibilityControllerTest extends TestCase
         AppUserCategorySetting::create(['app_user_id' => $user->id, 'category_id' => $cat->id, 'visibility_tag' => 'food']);
 
         $this->apiAs($user)->patchJson('/api/me/category-visibility', [
-            'visibility_tag' => 'food',
-            'enabled' => true,
+            'preferences' => [
+                ['visibility_tag' => 'food', 'enabled' => true],
+            ],
         ])->assertOk();
 
         $this->assertDatabaseMissing('app_user_category_settings', [
@@ -105,8 +106,9 @@ final class CategoryVisibilityControllerTest extends TestCase
         $user = $this->makeAppUser();
 
         $this->apiAs($user)->patchJson('/api/me/category-visibility', [
-            'visibility_tag' => 'food',
-            'enabled' => false,
+            'preferences' => [
+                ['visibility_tag' => 'food', 'enabled' => false],
+            ],
         ])->assertOk();
 
         $this->assertDatabaseHas('app_user_category_settings', ['app_user_id' => $user->id, 'category_id' => $cat1->id]);
@@ -120,8 +122,9 @@ final class CategoryVisibilityControllerTest extends TestCase
 
         $user = $this->makeAppUser();
 
-        $this->apiAs($user)->patchJson('/api/me/category-visibility', ['visibility_tag' => 'food', 'enabled' => false]);
-        $this->apiAs($user)->patchJson('/api/me/category-visibility', ['visibility_tag' => 'food', 'enabled' => false]);
+        $payload = ['preferences' => [['visibility_tag' => 'food', 'enabled' => false]]];
+        $this->apiAs($user)->patchJson('/api/me/category-visibility', $payload);
+        $this->apiAs($user)->patchJson('/api/me/category-visibility', $payload);
 
         $count = AppUserCategorySetting::where('app_user_id', $user->id)->where('category_id', $cat->id)->count();
         $this->assertSame(1, $count);
@@ -134,8 +137,48 @@ final class CategoryVisibilityControllerTest extends TestCase
         $user = $this->makeAppUser();
 
         $this->apiAs($user)->patchJson('/api/me/category-visibility', [
-            'visibility_tag' => 'food',
-            'enabled' => false,
+            'preferences' => [
+                ['visibility_tag' => 'food', 'enabled' => false],
+            ],
+        ])->assertUnprocessable();
+    }
+
+    // -------------------------------------------------------------------------
+    // update — batch
+    // -------------------------------------------------------------------------
+
+    public function test_update_applies_multiple_preferences_in_one_request(): void
+    {
+        VisibilityQuestion::create(['visibility_tag' => 'food', 'question_key' => 'q1', 'translation_key' => 'k1', 'order' => 1, 'is_active' => true]);
+        VisibilityQuestion::create(['visibility_tag' => 'housing', 'question_key' => 'q2', 'translation_key' => 'k2', 'order' => 2, 'is_active' => true]);
+        $food = Category::create(['name' => 'Groceries', 'label' => 'Groceries', 'visibility_tag' => 'food']);
+        $housing = Category::create(['name' => 'Rent', 'label' => 'Rent', 'visibility_tag' => 'housing']);
+
+        $user = $this->makeAppUser();
+        // Pre-existing hidden setting for food that should be cleared by enabling it.
+        AppUserCategorySetting::create(['app_user_id' => $user->id, 'category_id' => $food->id, 'visibility_tag' => 'food']);
+
+        $this->apiAs($user)->patchJson('/api/me/category-visibility', [
+            'preferences' => [
+                ['visibility_tag' => 'food', 'enabled' => true],
+                ['visibility_tag' => 'housing', 'enabled' => false],
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('app_user_category_settings', ['app_user_id' => $user->id, 'visibility_tag' => 'food']);
+        $this->assertDatabaseHas('app_user_category_settings', ['app_user_id' => $user->id, 'category_id' => $housing->id]);
+    }
+
+    public function test_update_rejects_unknown_tag(): void
+    {
+        VisibilityQuestion::create(['visibility_tag' => 'food', 'question_key' => 'q1', 'translation_key' => 'k1', 'order' => 1, 'is_active' => true]);
+
+        $user = $this->makeAppUser();
+
+        $this->apiAs($user)->patchJson('/api/me/category-visibility', [
+            'preferences' => [
+                ['visibility_tag' => 'not_a_real_tag', 'enabled' => true],
+            ],
         ])->assertUnprocessable();
     }
 }
