@@ -76,7 +76,7 @@ class ScanController extends Controller
             ], 422);
         }
 
-        if (empty($aiResult['total_amount']) || empty($aiResult['date']) || empty($aiResult['items'])) {
+        if (empty($aiResult['total_amount']) || empty($aiResult['items'])) {
             try {
                 $this->storage->delete($imgPath);
             } catch (\Throwable $e) {
@@ -90,6 +90,13 @@ class ScanController extends Controller
             return response()->json([
                 'message' => 'AI returned incomplete data. Please try another photo.',
             ], 422);
+        }
+
+        // Date is unreadable on some receipts; fall back to the user's local
+        // today rather than rejecting an otherwise-valid scan.
+        if (empty($aiResult['date'])) {
+            $timezone = data_get($user, 'settings.timezone') ?? 'UTC';
+            $aiResult['date'] = now($timezone)->toDateString();
         }
 
         try {

@@ -186,6 +186,46 @@ final class ScanControllerTest extends TestCase
         $this->assertSame(3, $sub->fresh()->used_checks_count);
     }
 
+    public function test_scan_falls_back_to_users_timezone_date_when_ai_omits_date(): void
+    {
+        $user = $this->makeAppUser();
+        $this->makeSettings($user, currency: 'USD', timezone: 'Pacific/Kiritimati');
+        $leaf = $this->makeCategory();
+        $this->subscribe($user, $this->makePlan(PlanType::Free, 10));
+
+        Http::fake(fn () => Http::response(['Key' => 'user/receipt.jpg'], 200));
+
+        $aiJson = json_encode([
+            'is_receipt' => true,
+            'message' => null,
+            'date' => null,
+            'currency' => 'USD',
+            'total_amount' => 1500,
+            'items' => [[
+                'product' => 'Snack',
+                'amount' => 1500,
+                'category_id' => $leaf->id,
+                'category_label' => $leaf->label,
+            ]],
+        ]);
+
+        OpenAI::fake([
+            CreateResponse::fake(['choices' => [[
+                'index' => 0,
+                'message' => ['role' => 'assistant', 'content' => $aiJson, 'function_call' => null, 'tool_calls' => []],
+                'logprobs' => null,
+                'finish_reason' => 'stop',
+            ]]]),
+        ]);
+
+        $response = $this->apiAs($user)->post('/api/transactions/scan', [
+            'image' => UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'),
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.date', now('Pacific/Kiritimati')->toDateString());
+    }
+
     // -------------------------------------------------------------------------
     // updateReceipt
     // -------------------------------------------------------------------------
