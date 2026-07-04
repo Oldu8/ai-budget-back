@@ -20,11 +20,11 @@ Analyze the image. Is it a receipt-like financial document?
 
 Acceptable sources: paper receipt, receipt photo, app screenshot (order summary, delivery, banking), email screenshot, invoice, bill, or payment confirmation — anything that shows line items with prices and a total amount.
 
-If NOT a receipt-like document: set is_receipt to false and message to a one-sentence English reason to show the user.
+If NOT a receipt-like document: set is_receipt to false, message to a one-sentence English reason to show the user, date to null, currency to {$currencyCode}, total_amount to 0, and items to an empty array.
 
-If YES: set is_receipt to true, then extract:
+If YES: set is_receipt to true, message to null, then extract:
 
-DATE — use the transaction (purchase) date, not the print or issue date. Format: YYYY-MM-DD. If unreadable, use today.
+DATE — use the transaction (purchase) date, not the print or issue date. Format: YYYY-MM-DD. If unreadable, set to null — the app will fill in the user's current date.
 
 CURRENCY — detect the currency the receipt is denominated in, from its symbol or code (₴/UAH, zł/PLN, \$/USD, €/EUR, ¥/JPY, ₺/TRY, etc.) and return it as an ISO 4217 code. If it cannot be read, use {$currencyCode}. Never convert amounts — keep them exactly as printed, in that currency's smallest unit.
 

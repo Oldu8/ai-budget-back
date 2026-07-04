@@ -26,70 +26,49 @@ final class ScanResponseSchemaBuilder
     }
 
     /**
+     * OpenAI Structured Outputs (strict mode) rejects a top-level oneOf/anyOf —
+     * the root schema must be a plain object. So both branches are flattened into
+     * one object, always listing every key in `required` (strict mode has no true
+     * "optional" — nullable is the only workaround, and only used where a null is
+     * actually meaningful downstream):
+     *  - `message` is only shown to the user when is_receipt is false.
+     *  - `date` may be unreadable on a real receipt; the caller falls back to the
+     *    user's local "today" rather than rejecting the scan.
+     *  - `currency`/`total_amount`/`items` are never null: the prompt always gives
+     *    the model a default currency and a "sum item amounts" fallback, and an
+     *    empty/missing `items` is treated as "not actually a receipt" by the caller.
+     *
      * @return array<string, mixed>
      */
     public function buildSchema(): array
     {
         return [
-            'oneOf' => [
-                $this->notReceiptBranch(),
-                $this->receiptBranch(),
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function notReceiptBranch(): array
-    {
-        return [
             'type' => 'object',
             'properties' => [
                 'is_receipt' => [
                     'type' => 'boolean',
-                    'const' => false,
-                    'description' => 'Image is not a financial document.',
+                    'description' => 'Whether the image is a financial document (receipt/invoice).',
                 ],
                 'message' => [
-                    'type' => 'string',
-                    'description' => 'Short reason shown to the user.',
-                ],
-            ],
-            'required' => ['is_receipt', 'message'],
-            'additionalProperties' => false,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function receiptBranch(): array
-    {
-        return [
-            'type' => 'object',
-            'properties' => [
-                'is_receipt' => [
-                    'type' => 'boolean',
-                    'const' => true,
-                    'description' => 'Image is a financial document.',
+                    'type' => ['string', 'null'],
+                    'description' => 'Short reason shown to the user when is_receipt is false; null otherwise.',
                 ],
                 'date' => [
-                    'type' => 'string',
-                    'description' => 'Transaction date in YYYY-MM-DD format.',
+                    'type' => ['string', 'null'],
+                    'description' => 'Transaction date in YYYY-MM-DD format. Null only if truly unreadable on a real receipt.',
                 ],
                 'currency' => [
                     'type' => 'string',
-                    'description' => 'ISO 4217 code the receipt is denominated in (detected, or the user default).',
+                    'description' => 'ISO 4217 code the receipt is denominated in (detected, or the given default currency if not a receipt or unreadable).',
                 ],
                 'total_amount' => [
                     'type' => 'integer',
                     'minimum' => 0,
-                    'description' => 'Printed receipt total in smallest currency unit.',
+                    'description' => 'Printed receipt total in smallest currency unit; 0 if not a receipt.',
                 ],
                 'items' => [
                     'type' => 'array',
-                    'minItems' => 1,
+                    'description' => 'Line items; empty array if not a receipt.',
                     'items' => [
                         'type' => 'object',
                         'properties' => [
@@ -116,7 +95,7 @@ final class ScanResponseSchemaBuilder
                     ],
                 ],
             ],
-            'required' => ['is_receipt', 'date', 'currency', 'total_amount', 'items'],
+            'required' => ['is_receipt', 'message', 'date', 'currency', 'total_amount', 'items'],
             'additionalProperties' => false,
         ];
     }
