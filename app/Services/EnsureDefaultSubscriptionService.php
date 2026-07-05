@@ -22,8 +22,9 @@ final class EnsureDefaultSubscriptionService
         DB::transaction(function () use ($user) {
             AppUser::whereKey($user->id)->lockForUpdate()->first();
 
-            // Also treat canceled subscriptions still within their paid period as "active"
-            // to avoid creating a premature free plan while the user still has access.
+            // Also treat canceled subscriptions still within their paid period, and past_due
+            // subscriptions within their grace period, as "active" to avoid creating a
+            // premature free plan while the user still has access. Mirrors AppUser::activeSubscription().
             $hasActive = UserSubscription::query()
                 ->where('app_user_id', $user->id)
                 ->where(fn ($q) => $q
@@ -31,6 +32,10 @@ final class EnsureDefaultSubscriptionService
                     ->orWhere(fn ($sq) => $sq
                         ->whereHas('status', fn ($ssq) => $ssq->where('name', 'canceled'))
                         ->where('current_period_end', '>', now())
+                    )
+                    ->orWhere(fn ($sq) => $sq
+                        ->whereHas('status', fn ($ssq) => $ssq->where('name', 'past_due'))
+                        ->where('current_period_end', '>', now()->subDays(AppUser::PAST_DUE_GRACE_DAYS))
                     )
                 )
                 ->exists();

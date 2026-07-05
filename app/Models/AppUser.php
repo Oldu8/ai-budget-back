@@ -71,10 +71,14 @@ final class AppUser extends Authenticatable
         return $this->hasMany(UserSubscription::class, 'app_user_id');
     }
 
+    /** Days of continued paid access after a subscription becomes past_due, to let the user fix payment. */
+    public const PAST_DUE_GRACE_DAYS = 3;
+
     /**
      * Current active subscription.
-     * Returns active/trialing subscriptions, and also canceled subscriptions
-     * that are still within their paid billing period (current_period_end > now).
+     * Returns active/trialing subscriptions, canceled subscriptions that are still
+     * within their paid billing period (current_period_end > now), and past_due
+     * subscriptions within their grace period (current_period_end + grace > now).
      */
     public function activeSubscription(): ?UserSubscription
     {
@@ -84,6 +88,10 @@ final class AppUser extends Authenticatable
                 ->orWhere(fn ($sq) => $sq
                     ->whereHas('status', fn ($ssq) => $ssq->where('name', 'canceled'))
                     ->where('current_period_end', '>', now())
+                )
+                ->orWhere(fn ($sq) => $sq
+                    ->whereHas('status', fn ($ssq) => $ssq->where('name', 'past_due'))
+                    ->where('current_period_end', '>', now()->subDays(self::PAST_DUE_GRACE_DAYS))
                 )
             )
             ->orderByRaw('current_period_end DESC NULLS LAST')

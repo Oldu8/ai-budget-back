@@ -74,6 +74,47 @@ final class SubscriptionCancelAccessTest extends TestCase
         $this->assertNull($user->activeSubscription());
     }
 
+    public function test_past_due_subscription_within_grace_period_is_returned_as_active(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus);
+        $pastDueStatus = Status::firstOrCreate(['name' => 'past_due']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $pastDueStatus->id,
+            'payment_subscription_id' => 'sub_test_003',
+            'current_period_end' => now()->subDays(2),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $result = $user->activeSubscription();
+
+        $this->assertNotNull($result);
+        $this->assertSame('sub_test_003', $result->payment_subscription_id);
+    }
+
+    public function test_past_due_subscription_past_grace_period_is_not_returned(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus);
+        $pastDueStatus = Status::firstOrCreate(['name' => 'past_due']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $pastDueStatus->id,
+            'payment_subscription_id' => 'sub_test_004',
+            'current_period_end' => now()->subDays(4),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $this->assertNull($user->activeSubscription());
+    }
+
     public function test_active_subscription_still_returned_as_regression_guard(): void
     {
         $user = $this->makeAppUser();
@@ -224,6 +265,48 @@ final class SubscriptionCancelAccessTest extends TestCase
         $this->assertFalse($result->allowed);
     }
 
+    public function test_feature_access_granted_for_past_due_within_grace_period_user(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus, checkLimit: 10);
+        $pastDueStatus = Status::firstOrCreate(['name' => 'past_due']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $pastDueStatus->id,
+            'payment_subscription_id' => 'sub_feat_003',
+            'current_period_end' => now()->subDay(),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $result = (new FeatureAccessService($this->app->make(ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
+
+        $this->assertTrue($result->allowed);
+    }
+
+    public function test_feature_access_denied_for_past_due_past_grace_period_user(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus, checkLimit: 10);
+        $pastDueStatus = Status::firstOrCreate(['name' => 'past_due']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $pastDueStatus->id,
+            'payment_subscription_id' => 'sub_feat_004',
+            'current_period_end' => now()->subDays(4),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $result = (new FeatureAccessService($this->app->make(ScanQuotaResetService::class)))->canAccess($user, 'recurring_expenses');
+
+        $this->assertFalse($result->allowed);
+    }
+
     // ──────────────────────────────────────────────
     // Middleware — lazy free plan provisioning
     // ──────────────────────────────────────────────
@@ -272,6 +355,64 @@ final class SubscriptionCancelAccessTest extends TestCase
 
         // Only the original paid subscription should exist — no free plan created
         $this->assertSame(1, UserSubscription::where('app_user_id', $user->id)->count());
+    }
+
+    public function test_middleware_does_not_create_free_plan_for_past_due_within_grace_period_user(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Plus);
+        $pastDueStatus = Status::firstOrCreate(['name' => 'past_due']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $pastDueStatus->id,
+            'payment_subscription_id' => 'sub_mid_002',
+            'current_period_end' => now()->subDay(),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $token = app(JwtTokenIssuer::class)->issue($user);
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])
+            ->getJson('/api/me')
+            ->assertOk();
+
+        // Only the original past_due subscription should exist — no free plan created
+        $this->assertSame(1, UserSubscription::where('app_user_id', $user->id)->count());
+    }
+
+    public function test_middleware_creates_free_plan_for_past_due_past_grace_period_user(): void
+    {
+        $user = $this->makeAppUser();
+        $this->makePlan(PlanType::Free);
+        $plan = $this->makePlan(PlanType::Plus);
+        $pastDueStatus = Status::firstOrCreate(['name' => 'past_due']);
+        Status::firstOrCreate(['name' => 'active']);
+
+        UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status_id' => $pastDueStatus->id,
+            'payment_subscription_id' => 'sub_mid_003',
+            'current_period_end' => now()->subDays(4),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $token = app(JwtTokenIssuer::class)->issue($user);
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])
+            ->getJson('/api/me')
+            ->assertOk();
+
+        $this->assertTrue(
+            UserSubscription::where('app_user_id', $user->id)
+                ->whereNull('payment_subscription_id')
+                ->whereHas('plan', fn ($q) => $q->where('type', PlanType::Free->value))
+                ->exists()
+        );
     }
 
     /** @test */

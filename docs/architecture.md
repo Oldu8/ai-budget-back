@@ -97,6 +97,8 @@ Drafts (`confirmed_at IS NULL`) are invisible in all list and summary endpoints.
 
 **Cancel-at-period-end behavior:** when a user cancels immediately, Stripe fires `customer.subscription.deleted` with a future `current_period_end`. The app marks the subscription `canceled` with `cancel_at_period_end = true` and preserves access until the period ends. The middleware lazily provisions the free plan on the user's first request after expiry.
 
+**Past-due grace period:** when a renewal invoice fails, Stripe fires `invoice.payment_failed` and the subscription is marked `past_due` without touching `current_period_end`. `AppUser::activeSubscription()` still treats it as active for `AppUser::PAST_DUE_GRACE_DAYS` (3 days) past that `current_period_end`, giving the user time to fix their payment method before losing access. Past the grace window, the same lazy free-plan provisioning as above kicks in.
+
 **Features:**
 
 | Feature | Plans |
