@@ -367,8 +367,8 @@ Seeding: `php artisan plans:seed`. Data: `database/data/plans.php`. Uses `update
 - **Semantics (Stripe-aligned; same row may apply to subscriptions or payments):**
   - **`active`** — subscription is paid and in good standing for the current period; app features that require a plan are available (subject to plan type and quotas).
   - **`trialing`** — user is in a trial period; treated like active for access where `activeSubscription()` includes both `active` and `trialing`.
-  - **`past_due`** — latest invoice payment failed; subscription may still be retried by the payment provider. Not treated as active in `activeSubscription()` until status is updated back to `active` (or trialing).
-  - **`canceled`** — subscription ended or was canceled; access follows product rules (e.g. until `current_period_end`). Not returned as the current row from `activeSubscription()`.
+  - **`past_due`** — latest invoice payment failed; subscription may still be retried by the payment provider. Treated as active in `activeSubscription()` for a grace period of `AppUser::PAST_DUE_GRACE_DAYS` (3 days) past `current_period_end`, to give the user time to fix payment before losing access; falls out of `activeSubscription()` once the grace period elapses (unless the status is updated back to `active`/`trialing` first).
+  - **`canceled`** — subscription ended or was canceled; access follows product rules — `activeSubscription()` still returns it while `current_period_end` is in the future (cancel-at-period-end), and stops once the period has passed.
   - **`pending`** — subscription or payment not yet fully activated (e.g. awaiting first successful payment).
 
 **recurring_expenses** — recurring expense rules.
@@ -697,7 +697,7 @@ Each plan defines `check_limit` (max AI scans per billing period). The count is 
 
 - **User fields** (top-level): `id`, `email`, `first_name`, `last_name`, `email_verified_at` (ISO 8601 or `null`), `has_password` (bool — `false` for social-only accounts; lets the client hide "change password"). Omits `created_at`, `updated_at`, `password`, `payment_customer_id`.
 - **`settings`**: `{ currency, language, timezone }` or `null` if not configured. Omits `id`, `app_user_id`.
-- **`subscription`**: Active subscription per `AppUser::activeSubscription()` (status `active`, `trialing`, or `canceled` within period), or `null`. Shape:
+- **`subscription`**: Active subscription per `AppUser::activeSubscription()` (status `active`, `trialing`, `canceled` within period, or `past_due` within its grace period), or `null`. Shape:
   - `id`, `status` (string — same value as `subscription_status`), `used_checks_count`, `current_period_end` (ISO 8601 or `null`)
   - `plan`: `{ type, price, check_limit, label, description }` — omits internal ids and Stripe fields
 - **`subscription_status`**: String — `statuses.name` for the subscription above; `null` if no active row.

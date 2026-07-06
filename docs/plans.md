@@ -78,7 +78,7 @@ Config: `config/feature_access.php`. Service: `App\Services\FeatureAccessService
 
 **Category visibility** (`GET /api/categories`, `PATCH /api/me/category-visibility`, tag funnel) is **not** tied to `feature_access.php`: it is available to every authenticated user on any plan.
 
-Active subscription is resolved via `activeSubscription()` (typically statuses `active` and `trialing` — see `backend-spec.md` and `AppUser`).
+Active subscription is resolved via `AppUser::activeSubscription()`: statuses `active`/`trialing`, plus `canceled` while `current_period_end` is still in the future (cancel-at-period-end), plus `past_due` for `AppUser::PAST_DUE_GRACE_DAYS` (3 days) past `current_period_end` (failed-payment grace period) — see `backend-spec.md` and `architecture.md` §Billing & Feature Gates.
 
 ---
 
@@ -91,9 +91,11 @@ Active subscription is resolved via `activeSubscription()` (typically statuses `
     - `STRIPE_PREMIUM_PRICE_USD`, `STRIPE_PREMIUM_PRICE_EUR`
 - For the free plan, API `price_id` is `null` (no Stripe Price).
 
-Checkout: `POST /api/stripe/checkout` with body `{ "plan_type": "basic" | "plus" | "premium" }` — `free` is not accepted.
+Checkout: `POST /api/stripe/checkout` with body `{ "plan_type": "basic" | "plus" | "premium" }` — `free` is not accepted. Returns **409** if the user already has an active paid subscription (`userHasActivePaidSubscription()`); the frontend must route existing paying users to the portal instead (see below).
 
 Paywall plan list: `GET /api/plans` — fields: `type`, `label`, `price` (cents), `currency`, `price_id`, `check_limit`, `description`.
+
+**Plan changes (upgrade/downgrade):** there is no in-app plan-switch endpoint — an existing paying customer changes plans through the Stripe Billing Portal (`POST /api/stripe/portal`), never through `/api/stripe/checkout`. Frontend enforces this: `payment-plan.tsx` and `PaywallSheet.tsx` call `openPortal(plan.type)` instead of `startCheckout(plan.type)` whenever the user already has a paid plan. Proration/date behavior is controlled entirely by the Stripe Dashboard's default Billing Portal configuration, not by app code — as of writing: `billing_cycle_anchor: "unchanged"` (switching plans mid-cycle does **not** reset the renewal date) and `proration_behavior: "always_invoice"` (price difference is invoiced immediately). `schedule_at_period_end.conditions` is empty, so downgrades also apply immediately, not at period end — change this in Stripe Dashboard → Settings → Billing → Customer portal if a different downgrade policy is wanted.
 
 ---
 
