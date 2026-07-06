@@ -132,7 +132,22 @@ class StripeController extends Controller
                 }
             }
 
-            $session = PortalSession::create($params);
+            try {
+                $session = PortalSession::create($params);
+            } catch (\Throwable $e) {
+                if (! isset($params['flow_data'])) {
+                    throw $e;
+                }
+                // flow_data can be rejected (e.g. plan switching disabled in the portal
+                // configuration) — a plain portal session is still better than an error.
+                Log::warning('Stripe portal: flow_data rejected, retrying without it', [
+                    'app_user_id' => $user->id,
+                    'plan_type' => $targetPlanType,
+                    'error' => $e->getMessage(),
+                ]);
+                unset($params['flow_data']);
+                $session = PortalSession::create($params);
+            }
 
             return response()->json(['portal_url' => $session->url]);
         } catch (\Throwable $e) {
