@@ -14,9 +14,10 @@ class SeedPlansCommand extends Command
     public function handle(): int
     {
         $this->info('Seeding plans...');
-        $this->call('db:seed', ['--class' => PlanSeeder::class]);
+        // --force: without it db:seed prompts in production and silently cancels.
+        $exitCode = $this->call('db:seed', ['--class' => PlanSeeder::class, '--force' => true]);
         $this->info('Done.');
 
-        return self::SUCCESS;
+        return $exitCode;
     }
 }

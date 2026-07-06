@@ -14,11 +14,20 @@ class SeedInitialCommand extends Command
     {
         $this->info('Running initial seeders...');
 
-        $this->call('statuses:seed');
-        $this->call('categories:seed');
-        $this->call('plans:seed');
-        $this->call('visibility-questions:seed');
-        $this->call('db:seed', ['--class' => 'AdminUserSeeder']);
+        // --force on db:seed: without it the call prompts in production and silently cancels.
+        $exitCodes = [
+            $this->call('statuses:seed'),
+            $this->call('categories:seed'),
+            $this->call('plans:seed'),
+            $this->call('visibility-questions:seed'),
+            $this->call('db:seed', ['--class' => 'AdminUserSeeder', '--force' => true]),
+        ];
+
+        if (array_sum($exitCodes) > 0) {
+            $this->error('One or more seeders failed.');
+
+            return self::FAILURE;
+        }
 
         $this->info('All initial seeders completed.');
 

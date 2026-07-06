@@ -14,9 +14,10 @@ class SeedStatusesCommand extends Command
     public function handle(): int
     {
         $this->info('Seeding statuses...');
-        $this->call('db:seed', ['--class' => StatusSeeder::class]);
+        // --force: without it db:seed prompts in production and silently cancels.
+        $exitCode = $this->call('db:seed', ['--class' => StatusSeeder::class, '--force' => true]);
         $this->info('Done.');
 
-        return self::SUCCESS;
+        return $exitCode;
     }
 }

@@ -14,9 +14,10 @@ class SeedVisibilityQuestionsCommand extends Command
     public function handle(): int
     {
         $this->info('Seeding visibility questions...');
-        $this->call('db:seed', ['--class' => VisibilityQuestionSeeder::class]);
+        // --force: without it db:seed prompts in production and silently cancels.
+        $exitCode = $this->call('db:seed', ['--class' => VisibilityQuestionSeeder::class, '--force' => true]);
         $this->info('Done.');
 
-        return self::SUCCESS;
+        return $exitCode;
     }
 }
