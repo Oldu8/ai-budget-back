@@ -2,25 +2,33 @@
 
 Source: `database/data/categories.php` (seed). In the API, transactions and recurring expenses use **Level 2** `category_id` only.
 
+**Ordering:** categories have an `order` column (parents: global position, children: position within their parent). `GET /api/categories` sorts by it; the seed defines the defaults below. Planned: let users reorder categories themselves.
+
 **Visibility:** choosing which category groups to show or hide (`app_user_category_settings`, `PATCH /api/me/category-visibility`, visibility tags) is available on **all subscription tiers** including Free — there is no paid-only gate for this. See `docs/plans.md` and `.cursor/backend-spec.md` (categories & plans).
 
-## Home
+## 1. Groceries
 
-- Groceries (`home_groceries`)
-- Snacks (`home_snacks`)
-- Drinks (`home_drinks`)
-- Household (`home_household`)
-- Other (`home_other`)
+- Meat (`groceries_meat`)
+- Fish & Seafood (`groceries_fish`)
+- Vegetables (`groceries_vegetables`)
+- Fruits (`groceries_fruits`)
+- Dairy (`groceries_dairy`)
+- Bread & Bakery (`groceries_bakery`)
+- Pantry (`groceries_pantry`)
+- Sweets & Confectionery (`groceries_sweets`)
+- Drinks (`groceries_drinks`)
+- Other (`groceries_other`)
 
-## Kids
+## 2. Housing
 
-- Clothes (`kids_clothes`)
-- Toys (`kids_toys`)
-- Food & Formula (`kids_food`)
-- Care & Hygiene (`kids_care`)
-- Other (`kids_other`)
+- Rent (`housing_rent`, tag `rent`)
+- Utilities (`housing_utilities`)
+- Furniture (`housing_furniture`)
+- Repairs (`housing_repairs`)
+- Household Goods (`housing_household`)
+- Other (`housing_other`)
 
-## Transport
+## 3. Transport
 
 - Taxi (`transport_taxi`)
 - Public Transport (`transport_public`)
@@ -28,7 +36,7 @@ Source: `database/data/categories.php` (seed). In the API, transactions and recu
 - Trains (`transport_trains`)
 - Other (`transport_other`)
 
-## Car
+## 4. Car (tag `car`)
 
 - Fuel (`car_fuel`)
 - Parking (`car_parking`)
@@ -36,73 +44,23 @@ Source: `database/data/categories.php` (seed). In the API, transactions and recu
 - Car Wash (`car_wash`)
 - Other (`car_other`)
 
-## Housing
-
-- Rent (`housing_rent`)
-- Utilities (`housing_utilities`)
-- Furniture (`housing_furniture`)
-- Repairs (`housing_repairs`)
-- Other (`housing_other`)
-
-## Health
+## 5. Health
 
 - Medicines (`health_medicines`)
 - Treatment & Tests (`health_treatment_tests`)
 - Dental (`health_dental`)
 - Other (`health_other`)
 
-## Connectivity
-
-- Mobile Plan (`connectivity_mobile`)
-- Home Internet (`connectivity_internet`)
-- Top-ups (`connectivity_topups`)
-- Other (`connectivity_other`)
-
-## Subscriptions
-
-- Streaming (`subscriptions_streaming`)
-- Apps & Services (`subscriptions_apps`)
-- Cloud Storage (`subscriptions_cloud`)
-- Other (`subscriptions_other`)
-
-## Fitness
-
-- Gym (`fitness_gym`)
-- Trainer (`fitness_trainer`)
-- Sports (`fitness_sports`)
-- Equipment (`fitness_equipment`)
-- Other (`fitness_other`)
-
-## Smoking
-
-- Cigarettes (`smoking_cigarettes`)
-- Vape (`smoking_vape`)
-- Other (`smoking_other`)
-
-## Pets
-
-- Food (`pets_food`)
-- Vet (`pets_vet`)
-- Supplies (`pets_supplies`)
-- Other (`pets_other`)
-
-## Beauty
-
-- Hygiene (`beauty_hygiene`)
-- Cosmetics (`beauty_cosmetics`)
-- Salon (`beauty_salon`)
-- Skincare (`beauty_skincare`)
-- Other (`beauty_other`)
-
-## Leisure
+## 6. Leisure
 
 - Cafes & Delivery (`leisure_food_delivery`)
 - Entertainment (`leisure_entertainment`)
 - Travel (`leisure_travel`)
 - Hobbies (`leisure_hobbies`)
+- Sports & Fitness (`leisure_fitness`, tag `fitness`)
 - Other (`leisure_other`)
 
-## Shopping
+## 7. Shopping
 
 - Clothes (`shopping_clothes`)
 - Shoes (`shopping_shoes`)
@@ -110,27 +68,62 @@ Source: `database/data/categories.php` (seed). In the API, transactions and recu
 - Tools (`shopping_tools`)
 - Other (`shopping_other`)
 
-## Gifts
+## 8. Kids (tag `kids`)
 
-- Family (`gifts_family`)
-- Friends (`gifts_friends`)
-- Colleagues (`gifts_work`)
-- Charity (`gifts_charity`)
-- Other (`gifts_other`)
+- Clothes (`kids_clothes`)
+- Toys (`kids_toys`)
+- Food & Formula (`kids_food`)
+- Care & Hygiene (`kids_care`)
+- Other (`kids_other`)
 
-## Work
+## 9. Pets (tag `pets`)
 
-- Courses (`work_courses`)
-- Expenses (`work_expenses`)
-- Software (`work_software`)
+- Food (`pets_food`)
+- Vet (`pets_vet`)
+- Supplies (`pets_supplies`)
+- Other (`pets_other`)
+
+## 10. Beauty (tag `beauty`)
+
+- Cosmetics & Care (`beauty_cosmetics`)
+- Salon (`beauty_salon`)
+- Other (`beauty_other`)
+
+## 11. Connectivity
+
+- Mobile (`connectivity_mobile`)
+- Home Internet (`connectivity_internet`)
+- Other (`connectivity_other`)
+
+## 12. Subscriptions
+
+- Services (`subscriptions_services`)
+- Other (`subscriptions_other`)
+
+## 13. Work
+
+- Education (`work_education`)
 - Equipment (`work_equipment`)
 - Other (`work_other`)
 
-## Finance
+## 14. Gifts
+
+- Loved Ones (`gifts_close`)
+- Work (`gifts_work`)
+- Other (`gifts_other`)
+
+## 15. Smoking (tag `smoking`)
+
+- Cigarettes (`smoking_cigarettes`)
+- Vape (`smoking_vape`)
+- Other (`smoking_other`)
+
+## 16. Finance
 
 - Taxes (`finance_taxes`)
-- Insurance (`finance_insurance`)
-- Loans (`finance_loans`)
-- Mortgage (`finance_mortgage`)
+- Insurance (`finance_insurance`, tag `insurance`)
+- Loans (`finance_loans`, tag `loan`)
+- Mortgage (`finance_mortgage`, tag `mortgage`)
 - Fees (`finance_fees`)
+- Charity (`finance_charity`)
 - Other (`finance_other`)

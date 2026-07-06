@@ -69,6 +69,11 @@ class ScanController extends Controller
         }
 
         if (empty($aiResult['is_receipt'])) {
+            Log::info('AI scan rejected: not a receipt', [
+                'user_id' => $user->id,
+                'ai_result' => $aiResult,
+            ]);
+
             $this->storage->delete($imgPath);
 
             return response()->json([
@@ -77,6 +82,11 @@ class ScanController extends Controller
         }
 
         if (empty($aiResult['total_amount']) || empty($aiResult['items'])) {
+            Log::warning('AI scan returned incomplete data', [
+                'user_id' => $user->id,
+                'ai_result' => $aiResult,
+            ]);
+
             try {
                 $this->storage->delete($imgPath);
             } catch (\Throwable $e) {
@@ -117,6 +127,13 @@ class ScanController extends Controller
                 return $transaction;
             });
         } catch (RateDateTooEarlyException|UnsupportedCurrencyException $e) {
+            Log::warning('AI scan currency conversion failed', [
+                'user_id' => $user->id,
+                'currency' => $aiResult['currency'] ?? null,
+                'date' => $aiResult['date'],
+                'error' => $e->getMessage(),
+            ]);
+
             try {
                 $this->storage->delete($imgPath);
             } catch (\Throwable $deleteError) {
