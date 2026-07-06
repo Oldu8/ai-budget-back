@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Category extends Model
 {
-    protected $fillable = ['name', 'category_id', 'label', 'visibility_tag'];
+    protected $fillable = ['name', 'category_id', 'label', 'visibility_tag', 'order'];
 
     /** @return BelongsTo<Category, $this> */
     public function parent(): BelongsTo

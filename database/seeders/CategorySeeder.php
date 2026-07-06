@@ -21,10 +21,17 @@ class CategorySeeder extends Seeder
                     'category_id' => $parentId,
                     'label' => $item['label'],
                     'visibility_tag' => $item['visibility_tag'],
+                    'order' => $item['order'],
                 ],
             );
 
             $keyToId[$item['key']] = $category->id;
         }
+
+        // Remove categories dropped from the seed list (children first — self-FK).
+        // Fails if transactions still reference a removed category: reset with `migrate:fresh --seed`.
+        $keys = array_column($items, 'key');
+        Category::whereNotIn('name', $keys)->whereNotNull('category_id')->delete();
+        Category::whereNotIn('name', $keys)->whereNull('category_id')->delete();
     }
 }

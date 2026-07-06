@@ -276,7 +276,7 @@ Email confirmation is handled entirely by Supabase. The backend does not expose 
 
 **Category hierarchy rules:**
 - **Level 1 (parent)** — rollup categories only (e.g. Housing, Food). **Not** user-selectable when creating a transaction. In the UI they show summed amounts for all child subcategories.
-- **Level 2 (child)** — concrete subcategories (e.g. Rent, Groceries). These are what the user picks when creating or editing a transaction.
+- **Level 2 (child)** — concrete subcategories (e.g. Rent, Meat). These are what the user picks when creating or editing a transaction.
 - `transaction_items.category_id` always references a Level 2 category. Level 1 must not be used on the client (parents are not shown as selectable options).
 
 **Seeding categories:** `php artisan categories:seed`. Data: `database/data/categories.php`. Uses `updateOrCreate` by `name` — safe to run multiple times.

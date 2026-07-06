@@ -16,22 +16,22 @@ class CategoryController extends Controller
         if ($request->has('visibility_tag')) {
             // Funnel preview: return only parents/children that have this tag (no user filter).
             $tag = $request->query('visibility_tag');
-            $categories = Category::with(['children' => fn ($q) => $q->where('visibility_tag', $tag)])
+            $categories = Category::with(['children' => fn ($q) => $q->where('visibility_tag', $tag)->orderBy('order')])
                 ->whereNull('category_id')
                 ->where(function ($q) use ($tag) {
                     $q->where('visibility_tag', $tag)
                         ->orWhereHas('children', fn ($q) => $q->where('visibility_tag', $tag));
                 })
-                ->orderBy('label')
+                ->orderBy('order')
                 ->get();
         } else {
             // Normal list: exclude categories that the user has disabled (app_user_category_settings).
             $user = $request->user();
             $disabledIds = $user->disabledCategorySettings()->pluck('category_id')->all();
-            $categories = Category::with(['children' => fn ($q) => empty($disabledIds) ? $q : $q->whereNotIn('id', $disabledIds)])
+            $categories = Category::with(['children' => fn ($q) => $q->when(! empty($disabledIds), fn ($q) => $q->whereNotIn('id', $disabledIds))->orderBy('order')])
                 ->whereNull('category_id')
                 ->when(! empty($disabledIds), fn ($q) => $q->whereNotIn('id', $disabledIds))
-                ->orderBy('label')
+                ->orderBy('order')
                 ->get();
         }
 
