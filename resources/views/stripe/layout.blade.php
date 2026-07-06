@@ -38,7 +38,7 @@
         <div class="badge">{!! $icon !!}</div>
         <h1>{{ $heading }}</h1>
         <p>{{ $message }}</p>
-        <a class="btn" href="vtrata://">Return to {{ config('app.name') }}</a>
+        <a class="btn" href="{{ $appLink ?? 'vtrata://billing' }}">Return to {{ config('app.name') }}</a>
         <p class="hint">You can close this window anytime.</p>
     </div>
 </body>

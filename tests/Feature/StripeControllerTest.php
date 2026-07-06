@@ -151,6 +151,87 @@ final class StripeControllerTest extends TestCase
             ->assertJsonStructure(['portal_url']);
     }
 
+    public function test_portal_with_plan_type_requests_subscription_update_confirm_flow(): void
+    {
+        $user = $this->makeAppUser();
+        $user->update(['payment_customer_id' => 'cus_test_123']);
+        $plan = $this->makePlan(PlanType::Basic);
+        $sub = $this->subscribe($user, $plan);
+        $sub->update(['payment_subscription_id' => 'sub_flow_001']);
+
+        config(['services.stripe.prices.plus.usd' => 'price_test_plus_usd']);
+
+        $fake = new StripeHttpClientFake([
+            '/v1/subscriptions/sub_flow_001' => [
+                'id' => 'sub_flow_001',
+                'object' => 'subscription',
+                'items' => [
+                    'object' => 'list',
+                    'data' => [
+                        [
+                            'id' => 'si_test_001',
+                            'object' => 'subscription_item',
+                            'price' => ['id' => 'price_test_basic_usd', 'object' => 'price'],
+                        ],
+                    ],
+                ],
+            ],
+            '/v1/billing_portal/sessions' => [
+                'id' => 'bps_test_123',
+                'object' => 'billing_portal.session',
+                'url' => 'https://billing.stripe.com/test',
+            ],
+        ]);
+        ApiRequestor::setHttpClient($fake);
+
+        $this->apiAs($user)->postJson('/api/stripe/portal', ['plan_type' => 'plus'])
+            ->assertOk()
+            ->assertJsonStructure(['portal_url']);
+
+        $portalRequest = collect($fake->requests)
+            ->first(fn (array $r) => str_contains($r['url'], '/v1/billing_portal/sessions'));
+        $this->assertNotNull($portalRequest);
+        $this->assertSame('subscription_update_confirm', $portalRequest['params']['flow_data']['type']);
+        $this->assertSame('sub_flow_001', $portalRequest['params']['flow_data']['subscription_update_confirm']['subscription']);
+        $this->assertSame('price_test_plus_usd', $portalRequest['params']['flow_data']['subscription_update_confirm']['items'][0]['price']);
+        $this->assertSame('redirect', $portalRequest['params']['flow_data']['after_completion']['type']);
+    }
+
+    public function test_portal_with_plan_type_falls_back_to_plain_portal_without_active_subscription(): void
+    {
+        $user = $this->makeAppUser();
+        $user->update(['payment_customer_id' => 'cus_test_123']);
+
+        config(['services.stripe.prices.plus.usd' => 'price_test_plus_usd']);
+
+        $fake = new StripeHttpClientFake([
+            '/v1/billing_portal/sessions' => [
+                'id' => 'bps_test_123',
+                'object' => 'billing_portal.session',
+                'url' => 'https://billing.stripe.com/test',
+            ],
+        ]);
+        ApiRequestor::setHttpClient($fake);
+
+        $this->apiAs($user)->postJson('/api/stripe/portal', ['plan_type' => 'plus'])
+            ->assertOk()
+            ->assertJsonStructure(['portal_url']);
+
+        $portalRequest = collect($fake->requests)
+            ->first(fn (array $r) => str_contains($r['url'], '/v1/billing_portal/sessions'));
+        $this->assertNotNull($portalRequest);
+        $this->assertArrayNotHasKey('flow_data', $portalRequest['params']);
+    }
+
+    public function test_portal_rejects_free_plan_type(): void
+    {
+        $user = $this->makeAppUser();
+        $user->update(['payment_customer_id' => 'cus_test_123']);
+
+        $this->apiAs($user)->postJson('/api/stripe/portal', ['plan_type' => 'free'])
+            ->assertStatus(422);
+    }
+
     // ──────────────────────────────────────────────
     // webhook — signature
     // ──────────────────────────────────────────────

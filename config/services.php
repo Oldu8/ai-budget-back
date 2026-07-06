@@ -93,6 +93,9 @@ return [
         'portal_return_url' => env('STRIPE_PORTAL_RETURN_URL')
             ?: env('STRIPE_SUCCESS_URL')
             ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/stripe/checkout/success',
+        // Where the portal's "confirm plan change" flow redirects after a successful update.
+        'portal_updated_url' => env('STRIPE_PORTAL_UPDATED_URL')
+            ?: rtrim((string) env('APP_URL', 'http://localhost'), '/').'/stripe/portal/updated',
         'prices' => [
             'basic' => [
                 'eur' => env('STRIPE_BASIC_PRICE_EUR'),
