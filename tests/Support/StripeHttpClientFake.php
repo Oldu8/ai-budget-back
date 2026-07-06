@@ -18,6 +18,9 @@ use Stripe\HttpClient\ClientInterface;
  */
 final class StripeHttpClientFake implements ClientInterface
 {
+    /** Every request made, as ['method' => …, 'url' => …, 'params' => …] — for asserting request payloads. */
+    public array $requests = [];
+
     /** @param array<string, array<string, mixed>> $responses URL path fragment → response body */
     public function __construct(
         private array $responses = [],
@@ -26,6 +29,8 @@ final class StripeHttpClientFake implements ClientInterface
     /** @return array{string, int, array<string, string>} */
     public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
     {
+        $this->requests[] = ['method' => $method, 'url' => $absUrl, 'params' => $params];
+
         foreach ($this->responses as $pathFragment => $body) {
             if (str_contains($absUrl, $pathFragment)) {
                 return [json_encode($body, JSON_THROW_ON_ERROR), 200, []];

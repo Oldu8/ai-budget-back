@@ -104,7 +104,12 @@ class StripeController extends Controller
 
     public function portal(Request $request): JsonResponse
     {
+        $request->validate([
+            'plan_type' => ['nullable', 'string', Rule::in(PlanType::paidValues())],
+        ]);
+
         $user = $request->user();
+        $targetPlanType = $request->input('plan_type');
 
         if (! $user->payment_customer_id) {
             return response()->json([
@@ -113,10 +118,36 @@ class StripeController extends Controller
         }
 
         try {
-            $session = PortalSession::create([
+            $params = [
                 'customer' => $user->payment_customer_id,
                 'return_url' => config('services.stripe.portal_return_url'),
-            ]);
+            ];
+
+            // Deep-link straight to the "confirm plan change" screen so the user lands on a
+            // dedicated confirmation page (and gets redirected to our thank-you page after).
+            if ($targetPlanType) {
+                $flowData = $this->buildSubscriptionUpdateConfirmFlow($user, $targetPlanType);
+                if ($flowData !== null) {
+                    $params['flow_data'] = $flowData;
+                }
+            }
+
+            try {
+                $session = PortalSession::create($params);
+            } catch (\Throwable $e) {
+                if (! isset($params['flow_data'])) {
+                    throw $e;
+                }
+                // flow_data can be rejected (e.g. plan switching disabled in the portal
+                // configuration) — a plain portal session is still better than an error.
+                Log::warning('Stripe portal: flow_data rejected, retrying without it', [
+                    'app_user_id' => $user->id,
+                    'plan_type' => $targetPlanType,
+                    'error' => $e->getMessage(),
+                ]);
+                unset($params['flow_data']);
+                $session = PortalSession::create($params);
+            }
 
             return response()->json(['portal_url' => $session->url]);
         } catch (\Throwable $e) {
@@ -125,6 +156,64 @@ class StripeController extends Controller
             return response()->json([
                 'message' => 'Unable to create billing portal session.',
             ], 500);
+        }
+    }
+
+    /**
+     * Portal flow_data for switching an active subscription to a new plan's price.
+     * Returns null (plain portal) when the subscription/price can't be resolved —
+     * the user can still change plans manually inside the portal.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function buildSubscriptionUpdateConfirmFlow(AppUser $user, string $targetPlanType): ?array
+    {
+        $currency = strtolower($user->settings?->currency ?? 'usd'); // @phpstan-ignore nullsafe.neverNull
+        $newPriceId = config("services.stripe.prices.{$targetPlanType}.{$currency}")
+            ?? config("services.stripe.prices.{$targetPlanType}.usd");
+
+        $localSub = $user->userSubscriptions()
+            ->whereNotNull('payment_subscription_id')
+            ->whereHas('status', fn ($q) => $q->whereIn('name', ['active', 'trialing', 'past_due']))
+            ->latest('id')
+            ->first();
+
+        if (! $newPriceId || ! $localSub) {
+            return null;
+        }
+
+        try {
+            $stripeSub = StripeSubscription::retrieve($localSub->payment_subscription_id);
+            $item = $stripeSub->items->data[0] ?? null;
+            if (! $item) {
+                return null;
+            }
+            if (($item->price->id ?? null) === $newPriceId) {
+                // Already on this price — confirm flow would be rejected by Stripe.
+                return null;
+            }
+
+            return [
+                'type' => 'subscription_update_confirm',
+                'subscription_update_confirm' => [
+                    'subscription' => $stripeSub->id,
+                    'items' => [
+                        ['id' => $item->id, 'price' => $newPriceId, 'quantity' => 1],
+                    ],
+                ],
+                'after_completion' => [
+                    'type' => 'redirect',
+                    'redirect' => ['return_url' => config('services.stripe.portal_updated_url')],
+                ],
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Stripe portal: subscription_update_confirm flow unavailable, falling back to plain portal', [
+                'app_user_id' => $user->id,
+                'plan_type' => $targetPlanType,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

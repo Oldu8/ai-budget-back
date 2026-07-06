@@ -19,6 +19,8 @@ Route::view('/stripe/checkout/success', 'stripe.checkout-success');
 Route::view('/stripe/checkout/cancel', 'stripe.checkout-cancel');
 // Billing portal return target (override with STRIPE_PORTAL_RETURN_URL)
 Route::view('/stripe/portal/return', 'stripe.portal-return');
+// Portal "confirm plan change" flow completion target (override with STRIPE_PORTAL_UPDATED_URL)
+Route::view('/stripe/portal/updated', 'stripe.portal-updated');
 
 // Public marketing site / SEO blog
 Route::get('/sitemap.xml', [SitemapController::class, 'index']);
