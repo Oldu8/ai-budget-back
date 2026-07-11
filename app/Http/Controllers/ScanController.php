@@ -69,6 +69,7 @@ class ScanController extends Controller
                 'user_id' => $user->id,
                 'img_path' => $imgPath,
                 'code' => $code,
+                'model' => config('services.gemini.vision_model'),
                 'exception' => $e::class,
                 'error' => $e->getMessage(),
             ]);
