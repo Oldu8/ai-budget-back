@@ -31,7 +31,7 @@ final class ScanControllerTest extends TestCase
      * Receipt scanning uses the dedicated `openai.scan` client (Gemini),
      * not the global OpenAI facade — fake that binding specifically.
      *
-     * @param  array<int, \OpenAI\Responses\Chat\CreateResponse>  $responses
+     * @param  array<int, CreateResponse>  $responses
      */
     private function fakeScanAi(array $responses): void
     {
