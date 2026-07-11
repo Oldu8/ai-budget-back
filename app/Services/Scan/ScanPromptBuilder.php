@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 final class ScanPromptBuilder
 {
-    public function build(Collection $categories, string $currencyCode): string
+    public function build(Collection $categories, string $currencyCode, string $today): string
     {
         $categoriesJson = json_encode(
             $this->groupByParent($categories),
@@ -24,7 +24,7 @@ If NOT a receipt-like document: set is_receipt to false, message to a one-senten
 
 If YES: set is_receipt to true, message to null, then extract:
 
-DATE — use the transaction (purchase) date, not the print or issue date. Format: YYYY-MM-DD. If unreadable, set to null — the app will fill in the user's current date.
+DATE — use the transaction (purchase) date, not the print or issue date. Format: YYYY-MM-DD. Today is {$today}; the date cannot be later than today, and most receipts are at most a few days old. Receipts print dates in local formats (DD.MM.YYYY, MM/DD/YY, etc.) — resolve day/month/year from the receipt's language and country, and use proximity to today to disambiguate. Copy the date exactly as printed — never infer a year that is not visible. If the date or its year is unreadable or ambiguous, set date to null — the app will fill in the user's current date.
 
 CURRENCY — detect the currency the receipt is denominated in, from its symbol or code (₴/UAH, zł/PLN, \$/USD, €/EUR, ¥/JPY, ₺/TRY, etc.) and return it as an ISO 4217 code. If it cannot be read, use {$currencyCode}. Never convert amounts — keep them exactly as printed, in that currency's smallest unit.
 

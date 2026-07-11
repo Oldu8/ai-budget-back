@@ -7,7 +7,8 @@ namespace App\Services;
 use App\Services\Scan\ScanPromptBuilder;
 use App\Services\Scan\ScanResponseSchemaBuilder;
 use Illuminate\Support\Collection;
-use OpenAI\Laravel\Facades\OpenAI;
+use Illuminate\Support\Facades\Log;
+use OpenAI\Contracts\ClientContract;
 use RuntimeException;
 
 final class ScanService
@@ -17,16 +18,20 @@ final class ScanService
         private ScanResponseSchemaBuilder $responseSchemaBuilder,
     ) {}
 
-    public function scan(string $base64Image, string $mimeType, Collection $categories, string $currencyCode): array
+    public function scan(string $base64Image, string $mimeType, Collection $categories, string $currencyCode, string $today): array
     {
-        $response = OpenAI::chat()->create([
-            'model' => 'gpt-4o-mini',
+        $model = (string) config('services.gemini.vision_model');
+
+        $params = [
+            'model' => $model,
             'response_format' => $this->responseSchemaBuilder->buildResponseFormat(),
-            'max_tokens' => 2048,
+            // Replaces max_tokens (rejected by reasoning models). Generous cap:
+            // hidden reasoning tokens count against this budget too.
+            'max_completion_tokens' => 16384,
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => $this->promptBuilder->build($categories, $currencyCode),
+                    'content' => $this->promptBuilder->build($categories, $currencyCode, $today),
                 ],
                 [
                     'role' => 'user',
@@ -35,6 +40,7 @@ final class ScanService
                             'type' => 'image_url',
                             'image_url' => [
                                 'url' => "data:{$mimeType};base64,{$base64Image}",
+                                'detail' => 'high',
                             ],
                         ],
                         [
@@ -44,6 +50,18 @@ final class ScanService
                     ],
                 ],
             ],
+        ];
+
+        /** @var ClientContract $client */
+        $client = app('openai.scan');
+
+        $response = $client->chat()->create($params);
+
+        Log::info('Receipt scan token usage', [
+            'model' => $model,
+            'prompt_tokens' => $response->usage->promptTokens ?? null,
+            'completion_tokens' => $response->usage->completionTokens ?? null,
+            'total_tokens' => $response->usage->totalTokens ?? null,
         ]);
 
         $content = $response->choices[0]->message->content;

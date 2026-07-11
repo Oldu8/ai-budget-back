@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Services\AiTransactionDraftService;
 use App\Services\Currency\Exceptions\RateDateTooEarlyException;
 use App\Services\Currency\Exceptions\UnsupportedCurrencyException;
+use App\Services\ErrorNotifier;
 use App\Services\FeatureAccessService;
 use App\Services\ReceiptTransactionService;
 use App\Services\ScanService;
@@ -19,6 +20,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use OpenAI\Exceptions\ErrorException as OpenAiErrorException;
+use OpenAI\Exceptions\RateLimitException;
+use OpenAI\Exceptions\ServerException;
+use OpenAI\Exceptions\TransporterException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ScanController extends Controller
@@ -52,19 +57,34 @@ class ScanController extends Controller
 
         $user->loadMissing('settings');
         $currencyCode = data_get($user, 'settings.currency') ?? 'USD';
+        $timezone = data_get($user, 'settings.timezone') ?? 'UTC';
+        $today = now($timezone)->toDateString();
 
         try {
-            $aiResult = $this->scanner->scan($base64, $mimeType, $categories, $currencyCode);
+            $aiResult = $this->scanner->scan($base64, $mimeType, $categories, $currencyCode, $today);
         } catch (\Throwable $e) {
+            [$code, $userMessage] = $this->classifyAiFailure($e);
+
             Log::error('AI scan failed', [
                 'user_id' => $user->id,
                 'img_path' => $imgPath,
+                'code' => $code,
+                'model' => config('services.gemini.vision_model'),
+                'exception' => $e::class,
                 'error' => $e->getMessage(),
+            ]);
+
+            // Infrastructure failure, not a user mistake — the team must know.
+            ErrorNotifier::notify('AI receipt scan failed: '.$code, $e->getMessage(), [
+                'user_id' => $user->id,
+                'exception' => $e::class,
+                'img_path' => $imgPath,
             ]);
 
             // Image kept for ops; no retry endpoint — client should upload again.
             return response()->json([
-                'message' => 'AI processing failed. Please try again.',
+                'message' => $userMessage,
+                'code' => $code,
             ], 503);
         }
 
@@ -78,6 +98,7 @@ class ScanController extends Controller
 
             return response()->json([
                 'message' => $aiResult['message'] ?? 'The image is not a valid financial document.',
+                'code' => 'not_a_receipt',
             ], 422);
         }
 
@@ -99,14 +120,15 @@ class ScanController extends Controller
 
             return response()->json([
                 'message' => 'AI returned incomplete data. Please try another photo.',
+                'code' => 'incomplete_data',
             ], 422);
         }
 
         // Date is unreadable on some receipts; fall back to the user's local
-        // today rather than rejecting an otherwise-valid scan.
-        if (empty($aiResult['date'])) {
-            $timezone = data_get($user, 'settings.timezone') ?? 'UTC';
-            $aiResult['date'] = now($timezone)->toDateString();
+        // today rather than rejecting an otherwise-valid scan. A future date is
+        // always a misread (string compare is safe for YYYY-MM-DD).
+        if (empty($aiResult['date']) || $aiResult['date'] > $today) {
+            $aiResult['date'] = $today;
         }
 
         try {
@@ -148,12 +170,50 @@ class ScanController extends Controller
                 ? $e->getMessage()
                 : 'This currency is not supported yet.';
 
-            return response()->json(['message' => $message], 422);
+            return response()->json([
+                'message' => $message,
+                'code' => $e instanceof RateDateTooEarlyException ? 'rate_date_too_early' : 'unsupported_currency',
+            ], 422);
         }
 
         $transaction->load('items.category');
 
         return TransactionResource::make($transaction)->response()->setStatusCode(201);
+    }
+
+    /**
+     * Map an AI-provider failure to a stable client code + safe user message.
+     * All of these are infrastructure problems (never the user's fault), so the
+     * caller also reports them to Discord via {@see ErrorNotifier}.
+     *
+     * @return array{string, string} [code, user-facing message]
+     */
+    private function classifyAiFailure(\Throwable $e): array
+    {
+        if ($e instanceof OpenAiErrorException) {
+            $type = $e->getErrorType() ?? '';
+            $errorCode = (string) ($e->getErrorCode() ?? '');
+
+            if ($type === 'insufficient_quota' || $errorCode === 'insufficient_quota') {
+                return ['ai_quota_exhausted', 'The AI service is out of capacity right now. We have been notified — please try again later.'];
+            }
+
+            if ($e->getStatusCode() === 429) {
+                return ['ai_rate_limited', 'The AI service is overloaded. Please try again in a minute.'];
+            }
+
+            return ['ai_failed', 'AI processing failed. Please try again.'];
+        }
+
+        if ($e instanceof RateLimitException) {
+            return ['ai_rate_limited', 'The AI service is overloaded. Please try again in a minute.'];
+        }
+
+        if ($e instanceof ServerException || $e instanceof TransporterException) {
+            return ['ai_unavailable', 'The AI service is temporarily unavailable. Please try again later.'];
+        }
+
+        return ['ai_failed', 'AI processing failed. Please try again.'];
     }
 
     /**

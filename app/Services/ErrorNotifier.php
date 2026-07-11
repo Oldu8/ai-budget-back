@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Sends critical errors to Discord/Slack. Use only for:
@@ -33,21 +34,26 @@ final class ErrorNotifier
         }
         $truncated = strlen($fullMessage) > 1900 ? substr($fullMessage, 0, 1900).'…' : $fullMessage;
 
-        if ($discordUrl) {
-            Http::timeout(5)->post($discordUrl, [
-                'embeds' => [[
-                    'title' => $title,
-                    'description' => $truncated,
-                    'color' => 15158332, // red
-                    'timestamp' => now()->toIso8601String(),
-                ]],
-            ]);
-        }
+        // A dead webhook must never break the request that reports the error.
+        try {
+            if ($discordUrl) {
+                Http::timeout(5)->post($discordUrl, [
+                    'embeds' => [[
+                        'title' => $title,
+                        'description' => $truncated,
+                        'color' => 15158332, // red
+                        'timestamp' => now()->toIso8601String(),
+                    ]],
+                ]);
+            }
 
-        if ($slackUrl) {
-            Http::timeout(5)->post($slackUrl, [
-                'text' => "*{$title}*\n{$truncated}",
-            ]);
+            if ($slackUrl) {
+                Http::timeout(5)->post($slackUrl, [
+                    'text' => "*{$title}*\n{$truncated}",
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error webhook failed', ['error' => $e->getMessage()]);
         }
     }
 }

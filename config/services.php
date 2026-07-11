@@ -75,9 +75,18 @@ return [
         'audiences' => array_values(array_filter(array_map('trim', explode(',', (string) env('APPLE_CLIENT_IDS', ''))))),
     ],
 
+    // Voice expenses: Whisper transcription + expense text parsing.
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'audio_model' => env('OPENAI_AUDIO_MODEL', 'whisper-1'),
+    ],
+
+    // Receipt scanning: Gemini via Google's OpenAI-compatible endpoint.
+    // base_url must have no trailing slash (the client appends one itself).
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+        'vision_model' => env('GEMINI_VISION_MODEL', 'gemini-3.1-flash-lite'),
     ],
 
     'stripe' => [

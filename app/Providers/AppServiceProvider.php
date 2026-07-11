@@ -18,6 +18,15 @@ class AppServiceProvider extends ServiceProvider
         Connection::resolverFor('pgsql', function ($connection, $database, $prefix, $config) {
             return new PostgresConnection($connection, $database, $prefix, $config);
         });
+
+        // Receipt scanning talks to Gemini, while the default OpenAI facade
+        // (voice: Whisper + expense parsing) keeps using OPENAI_API_KEY.
+        $this->app->singleton('openai.scan', function () {
+            return \OpenAI::factory()
+                ->withApiKey((string) config('services.gemini.api_key'))
+                ->withBaseUri((string) config('services.gemini.base_url'))
+                ->make();
+        });
     }
 
     /**

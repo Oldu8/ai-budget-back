@@ -11,8 +11,8 @@ use App\Models\Transaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-use OpenAI\Laravel\Facades\OpenAI;
 use OpenAI\Responses\Chat\CreateResponse;
+use OpenAI\Testing\ClientFake;
 use Tests\TestCase;
 
 final class ScanControllerTest extends TestCase
@@ -25,6 +25,17 @@ final class ScanControllerTest extends TestCase
     {
         parent::setUp();
         $this->supabaseUrl = rtrim(config('services.supabase.url'), '/');
+    }
+
+    /**
+     * Receipt scanning uses the dedicated `openai.scan` client (Gemini),
+     * not the global OpenAI facade — fake that binding specifically.
+     *
+     * @param  array<int, CreateResponse>  $responses
+     */
+    private function fakeScanAi(array $responses): void
+    {
+        $this->app->instance('openai.scan', new ClientFake($responses));
     }
 
     // -------------------------------------------------------------------------
@@ -66,7 +77,7 @@ final class ScanControllerTest extends TestCase
             return Http::response([], 200);
         });
 
-        OpenAI::fake([
+        $this->fakeScanAi([
             CreateResponse::fake(['choices' => [[
                 'index' => 0,
                 'message' => ['role' => 'assistant', 'content' => 'invalid json {{{', 'function_call' => null, 'tool_calls' => []],
@@ -104,7 +115,7 @@ final class ScanControllerTest extends TestCase
             return Http::response([], 200);
         });
 
-        OpenAI::fake([
+        $this->fakeScanAi([
             CreateResponse::fake(['choices' => [[
                 'index' => 0,
                 'message' => ['role' => 'assistant', 'content' => json_encode(['is_receipt' => false, 'message' => 'Not a receipt']), 'function_call' => null, 'tool_calls' => []],
@@ -128,7 +139,7 @@ final class ScanControllerTest extends TestCase
 
         Http::fake(fn () => Http::response(['Key' => 'path'], 200));
 
-        OpenAI::fake([
+        $this->fakeScanAi([
             CreateResponse::fake(['choices' => [[
                 'index' => 0,
                 'message' => ['role' => 'assistant', 'content' => json_encode(['is_receipt' => true]), 'function_call' => null, 'tool_calls' => []],
@@ -163,7 +174,7 @@ final class ScanControllerTest extends TestCase
             ]],
         ]);
 
-        OpenAI::fake([
+        $this->fakeScanAi([
             CreateResponse::fake(['choices' => [[
                 'index' => 0,
                 'message' => ['role' => 'assistant', 'content' => $aiJson, 'function_call' => null, 'tool_calls' => []],
@@ -209,7 +220,7 @@ final class ScanControllerTest extends TestCase
             ]],
         ]);
 
-        OpenAI::fake([
+        $this->fakeScanAi([
             CreateResponse::fake(['choices' => [[
                 'index' => 0,
                 'message' => ['role' => 'assistant', 'content' => $aiJson, 'function_call' => null, 'tool_calls' => []],
