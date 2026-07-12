@@ -26,6 +26,7 @@ class TransactionResource extends JsonResource
             'currency' => $this->currency,
             'original_currency' => $this->original_currency,
             'original_total_amount' => $this->original_total_amount,
+            'exchange_rate' => $this->exchange_rate,
             'rate_is_approximate' => (bool) $this->rate_is_approximate,
             'img_path' => $this->img_path,
             'raw_ai_data' => $this->raw_ai_data,
