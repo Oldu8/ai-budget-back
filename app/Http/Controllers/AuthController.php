@@ -8,6 +8,7 @@ use App\Services\Auth\RegistrationNotifier;
 use App\Services\Auth\Social\InvalidSocialTokenException;
 use App\Services\Auth\Social\SocialVerifierFactory;
 use App\Services\Auth\SocialAuthService;
+use App\Services\Auth\SocialEmailAlreadyRegisteredException;
 use App\Services\Auth\TokenResponseBuilder;
 use App\Services\EnsureDefaultSubscriptionService;
 use Illuminate\Http\JsonResponse;
@@ -79,6 +80,8 @@ class AuthController extends Controller
             );
         } catch (InvalidSocialTokenException) {
             return response()->json(['message' => 'Could not verify your sign-in. Please try again.'], 401);
+        } catch (SocialEmailAlreadyRegisteredException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
         }
 
         return response()->json($payload);

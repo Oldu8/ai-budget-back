@@ -6,9 +6,15 @@ namespace Tests\Feature;
 
 use App\Enums\PlanType;
 use App\Models\AppUser;
+use App\Models\AppUserIdentity;
 use App\Models\Status;
+use App\Services\Auth\Social\InvalidSocialTokenException;
+use App\Services\Auth\Social\SocialIdentity;
+use App\Services\Auth\Social\SocialVerifierFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\FakeSocialIdentityVerifier;
+use Tests\Support\FakeSocialVerifierFactory;
 use Tests\TestCase;
 
 final class AuthControllerTest extends TestCase
@@ -112,6 +118,201 @@ final class AuthControllerTest extends TestCase
             'email' => 'social@test.com',
             'password' => 'password123',
         ])->assertUnauthorized();
+    }
+
+    // -------------------------------------------------------------------------
+    // social
+    // -------------------------------------------------------------------------
+
+    private function bindSocialVerifier(SocialIdentity|\Throwable $result): void
+    {
+        $this->app->instance(
+            SocialVerifierFactory::class,
+            new FakeSocialVerifierFactory(new FakeSocialIdentityVerifier($result)),
+        );
+    }
+
+    private function makeIdentity(array $overrides = []): SocialIdentity
+    {
+        return new SocialIdentity(
+            provider: $overrides['provider'] ?? 'google',
+            providerUserId: $overrides['providerUserId'] ?? 'google-user-1',
+            email: $overrides['email'] ?? 'social@test.com',
+            emailVerified: $overrides['emailVerified'] ?? true,
+            // array_key_exists, not ??: a test explicitly passing name => null must keep it null.
+            name: array_key_exists('name', $overrides) ? $overrides['name'] : 'Ada Lovelace',
+        );
+    }
+
+    public function test_social_creates_new_user_and_returns_tokens(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $this->bindSocialVerifier($this->makeIdentity());
+
+        $response = $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ]);
+
+        $response->assertOk()->assertJsonStructure(['access_token', 'refresh_token', 'expires_in', 'user']);
+
+        $user = AppUser::where('email', 'social@test.com')->firstOrFail();
+        $this->assertSame('Ada', $user->first_name);
+        $this->assertSame('Lovelace', $user->last_name);
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertDatabaseHas('app_user_identities', [
+            'app_user_id' => $user->id,
+            'provider' => 'google',
+            'provider_user_id' => 'google-user-1',
+        ]);
+    }
+
+    public function test_social_reuses_existing_linked_identity(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $user = $this->makeAppUser();
+        AppUserIdentity::create([
+            'app_user_id' => $user->id,
+            'provider' => 'google',
+            'provider_user_id' => 'google-user-1',
+        ]);
+        $this->bindSocialVerifier($this->makeIdentity(['email' => 'different-email@test.com']));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertOk();
+
+        $this->assertDatabaseCount('app_users', 1);
+    }
+
+    public function test_social_links_existing_verified_email_instead_of_duplicating(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $existing = AppUser::create(['email' => 'social@test.com']);
+        $this->bindSocialVerifier($this->makeIdentity(['emailVerified' => true]));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertOk();
+
+        $this->assertDatabaseCount('app_users', 1);
+        $this->assertDatabaseHas('app_user_identities', [
+            'app_user_id' => $existing->id,
+            'provider' => 'google',
+            'provider_user_id' => 'google-user-1',
+        ]);
+    }
+
+    public function test_social_rejects_unverified_email_colliding_with_existing_account(): void
+    {
+        $this->makePlan(PlanType::Free);
+        AppUser::create(['email' => 'social@test.com']);
+        $this->bindSocialVerifier($this->makeIdentity(['emailVerified' => false]));
+
+        // Unverified email must never be trusted to link to an existing account —
+        // and creating a second account with the same email would hit the DB's
+        // unique constraint, so this must be a clean 409, not a 500.
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertStatus(409)
+            ->assertJson(['message' => 'An account with this email already exists. Please sign in using the method you originally used to create it.']);
+
+        $this->assertDatabaseCount('app_users', 1);
+    }
+
+    public function test_social_creates_new_user_when_unverified_email_does_not_collide(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $this->bindSocialVerifier($this->makeIdentity(['emailVerified' => false, 'email' => 'brand-new@test.com']));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertOk();
+
+        $user = AppUser::where('email', 'brand-new@test.com')->firstOrFail();
+        $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_social_uses_client_supplied_name_when_provider_omits_it(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $this->bindSocialVerifier($this->makeIdentity(['name' => null, 'email' => 'apple-user@test.com']));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'apple',
+            'id_token' => 'fake-id-token',
+            'name' => 'Grace Hopper',
+        ])->assertOk();
+
+        $user = AppUser::where('email', 'apple-user@test.com')->firstOrFail();
+        $this->assertSame('Grace', $user->first_name);
+        $this->assertSame('Hopper', $user->last_name);
+    }
+
+    public function test_social_does_not_overwrite_existing_name_on_repeat_login(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $user = AppUser::create(['email' => 'named@test.com', 'first_name' => 'Original', 'last_name' => 'Name']);
+        AppUserIdentity::create([
+            'app_user_id' => $user->id,
+            'provider' => 'google',
+            'provider_user_id' => 'google-user-1',
+        ]);
+        $this->bindSocialVerifier($this->makeIdentity(['name' => 'Different Name']));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertOk();
+
+        $user->refresh();
+        $this->assertSame('Original', $user->first_name);
+        $this->assertSame('Name', $user->last_name);
+    }
+
+    public function test_social_creates_user_without_name_when_none_supplied(): void
+    {
+        $this->makePlan(PlanType::Free);
+        $this->bindSocialVerifier($this->makeIdentity(['name' => null, 'email' => 'noname@test.com']));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertOk();
+
+        $user = AppUser::where('email', 'noname@test.com')->firstOrFail();
+        $this->assertNull($user->first_name);
+        $this->assertNull($user->last_name);
+    }
+
+    public function test_social_returns_401_when_token_verification_fails(): void
+    {
+        $this->bindSocialVerifier(new InvalidSocialTokenException('bad token'));
+
+        $this->postJson('/api/auth/social', [
+            'provider' => 'google',
+            'id_token' => 'fake-id-token',
+        ])->assertUnauthorized()
+            ->assertJson(['message' => 'Could not verify your sign-in. Please try again.']);
+    }
+
+    public function test_social_validation_requires_provider_and_id_token(): void
+    {
+        $this->postJson('/api/auth/social', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['provider', 'id_token']);
+    }
+
+    public function test_social_rejects_unsupported_provider(): void
+    {
+        $this->postJson('/api/auth/social', [
+            'provider' => 'facebook',
+            'id_token' => 'fake-id-token',
+        ])->assertStatus(422)->assertJsonValidationErrorFor('provider');
     }
 
     // -------------------------------------------------------------------------

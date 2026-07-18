@@ -8,11 +8,18 @@ use App\Enums\PlanType;
 use App\Enums\TransactionCreatedBy;
 use App\Enums\TransactionType;
 use App\Models\Transaction;
+use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use OpenAI\Exceptions\ErrorException as OpenAiErrorException;
+use OpenAI\Exceptions\RateLimitException;
+use OpenAI\Exceptions\ServerException as OpenAiServerException;
+use OpenAI\Exceptions\TransporterException;
 use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Testing\ClientFake;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Http\Client\ClientExceptionInterface;
 use Tests\TestCase;
 
 final class ScanControllerTest extends TestCase
@@ -95,6 +102,57 @@ final class ScanControllerTest extends TestCase
         $this->assertFalse($deleted);
     }
 
+    #[DataProvider('aiFailureProvider')]
+    public function test_scan_classifies_ai_provider_failures(\Throwable $exception, string $expectedCode): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Free, 10));
+
+        Http::fake(fn () => Http::response(['Key' => 'user/receipt.jpg'], 200));
+        $this->fakeScanAi([$exception]);
+
+        $this->apiAs($user)->post('/api/transactions/scan', [
+            'image' => UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'),
+        ])->assertStatus(503)->assertJsonPath('code', $expectedCode);
+    }
+
+    /** @return array<string, array{0: \Throwable, 1: string}> */
+    public static function aiFailureProvider(): array
+    {
+        $response = fn (int $status) => new Psr7Response($status);
+
+        return [
+            'insufficient quota (type)' => [
+                new OpenAiErrorException(['message' => 'no quota', 'type' => 'insufficient_quota'], $response(429)),
+                'ai_quota_exhausted',
+            ],
+            'insufficient quota (code)' => [
+                new OpenAiErrorException(['message' => 'no quota', 'code' => 'insufficient_quota'], $response(429)),
+                'ai_quota_exhausted',
+            ],
+            'rate limited via error status' => [
+                new OpenAiErrorException(['message' => 'slow down'], $response(429)),
+                'ai_rate_limited',
+            ],
+            'generic API error' => [
+                new OpenAiErrorException(['message' => 'weird error'], $response(400)),
+                'ai_failed',
+            ],
+            'rate limit exception' => [
+                new RateLimitException($response(429)),
+                'ai_rate_limited',
+            ],
+            'server exception' => [
+                new OpenAiServerException($response(500)),
+                'ai_unavailable',
+            ],
+            'transporter exception' => [
+                new TransporterException(new class extends \Exception implements ClientExceptionInterface {}),
+                'ai_unavailable',
+            ],
+        ];
+    }
+
     public function test_scan_returns_422_and_deletes_image_when_not_receipt(): void
     {
         $user = $this->makeAppUser();
@@ -152,6 +210,93 @@ final class ScanControllerTest extends TestCase
             'image' => UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'),
         ])->assertUnprocessable()
             ->assertJsonFragment(['message' => 'AI returned incomplete data. Please try another photo.']);
+    }
+
+    public function test_scan_returns_422_when_image_delete_fails_after_incomplete_data(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Free, 10));
+
+        Http::fake(fn ($request) => $request->method() === 'DELETE'
+            ? Http::response([], 500)
+            : Http::response(['Key' => 'path'], 200));
+
+        $this->fakeScanAi([
+            CreateResponse::fake(['choices' => [[
+                'index' => 0,
+                'message' => ['role' => 'assistant', 'content' => json_encode(['is_receipt' => true]), 'function_call' => null, 'tool_calls' => []],
+                'logprobs' => null,
+                'finish_reason' => 'stop',
+            ]]]),
+        ]);
+
+        // Delete failure is logged and swallowed — the response is unaffected.
+        $this->apiAs($user)->post('/api/transactions/scan', [
+            'image' => UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'),
+        ])->assertUnprocessable()
+            ->assertJsonFragment(['message' => 'AI returned incomplete data. Please try another photo.']);
+    }
+
+    public function test_scan_returns_422_when_rate_date_is_too_early(): void
+    {
+        $user = $this->makeAppUser();
+        $this->makeSettings($user, currency: 'USD');
+        $leaf = $this->makeCategory();
+        $this->subscribe($user, $this->makePlan(PlanType::Free, 10));
+
+        Http::fake(fn ($request) => $request->method() === 'DELETE'
+            ? Http::response([], 500) // delete failure here must also be swallowed
+            : Http::response(['Key' => 'path'], 200));
+
+        $aiJson = json_encode([
+            'is_receipt' => true,
+            'date' => '2020-01-01', // well before config('rates.earliest_date')
+            'currency' => 'USD',
+            'total_amount' => 1000,
+            'items' => [['product' => 'Old', 'amount' => 1000, 'category_id' => $leaf->id, 'category_label' => $leaf->label]],
+        ]);
+        $this->fakeScanAi([
+            CreateResponse::fake(['choices' => [[
+                'index' => 0,
+                'message' => ['role' => 'assistant', 'content' => $aiJson, 'function_call' => null, 'tool_calls' => []],
+                'logprobs' => null,
+                'finish_reason' => 'stop',
+            ]]]),
+        ]);
+
+        $this->apiAs($user)->post('/api/transactions/scan', [
+            'image' => UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'),
+        ])->assertUnprocessable()->assertJsonPath('code', 'rate_date_too_early');
+    }
+
+    public function test_scan_returns_422_when_currency_is_unsupported(): void
+    {
+        $user = $this->makeAppUser();
+        $this->makeSettings($user, currency: 'ZZZ'); // not in config('rates.supported')
+        $leaf = $this->makeCategory();
+        $this->subscribe($user, $this->makePlan(PlanType::Free, 10));
+
+        Http::fake(fn () => Http::response(['Key' => 'path'], 200));
+
+        $aiJson = json_encode([
+            'is_receipt' => true,
+            'date' => now()->toDateString(),
+            'currency' => 'USD',
+            'total_amount' => 1000,
+            'items' => [['product' => 'Thing', 'amount' => 1000, 'category_id' => $leaf->id, 'category_label' => $leaf->label]],
+        ]);
+        $this->fakeScanAi([
+            CreateResponse::fake(['choices' => [[
+                'index' => 0,
+                'message' => ['role' => 'assistant', 'content' => $aiJson, 'function_call' => null, 'tool_calls' => []],
+                'logprobs' => null,
+                'finish_reason' => 'stop',
+            ]]]),
+        ]);
+
+        $this->apiAs($user)->post('/api/transactions/scan', [
+            'image' => UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'),
+        ])->assertUnprocessable()->assertJsonPath('code', 'unsupported_currency');
     }
 
     public function test_scan_creates_draft_and_increments_quota_on_success(): void

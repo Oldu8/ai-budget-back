@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\PlanType;
 use App\Services\FeatureAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class FeatureAccessServiceTest extends TestCase
@@ -162,5 +163,45 @@ class FeatureAccessServiceTest extends TestCase
         $result = $this->service->canAccess($user, 'nonexistent_feature');
 
         $this->assertFalse($result->allowed);
+    }
+
+    public function test_assert_access_throws_403_when_denied(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Free));
+
+        try {
+            $this->service->assertAccess($user, 'recurring_expenses');
+            $this->fail('Expected HttpException was not thrown.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+    }
+
+    public function test_assert_access_does_not_throw_when_allowed(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+
+        $this->service->assertAccess($user, 'recurring_expenses');
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_assert_ai_scan_available_throws_when_denied(): void
+    {
+        $user = $this->makeAppUser();
+
+        $this->expectException(HttpException::class);
+
+        $this->service->assertAiScanAvailable($user);
+    }
+
+    public function test_assert_ai_scan_available_does_not_throw_when_allowed(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Free, checkLimit: 5));
+
+        $this->service->assertAiScanAvailable($user);
+        $this->addToAssertionCount(1);
     }
 }

@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Enums\PlanType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Stripe\ApiRequestor;
+use Tests\Support\StripeHttpClientFake;
 use Tests\TestCase;
 
 final class PlanControllerTest extends TestCase
@@ -102,6 +104,35 @@ final class PlanControllerTest extends TestCase
         $this->assertArrayHasKey('price_id', $plan);
         $this->assertArrayHasKey('check_limit', $plan);
         $this->assertArrayHasKey('description', $plan);
+    }
+
+    public function test_uses_live_stripe_price_when_lookup_succeeds(): void
+    {
+        $this->seedPlans();
+        $user = $this->makeAppUser();
+
+        config(['services.stripe.prices' => [
+            'plus' => ['usd' => 'price_live_plus_test'],
+        ]]);
+
+        ApiRequestor::setHttpClient(new StripeHttpClientFake([
+            '/v1/prices/price_live_plus_test' => [
+                'id' => 'price_live_plus_test',
+                'object' => 'price',
+                'unit_amount' => 1234,
+                'currency' => 'usd',
+            ],
+        ]));
+
+        try {
+            $response = $this->apiAs($user)->getJson('/api/plans');
+        } finally {
+            ApiRequestor::setHttpClient(null);
+        }
+
+        $byType = collect($response->json())->keyBy('type');
+        $this->assertSame(1234, $byType['plus']['price']);
+        $this->assertSame('usd', $byType['plus']['currency']);
     }
 
     private function seedPlans(): void

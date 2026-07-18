@@ -78,7 +78,16 @@ final class SocialAuthService
             }
         }
 
-        // 3. New user.
+        // 3. New user — unless this email already belongs to someone else. That only
+        //    happens here because step 2 requires a *verified* email to link; an
+        //    unverified match must not silently create a second account with the
+        //    same email (the column is unique, so it would just crash otherwise).
+        if ($identity->email && AppUser::where('email', $identity->email)->exists()) {
+            throw new SocialEmailAlreadyRegisteredException(
+                'An account with this email already exists. Please sign in using the method you originally used to create it.',
+            );
+        }
+
         [$first, $last] = $this->splitName($identity->name ?? $clientName);
         $user = AppUser::create([
             'email' => $identity->email,

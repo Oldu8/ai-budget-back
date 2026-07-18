@@ -11,7 +11,8 @@ use App\Models\Status;
 use App\Models\UserSubscription;
 use Illuminate\Support\Facades\DB;
 
-final class EnsureDefaultSubscriptionService
+/** Not final: tests mock this out to simulate an unexpected failure in webhook handling. */
+class EnsureDefaultSubscriptionService
 {
     /**
      * ensure free subscription if no active subscription exists at all

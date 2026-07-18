@@ -114,6 +114,39 @@ class ManualTransactionControllerTest extends TestCase
         $this->assertNotContains($outOfRange->id, $ids->all());
     }
 
+    public function test_index_filters_by_type(): void
+    {
+        $user = $this->makeAppUser();
+        $category = $this->makeCategory();
+
+        $expense = Transaction::create([
+            'app_user_id' => $user->id,
+            'total_amount' => 100,
+            'date' => now()->toDateString(),
+            'type' => TransactionType::Expense,
+            'created_by' => TransactionCreatedBy::User,
+            'confirmed_at' => now(),
+        ]);
+        TransactionItem::create(['transaction_id' => $expense->id, 'category_id' => $category->id, 'amount' => 100]);
+
+        $income = Transaction::create([
+            'app_user_id' => $user->id,
+            'total_amount' => 5000,
+            'date' => now()->toDateString(),
+            'type' => TransactionType::Income,
+            'created_by' => TransactionCreatedBy::User,
+            'confirmed_at' => now(),
+        ]);
+        TransactionItem::create(['transaction_id' => $income->id, 'category_id' => $category->id, 'amount' => 5000]);
+
+        $response = $this->apiAs($user)->getJson('/api/transactions?type=income');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertContains($income->id, $ids->all());
+        $this->assertNotContains($expense->id, $ids->all());
+    }
+
     // ── POST /api/transactions ────────────────────────────────────────────────
 
     public function test_store_creates_confirmed_transaction(): void

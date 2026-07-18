@@ -663,4 +663,80 @@ class AnalyticsDashboardServiceTest extends TestCase
         $this->assertEquals($parent1->id, $trends[0]['id']);
         $this->assertEquals($parent2->id, $trends[1]['id']);
     }
+
+    // ── sort/bar edge cases ─────────────────────────────────────────────────────
+
+    public function test_categories_with_equal_amount_sorted_by_label(): void
+    {
+        $user = $this->makeAppUser();
+
+        $parentZ = $this->makeParentCategory('Zzz Category');
+        $childZ = $this->makeChildCategory($parentZ, 'Z');
+        $parentA = $this->makeParentCategory('Aaa Category');
+        $childA = $this->makeChildCategory($parentA, 'A');
+
+        $this->makeExpense($user, $childZ, 1000, '2024-03-01');
+        $this->makeExpense($user, $childA, 1000, '2024-03-01');
+
+        $result = $this->service->build($user, '2024-03');
+        $labels = array_column($result['categories'], 'label');
+
+        $this->assertEquals(['Aaa Category', 'Zzz Category'], $labels);
+    }
+
+    public function test_categories_with_equal_amount_and_label_sorted_by_id(): void
+    {
+        $user = $this->makeAppUser();
+
+        $parentFirst = Category::create(['name' => 'first_dup', 'label' => 'Duplicate']);
+        $childFirst = $this->makeChildCategory($parentFirst, 'ChildFirst');
+        $parentSecond = Category::create(['name' => 'second_dup', 'label' => 'Duplicate']);
+        $childSecond = $this->makeChildCategory($parentSecond, 'ChildSecond');
+
+        $this->makeExpense($user, $childFirst, 1000, '2024-03-01');
+        $this->makeExpense($user, $childSecond, 1000, '2024-03-01');
+
+        $result = $this->service->build($user, '2024-03');
+        $ids = array_column($result['categories'], 'id');
+
+        $this->assertEquals([$parentFirst->id, $parentSecond->id], $ids);
+    }
+
+    public function test_zero_amount_subcategory_gets_zero_bar_percent(): void
+    {
+        $user = $this->makeAppUser();
+
+        $freeParent = $this->makeParentCategory('Freebies');
+        $freeChild = $this->makeChildCategory($freeParent, 'Samples');
+        $this->makeExpense($user, $freeChild, 0, '2024-03-01');
+
+        $paidParent = $this->makeParentCategory('Food');
+        $paidChild = $this->makeChildCategory($paidParent, 'Groceries');
+        $this->makeExpense($user, $paidChild, 500, '2024-03-01');
+
+        $result = $this->service->build($user, '2024-03');
+        $byId = array_column($result['categories'], null, 'id');
+        $freeCategory = $byId[$freeParent->id];
+
+        $this->assertEquals(0, $freeCategory['amount']);
+        $this->assertEquals(0.0, $freeCategory['subcategories'][0]['bar_percent']);
+    }
+
+    // ── private helper contracts (unreachable via the public API) ──────────────
+
+    public function test_trend_row_for_level1_returns_null_when_id_in_neither_array(): void
+    {
+        $method = new \ReflectionMethod(AnalyticsDashboardService::class, 'trendRowForLevel1');
+        $method->setAccessible(true);
+
+        $this->assertNull($method->invoke($this->service, 999, [], []));
+    }
+
+    public function test_trend_row_for_level2_returns_null_when_id_in_neither_array(): void
+    {
+        $method = new \ReflectionMethod(AnalyticsDashboardService::class, 'trendRowForLevel2');
+        $method->setAccessible(true);
+
+        $this->assertNull($method->invoke($this->service, 999, [], []));
+    }
 }
