@@ -3,7 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class CategorySeeder extends Seeder
 {
@@ -29,9 +32,29 @@ class CategorySeeder extends Seeder
         }
 
         // Remove categories dropped from the seed list (children first — self-FK).
-        // Fails if transactions still reference a removed category: reset with `migrate:fresh --seed`.
+        // A stale category still referenced by transaction_items/recurring_expenses
+        // (both restrictOnDelete) can't be hard-deleted — skip it and warn instead of
+        // aborting the rest of app:seed-initial (plans, visibility questions, admin user).
         $keys = array_column($items, 'key');
-        Category::whereNotIn('name', $keys)->whereNotNull('category_id')->delete();
-        Category::whereNotIn('name', $keys)->whereNull('category_id')->delete();
+        $this->deleteStale(Category::whereNotIn('name', $keys)->whereNotNull('category_id'));
+        $this->deleteStale(Category::whereNotIn('name', $keys)->whereNull('category_id'));
+    }
+
+    private function deleteStale(Builder $query): void
+    {
+        foreach ($query->get() as $category) {
+            try {
+                // Wrapped in its own transaction (a savepoint if we're already inside one,
+                // e.g. under RefreshDatabase in tests) so a failed delete only rolls back
+                // this one row — Postgres otherwise poisons the whole enclosing transaction.
+                DB::transaction(fn () => $category->delete());
+            } catch (QueryException $e) {
+                if ($e->getCode() !== '23503') {
+                    throw $e;
+                }
+
+                $this->command->warn("categories:seed: kept '{$category->name}' — still referenced by existing data.");
+            }
+        }
     }
 }

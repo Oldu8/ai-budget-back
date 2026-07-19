@@ -21,7 +21,14 @@ final class StripeHttpClientFake implements ClientInterface
     /** Every request made, as ['method' => …, 'url' => …, 'params' => …] — for asserting request payloads. */
     public array $requests = [];
 
-    /** @param array<string, array<string, mixed>> $responses URL path fragment → response body */
+    /** @var array<string, int> path fragment => how many times it has matched so far */
+    private array $callCounts = [];
+
+    /**
+     * @param  array<string, array<string, mixed>|callable(array<string, mixed> $params, int $callNumber): array{body?: array<string, mixed>, status?: int}>  $responses
+     *                                                                                                                                                                    URL path fragment => response body, or a callable for per-call-number/param-dependent responses
+     *                                                                                                                                                                    (e.g. fail on the 1st call, succeed on the 2nd — see the portal flow_data retry test).
+     */
     public function __construct(
         private array $responses = [],
     ) {}
@@ -31,10 +38,20 @@ final class StripeHttpClientFake implements ClientInterface
     {
         $this->requests[] = ['method' => $method, 'url' => $absUrl, 'params' => $params];
 
-        foreach ($this->responses as $pathFragment => $body) {
-            if (str_contains($absUrl, $pathFragment)) {
-                return [json_encode($body, JSON_THROW_ON_ERROR), 200, []];
+        foreach ($this->responses as $pathFragment => $response) {
+            if (! str_contains($absUrl, $pathFragment)) {
+                continue;
             }
+
+            $this->callCounts[$pathFragment] = ($this->callCounts[$pathFragment] ?? 0) + 1;
+
+            if (is_callable($response)) {
+                $result = $response($params, $this->callCounts[$pathFragment]);
+
+                return [json_encode($result['body'] ?? [], JSON_THROW_ON_ERROR), $result['status'] ?? 200, []];
+            }
+
+            return [json_encode($response, JSON_THROW_ON_ERROR), 200, []];
         }
 
         return [json_encode(['error' => ['type' => 'invalid_request_error', 'message' => "No fake response for {$absUrl}"]]), 400, []];

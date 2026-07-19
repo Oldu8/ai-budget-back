@@ -261,6 +261,81 @@ final class RecurringExpenseControllerTest extends TestCase
         $this->assertNotNull($re->fresh()->ends_at);
     }
 
+    public function test_update_recalculates_next_run_at_when_starts_at_changes(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+        $leaf = $this->makeCategory();
+        $re = RecurringExpense::create($this->basePayload($user->id, $leaf->id, next_run_at: '2026-09-01'));
+
+        $this->apiAs($user)->putJson("/api/recurring-expenses/{$re->id}", [
+            'starts_at' => '2026-10-15',
+        ])->assertOk();
+
+        $this->assertNotSame('2026-09-01', $re->fresh()->next_run_at->toDateString());
+    }
+
+    public function test_update_changes_interval_and_recalculates_next_run_at(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+        $leaf = $this->makeCategory();
+        $re = RecurringExpense::create($this->basePayload($user->id, $leaf->id, next_run_at: '2026-09-01'));
+
+        $response = $this->apiAs($user)->putJson("/api/recurring-expenses/{$re->id}", [
+            'interval' => 3,
+        ]);
+
+        $response->assertOk()->assertJsonPath('interval', 3);
+    }
+
+    public function test_update_rejects_top_level_category(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+        $leaf = $this->makeCategory();
+        $parent = $leaf->parent;
+        $re = RecurringExpense::create($this->basePayload($user->id, $leaf->id));
+
+        $response = $this->apiAs($user)->putJson("/api/recurring-expenses/{$re->id}", [
+            'category_id' => $parent->id,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('errors.category_id.0', 'Category must be a Level 2 category.');
+    }
+
+    public function test_update_rejects_disabled_category(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+        $leaf = $this->makeCategory();
+        $re = RecurringExpense::create($this->basePayload($user->id, $leaf->id));
+
+        AppUserCategorySetting::create(['app_user_id' => $user->id, 'category_id' => $leaf->id]);
+
+        $response = $this->apiAs($user)->putJson("/api/recurring-expenses/{$re->id}", [
+            'category_id' => $leaf->id,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('errors.category_id.0', 'Category is disabled for this user.');
+    }
+
+    public function test_update_skips_level_two_check_when_category_id_casts_to_zero(): void
+    {
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Plus));
+        $leaf = $this->makeCategory();
+        $re = RecurringExpense::create($this->basePayload($user->id, $leaf->id));
+
+        // Fails the base "exists:categories,id" rule either way, but exercises the
+        // withValidator after-hook's own falsy-category_id early return.
+        $this->apiAs($user)->putJson("/api/recurring-expenses/{$re->id}", [
+            'category_id' => 0,
+        ])->assertUnprocessable();
+    }
+
     public function test_update_returns_404_for_other_users_expense(): void
     {
         $user = $this->makeAppUser();

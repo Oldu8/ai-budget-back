@@ -102,6 +102,93 @@ final class VoiceTransactionControllerTest extends TestCase
         $this->assertSame('voice_expense', $tx->raw_ai_data['source'] ?? null);
     }
 
+    public function test_voice_expense_returns_503_when_transcription_fails(): void
+    {
+        OpenAI::fake([
+            new \RuntimeException('Whisper is down'),
+        ]);
+
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Premium, 50));
+
+        $this->apiAs($user)->post('/api/transactions/voice', [
+            'audio' => UploadedFile::fake()->create('note.mp3', 100, 'audio/mpeg'),
+        ])->assertStatus(503)->assertJsonFragment(['message' => 'AI transcription failed. Please try again.']);
+    }
+
+    public function test_voice_expense_returns_503_when_parsing_fails(): void
+    {
+        OpenAI::fake([
+            TranscriptionResponse::fake(['text' => 'coffee five euros today']),
+            new \RuntimeException('Chat completion is down'),
+        ]);
+
+        $user = $this->makeAppUser();
+        $this->subscribe($user, $this->makePlan(PlanType::Premium, 50));
+
+        $this->apiAs($user)->post('/api/transactions/voice', [
+            'audio' => UploadedFile::fake()->create('note.mp3', 100, 'audio/mpeg'),
+        ])->assertStatus(503)->assertJsonFragment(['message' => 'AI processing failed. Please try again.']);
+    }
+
+    public function test_voice_expense_returns_422_when_rate_date_is_too_early(): void
+    {
+        $leaf = $this->makeCategory();
+        $parsedJson = json_encode([
+            'is_expense' => true,
+            'date' => '2020-01-01', // well before config('rates.earliest_date')
+            'currency' => 'USD',
+            'total_amount' => 500,
+            'items' => [['product' => 'Old', 'amount' => 500, 'category_id' => $leaf->id]],
+        ], JSON_THROW_ON_ERROR);
+
+        OpenAI::fake([
+            TranscriptionResponse::fake(['text' => 'old expense']),
+            CreateResponse::fake(['choices' => [[
+                'index' => 0,
+                'message' => ['role' => 'assistant', 'content' => $parsedJson, 'function_call' => null, 'tool_calls' => []],
+                'logprobs' => null, 'finish_reason' => 'stop',
+            ]]]),
+        ]);
+
+        $user = $this->makeAppUser();
+        $this->makeSettings($user, currency: 'USD');
+        $this->subscribe($user, $this->makePlan(PlanType::Premium, 50));
+
+        $this->apiAs($user)->post('/api/transactions/voice', [
+            'audio' => UploadedFile::fake()->create('note.mp3', 100, 'audio/mpeg'),
+        ])->assertUnprocessable();
+    }
+
+    public function test_voice_expense_returns_422_when_currency_is_unsupported(): void
+    {
+        $leaf = $this->makeCategory();
+        $parsedJson = json_encode([
+            'is_expense' => true,
+            'date' => now()->toDateString(),
+            'currency' => 'USD',
+            'total_amount' => 500,
+            'items' => [['product' => 'Thing', 'amount' => 500, 'category_id' => $leaf->id]],
+        ], JSON_THROW_ON_ERROR);
+
+        OpenAI::fake([
+            TranscriptionResponse::fake(['text' => 'something']),
+            CreateResponse::fake(['choices' => [[
+                'index' => 0,
+                'message' => ['role' => 'assistant', 'content' => $parsedJson, 'function_call' => null, 'tool_calls' => []],
+                'logprobs' => null, 'finish_reason' => 'stop',
+            ]]]),
+        ]);
+
+        $user = $this->makeAppUser();
+        $this->makeSettings($user, currency: 'ZZZ'); // not in config('rates.supported')
+        $this->subscribe($user, $this->makePlan(PlanType::Premium, 50));
+
+        $this->apiAs($user)->post('/api/transactions/voice', [
+            'audio' => UploadedFile::fake()->create('note.mp3', 100, 'audio/mpeg'),
+        ])->assertUnprocessable()->assertJsonFragment(['message' => 'This currency is not supported yet.']);
+    }
+
     public function test_voice_expense_returns_422_when_ai_says_not_an_expense(): void
     {
         $parsedJson = json_encode([
