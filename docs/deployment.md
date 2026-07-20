@@ -26,6 +26,7 @@ Railway runs the app from the `Dockerfile` (multi-stage: Node/Vite → Composer 
    | `OPENAI_API_KEY` | ✅ |
    | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | ✅ |
    | `ADMIN_PASSWORD` | ✅ |
+   | `TEST_ACCOUNTS_PASSWORD` | Optional — see below |
    | `API_SECRET` | Optional |
    | `DISCORD_*` | Optional |
 
@@ -40,6 +41,18 @@ Railway runs the app from the `Dockerfile` (multi-stage: Node/Vite → Composer 
    - New Service → same repo
    - Start Command: `php artisan schedule:work`
    - Copy all Variables from the Web service
+
+### Apple App Review demo account
+
+`app:seed-initial` (run on every deploy via the Pre-deploy Command above) also runs
+`reviewer:seed`, which creates/refreshes `appreview@vtrata.com` with a Premium
+subscription and sample transactions — paste its credentials into App Store Connect →
+App Review Information → Sign-in required, so the reviewer can open the app past the
+login screen.
+
+Its password (and the `test-*@budget.test` accounts from TestUsersSeeder) comes from
+`TEST_ACCOUNTS_PASSWORD` — one shared password for every test/demo account. Defaults to
+`te_pass_756-#@!` if unset; set it in the Web service Variables tab to override.
 
 ### Admin Styles Not Loading?
 

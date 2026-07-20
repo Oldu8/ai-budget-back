@@ -21,6 +21,7 @@ class SeedInitialCommand extends Command
             $this->call('plans:seed'),
             $this->call('visibility-questions:seed'),
             $this->call('db:seed', ['--class' => 'AdminUserSeeder', '--force' => true]),
+            $this->call('reviewer:seed'),
         ];
 
         if (array_sum($exitCodes) > 0) {

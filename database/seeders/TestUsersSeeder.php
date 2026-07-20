@@ -21,17 +21,19 @@ use Illuminate\Support\Facades\Log;
 
 class TestUsersSeeder extends Seeder
 {
-    /** Shared password for all seeded test users (hashed via the AppUser `password` cast). */
-    private const TEST_PASSWORD = 'password123';
+    /** Shared default password for all seeded test/demo accounts. Override via TEST_ACCOUNTS_PASSWORD. */
+    private const DEFAULT_PASSWORD = 'te_pass_756-#@!';
 
     public function run(): void
     {
         Log::info('TestUsersSeeder: starting');
 
-        $this->seedProfile('test-free@budget.test', PlanType::Free, 15, 30, 'USD');
-        $this->seedProfile('test-basic@budget.test', PlanType::Basic, 60, 90, 'EUR');
-        $this->seedProfile('test-plus@budget.test', PlanType::Plus, 120, 180, 'USD');
-        $this->seedProfile('test-premium@budget.test', PlanType::Premium, 200, 365, 'UAH');
+        $password = env('TEST_ACCOUNTS_PASSWORD', self::DEFAULT_PASSWORD);
+
+        $this->seedProfile('test-free@budget.test', PlanType::Free, 15, 30, 'USD', $password);
+        $this->seedProfile('test-basic@budget.test', PlanType::Basic, 60, 90, 'EUR', $password);
+        $this->seedProfile('test-plus@budget.test', PlanType::Plus, 120, 180, 'USD', $password);
+        $this->seedProfile('test-premium@budget.test', PlanType::Premium, 200, 365, 'UAH', $password);
     }
 
     private function seedProfile(
@@ -40,6 +42,7 @@ class TestUsersSeeder extends Seeder
         int $txCount,
         int $daysBack,
         string $currency,
+        string $password,
     ): void {
         if (DB::table('app_users')->where('email', $email)->exists()) {
             Log::info('TestUsersSeeder: user already exists, skipping', ['email' => $email]);
@@ -49,7 +52,7 @@ class TestUsersSeeder extends Seeder
 
         $user = AppUser::create([
             'email' => $email,
-            'password' => self::TEST_PASSWORD,
+            'password' => $password,
         ]);
 
         AppUserSettings::create([
