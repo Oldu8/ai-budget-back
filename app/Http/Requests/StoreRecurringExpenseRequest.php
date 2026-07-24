@@ -12,7 +12,7 @@ class StoreRecurringExpenseRequest extends FormRequest
     {
         return [
             'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'amount' => ['required', 'integer', 'min:1'],
+            'amount' => ['required', 'integer', 'min:1', 'max:100000000'],
             'label' => ['nullable', 'string', 'max:255'],
             'starts_at' => ['required', 'date'],
             'frequency' => ['required', 'in:weekly,monthly,yearly'],
