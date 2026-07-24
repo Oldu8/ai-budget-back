@@ -12,7 +12,7 @@ class UpdateRecurringExpenseRequest extends FormRequest
     {
         return [
             'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
-            'amount' => ['sometimes', 'integer', 'min:1'],
+            'amount' => ['sometimes', 'integer', 'min:1', 'max:100000000'],
             'label' => ['sometimes', 'nullable', 'string', 'max:255'],
             'starts_at' => ['sometimes', 'date'],
             'frequency' => ['sometimes', 'in:weekly,monthly,yearly'],

@@ -64,6 +64,7 @@ class ManualTransactionController extends Controller
             'transaction_id' => $transaction->id,
             'category_id' => $request->validated('category_id'),
             'amount' => $totalAmount,
+            'label' => $request->validated('label'),
         ]);
 
         $transaction->load('items.category');

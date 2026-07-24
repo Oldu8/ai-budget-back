@@ -11,7 +11,7 @@ class UpdateTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'total_amount' => ['sometimes', 'integer', 'min:1'],
+            'total_amount' => ['sometimes', 'integer', 'min:1', 'max:100000000'],
             'date' => ['sometimes', 'date', 'after_or_equal:'.config('rates.earliest_date')],
             'type' => ['sometimes', Rule::enum(TransactionType::class)],
             'category_id' => ['sometimes', 'exists:categories,id'],

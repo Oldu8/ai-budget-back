@@ -35,8 +35,8 @@ class UpdateReceiptTransactionRequest extends FormRequest
             'date' => ['required', 'date'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.id' => ['sometimes', 'integer', Rule::exists('transaction_items', 'id')->where('transaction_id', $transaction->id)],
-            'items.*.label' => ['nullable', 'string', 'max:500'],
-            'items.*.amount' => ['required', 'integer', 'min:1'],
+            'items.*.label' => ['nullable', 'string', 'max:255'],
+            'items.*.amount' => ['required', 'integer', 'min:1', 'max:100000000'],
             'items.*.category_id' => ['required', 'integer', Rule::in($allowedIds)],
         ];
     }
