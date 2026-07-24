@@ -25,7 +25,15 @@ final class RateSyncService
     public function sync(CarbonImmutable $from, CarbonImmutable $to): RateSyncSummary
     {
         // ECB business days drive which dates exist (one HTTP call for the range).
-        $ecbByDate = $this->ecb->unitsPerEur($from, $to);
+        try {
+            $ecbByDate = $this->ecb->unitsPerEur($from, $to);
+        } catch (\Throwable $e) {
+            // Whole-range failure: nothing to process this run, note the gap to
+            // backfill next time (mirrors the per-day NBU fallback below).
+            return new RateSyncSummary(0, 0, [
+                "ECB failed for {$from->toDateString()}..{$to->toDateString()}: {$e->getMessage()}",
+            ]);
+        }
 
         $datesProcessed = 0;
         $pairsUpserted = 0;

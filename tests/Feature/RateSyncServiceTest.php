@@ -75,6 +75,24 @@ final class RateSyncServiceTest extends TestCase
         $this->assertDatabaseMissing('exchange_rates', ['to_currency' => 'MDL']);
     }
 
+    public function test_returns_empty_summary_when_ecb_fails(): void
+    {
+        Http::fake([
+            'api.frankfurter.dev/*' => Http::response(null, 500),
+        ]);
+
+        $summary = $this->service()->sync(
+            CarbonImmutable::parse('2026-01-02'),
+            CarbonImmutable::parse('2026-01-02'),
+        );
+
+        $this->assertSame(0, $summary->datesProcessed);
+        $this->assertSame(0, $summary->pairsUpserted);
+        $this->assertCount(1, $summary->warnings);
+        $this->assertStringContainsString('ECB failed for 2026-01-02..2026-01-02', $summary->warnings[0]);
+        $this->assertDatabaseCount('exchange_rates', 0);
+    }
+
     public function test_skips_dates_ecb_has_no_data_for(): void
     {
         Http::fake([
