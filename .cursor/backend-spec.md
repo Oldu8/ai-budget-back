@@ -140,7 +140,7 @@ All `/api/auth/*` routes are throttled (5/min) and return `{ access_token, refre
 | `GET`    | `/api/me`          | Get profile, settings, subscription, `subscription_status`, and scan_usage (scans remaining/limit, period_end) |
 | `PUT`    | `/api/me`          | Update profile               |
 | `PUT`    | `/api/me/password` | Change password (`{ current_password, new_password, refresh_token? }`); 409 for social-only accounts |
-| `DELETE` | `/api/me`          | Soft-delete account          |
+| `DELETE` | `/api/me`          | Soft-delete account: cancel Stripe subscriptions (immediate; failures logged, deletion continues), revoke all refresh tokens, hard-delete social identities, anonymize PII (`email` → `deleted+{id}@deleted.local`, clear name/password/`payment_customer_id`), then soft-delete. Re-registration with the original email is allowed. Stripe `customer.subscription.deleted` may arrive after soft-delete: local row is still found by `payment_subscription_id`, but `$local->appUser` is null — free-plan provisioning is skipped quietly. |
 | `GET`    | `/api/me/settings` | Get user settings            |
 | `POST`   | `/api/me/settings` | Create settings (onboarding) |
 | `PUT`    | `/api/me/settings` | Update user settings         |

@@ -116,7 +116,7 @@
       "method": "DELETE",
       "path": "/api/me",
       "auth": "jwt",
-      "description": "Soft-delete AppUser account.",
+      "description": "Soft-delete AppUser: cancel Stripe subs, revoke sessions, delete identities, anonymize PII, set deleted_at.",
       "headers": {
         "Authorization": "Bearer <access_token>"
       }

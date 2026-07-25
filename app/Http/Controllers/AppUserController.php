@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateMeRequest;
 use App\Models\AppUser;
 use App\Models\AppUserSettings;
 use App\Models\UserSubscription;
+use App\Services\AccountDeletionService;
 use App\Services\Auth\RefreshTokenStore;
 use App\Services\ScanQuotaResetService;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class AppUserController extends Controller
 {
     public function __construct(
         private ScanQuotaResetService $scanQuotaReset,
+        private AccountDeletionService $accountDeletion,
     ) {}
 
     /** @return array<string, mixed> */
@@ -110,7 +112,9 @@ class AppUserController extends Controller
 
     public function destroy(Request $request): JsonResponse
     {
-        $request->user()->delete();
+        /** @var AppUser $user */
+        $user = $request->user();
+        $this->accountDeletion->delete($user);
 
         return response()->json(['message' => 'Account deleted'], 200);
     }

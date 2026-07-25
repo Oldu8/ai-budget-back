@@ -203,6 +203,7 @@ Authentication is fully handled by the backend, which issues **its own** tokens 
 - Refresh: `POST /api/auth/refresh` `{ refresh_token }` → new tokens (the old refresh token is revoked). **401** if invalid/expired/used.
 - Logout: `POST /api/auth/logout` `{ refresh_token }` → revokes that refresh token.
 - Change password: `PUT /api/me/password` `{ current_password, new_password, refresh_token? }` (protected) → 200. **422** on wrong/invalid password, **409** for social-only accounts. Pass the current `refresh_token` to stay signed in on this device while other sessions are revoked.
+- Delete account: `DELETE /api/me` (protected) → 200. Soft-deletes the user after canceling Stripe subscriptions, revoking refresh tokens, deleting social identities, and anonymizing PII so the email can be re-registered. Client clears local tokens and returns to login (no separate logout call needed).
 
 All `/api/auth/*` routes are throttled (5/min). Protected endpoints require:
 

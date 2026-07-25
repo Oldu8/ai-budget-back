@@ -26,12 +26,12 @@ abstract class TestCase extends BaseTestCase
             ->actingAs($user, 'app');
     }
 
-    protected function makeAppUser(): AppUser
+    protected function makeAppUser(array $overrides = []): AppUser
     {
-        return AppUser::create([
+        return AppUser::create(array_merge([
             'email' => Str::random(8).'@test.com',
             'password' => 'password123',
-        ]);
+        ], $overrides));
     }
 
     /** Creates a parent + child category and returns the child (leaf). */
