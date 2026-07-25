@@ -5,15 +5,27 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\PlanType;
+use App\Models\AppUser;
+use App\Models\AppUserIdentity;
+use App\Models\AppUserRefreshToken;
 use App\Models\AppUserSettings;
 use App\Models\Status;
 use App\Models\UserSubscription;
+use App\Services\Auth\RefreshTokenStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Stripe\ApiRequestor;
+use Tests\Support\StripeHttpClientFake;
 use Tests\TestCase;
 
 class AppUserControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        ApiRequestor::setHttpClient(null);
+        parent::tearDown();
+    }
 
     // ── GET /api/me ───────────────────────────────────────────────────────────
 
@@ -138,13 +150,79 @@ class AppUserControllerTest extends TestCase
 
     // ── DELETE /api/me ────────────────────────────────────────────────────────
 
-    public function test_destroy_soft_deletes_user(): void
+    public function test_destroy_soft_deletes_anonymizes_and_revokes_sessions(): void
     {
-        $user = $this->makeAppUser();
+        $user = $this->makeAppUser([
+            'first_name' => 'Alice',
+            'last_name' => 'Smith',
+            'payment_customer_id' => 'cus_delete_me',
+        ]);
+        $originalEmail = $user->email;
+
+        AppUserIdentity::create([
+            'app_user_id' => $user->id,
+            'provider' => 'google',
+            'provider_user_id' => 'google-del-1',
+        ]);
+
+        $refresh = app(RefreshTokenStore::class);
+        $plain = $refresh->issue($user);
+
+        $plan = $this->makePlan(PlanType::Basic);
+        $sub = $this->subscribe($user, $plan);
+        $sub->update(['payment_subscription_id' => 'sub_delete_me']);
+
+        ApiRequestor::setHttpClient(new StripeHttpClientFake([
+            '/v1/subscriptions/' => [
+                'id' => 'sub_delete_me',
+                'object' => 'subscription',
+                'status' => 'canceled',
+            ],
+        ]));
 
         $response = $this->apiAs($user)->deleteJson('/api/me');
 
         $response->assertOk()
+            ->assertJsonFragment(['message' => 'Account deleted']);
+
+        $this->assertSoftDeleted('app_users', ['id' => $user->id]);
+
+        $deleted = AppUser::withTrashed()->findOrFail($user->id);
+        $this->assertSame('deleted+'.$user->id.'@deleted.local', $deleted->email);
+        $this->assertNull($deleted->first_name);
+        $this->assertNull($deleted->last_name);
+        $this->assertNull($deleted->password);
+        $this->assertNull($deleted->payment_customer_id);
+
+        $this->assertDatabaseMissing('app_user_identities', ['app_user_id' => $user->id]);
+        $this->assertNotNull(
+            AppUserRefreshToken::query()
+                ->where('app_user_id', $user->id)
+                ->whereNotNull('revoked_at')
+                ->first()
+        );
+        $this->assertNull($refresh->rotate($plain));
+
+        $this->makePlan(PlanType::Free);
+        Status::firstOrCreate(['name' => 'active']);
+
+        $this->postJson('/api/auth/register', [
+            'email' => $originalEmail,
+            'password' => 'password123',
+        ])->assertCreated();
+    }
+
+    public function test_destroy_succeeds_when_stripe_cancel_fails(): void
+    {
+        $user = $this->makeAppUser();
+        $plan = $this->makePlan(PlanType::Basic);
+        $sub = $this->subscribe($user, $plan);
+        $sub->update(['payment_subscription_id' => 'sub_cancel_fail']);
+
+        ApiRequestor::setHttpClient(new StripeHttpClientFake([]));
+
+        $this->apiAs($user)->deleteJson('/api/me')
+            ->assertOk()
             ->assertJsonFragment(['message' => 'Account deleted']);
 
         $this->assertSoftDeleted('app_users', ['id' => $user->id]);

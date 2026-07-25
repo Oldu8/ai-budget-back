@@ -1093,6 +1093,53 @@ final class StripeControllerTest extends TestCase
         $this->assertSame($active->id, $sub->fresh()->status_id);
     }
 
+    /**
+     * Account deletion cancels Stripe first, then soft-deletes the user. The resulting
+     * customer.subscription.deleted webhook still finds the local row by payment_subscription_id,
+     * but $local->appUser is null (SoftDeletes) — free-plan provisioning must be skipped quietly.
+     */
+    public function test_subscription_deleted_skips_free_plan_when_app_user_soft_deleted(): void
+    {
+        $user = $this->makeAppUser();
+        $user->update(['payment_customer_id' => 'cus_soft_deleted']);
+        $this->makePlan(PlanType::Free);
+        $plan = $this->makePlan(PlanType::Basic);
+        $priceId = 'price_soft_deleted';
+        config(['services.stripe.prices.basic.usd' => $priceId]);
+        $statuses = $this->seedStatuses();
+
+        $sub = UserSubscription::create([
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'payment_subscription_id' => 'sub_soft_deleted',
+            'status_id' => $statuses['active'],
+            'current_period_end' => now()->subDay(),
+            'cancel_at_period_end' => false,
+            'used_checks_count' => 0,
+        ]);
+
+        $user->delete();
+
+        [$payload, $sig] = StripePayloadBuilder::subscriptionDeleted(
+            customerId: 'cus_soft_deleted',
+            subscriptionId: 'sub_soft_deleted',
+            priceId: $priceId,
+            currentPeriodEnd: now()->subDay()->timestamp,
+        );
+
+        $this->call('POST', '/api/stripe/webhook', [], [], [],
+            ['HTTP_STRIPE_SIGNATURE' => $sig, 'CONTENT_TYPE' => 'application/json'],
+            $payload
+        )->assertOk();
+
+        $this->assertSame('canceled', $sub->fresh()->status->name);
+        $this->assertDatabaseMissing('user_subscriptions', [
+            'app_user_id' => $user->id,
+            'payment_subscription_id' => null,
+        ]);
+        $this->assertNull($sub->fresh()->appUser);
+    }
+
     public function test_subscription_deleted_sets_status_to_canceled(): void
     {
         $user = $this->makeAppUser();
