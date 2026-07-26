@@ -1,8 +1,8 @@
 @extends('public.layout')
 
 @php
-    $title = 'AI Budget App — Scan Receipts & Track Spending';
-    $metaDescription = 'Vtrata is an AI budgeting app that scans your receipts, logs expenses by voice, and tracks spending automatically. Get clear on your money — start free.';
+    $title = 'Vtrata — AI Budget App That Scans Receipts & Understands Your Voice';
+    $metaDescription = 'Vtrata turns receipts and voice notes into an organized budget automatically. No bank linking required — just snap a photo or say what you spent. Join the waitlist.';
     $metaKeywords = 'budget app, AI budget app, receipt scanner app, expense tracker, spending tracker, personal finance app, money management, track expenses, budgeting app';
     $canonical = url('/');
 @endphp
@@ -14,10 +14,10 @@
             <div class="max-w-container-max mx-auto px-gutter grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
                 <div class="z-10 text-center lg:text-left">
                     <h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-5">
-                        Your money,<br class="hidden md:block" /> finally clear
+                        Track your spending<br class="hidden md:block" /> automatically with AI
                     </h1>
                     <p class="font-body-lg text-body-lg text-on-surface-variant mb-8 max-w-md mx-auto lg:mx-0">
-                        Take control of your finances with AI-powered categorization and beautiful, intuitive insights.
+                        Snap a photo of a receipt or say what you spent — Vtrata logs and categorizes it for you. No manual entry, no bank account linking, ever.
                     </p>
                     {{-- App store badges — disabled "Coming soon" state until the apps are published --}}
                     <div id="download" class="flex flex-wrap justify-center lg:justify-start gap-3 scroll-mt-[88px]">
@@ -39,12 +39,8 @@
                 </div>
                 <div class="relative flex justify-center lg:justify-end">
                     <div class="absolute -z-10 w-[400px] h-[400px] bg-secondary-fixed opacity-30 blur-[100px] rounded-full"></div>
-                    {{-- SCREENSHOT PLACEHOLDER — replace inner .screenshot-ph div with <img class="w-full h-full object-cover" src="..."> --}}
                     <div class="app-frame w-[280px] md:w-[320px] aspect-[9/19.5] overflow-hidden bg-white shadow-2xl floating-mockup">
-                        <div class="screenshot-ph w-full h-full flex-col gap-2 text-primary/40">
-                            <span class="material-symbols-outlined text-5xl">screenshot</span>
-                            <span class="font-label-sm text-label-sm">App preview</span>
-                        </div>
+                        <img src="{{ asset('images/mein.webp') }}" alt="Vtrata home screen" class="w-full h-full object-cover" loading="eager">
                     </div>
                 </div>
             </div>
@@ -71,9 +67,9 @@
                         </div>
                         <h3 class="font-headline-lg text-headline-lg text-primary">Calm tracking</h3>
                         <ul class="space-y-4 text-on-surface-variant">
-                            <li class="flex items-center gap-3"><span class="material-symbols-outlined text-secondary text-[20px]">verified</span> Instant AI receipt categorization</li>
-                            <li class="flex items-center gap-3"><span class="material-symbols-outlined text-secondary text-[20px]">verified</span> Beautiful, automated visual charts</li>
-                            <li class="flex items-center gap-3"><span class="material-symbols-outlined text-secondary text-[20px]">verified</span> Real-time budget health alerts</li>
+                            <li class="flex items-center gap-3"><span class="material-symbols-outlined text-secondary text-[20px]">verified</span> Snap a receipt — AI reads merchant, items, and total in seconds</li>
+                            <li class="flex items-center gap-3"><span class="material-symbols-outlined text-secondary text-[20px]">verified</span> Or just say it out loud — no typing, no forms</li>
+                            <li class="flex items-center gap-3"><span class="material-symbols-outlined text-secondary text-[20px]">verified</span> No bank account access needed — your data stays yours</li>
                         </ul>
                     </div>
                 </div>
@@ -92,10 +88,10 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     @php
                         $features = [
-                            ['camera_enhance', 'AI receipt scanning', 'Snap a photo and let our AI extract dates, amounts, and categories instantly.'],
-                            ['category', 'Auto-categorization', 'Smart tagging learns your habits to organize transactions automatically.'],
-                            ['bar_chart', 'Monthly overview', 'Crystal clear charts showing exactly how your spending evolves over time.'],
-                            ['account_balance_wallet', 'Budgets that stick', 'Dynamic limits that adapt to your income and saving goals effortlessly.'],
+                            ['camera_enhance', 'AI receipt scanning', 'Snap a photo and Vtrata extracts merchant, date, total, and items instantly.'],
+                            ['mic', 'Voice expense logging', 'Just say what you bought — Vtrata turns it into a categorized expense.'],
+                            ['no_accounts', 'No bank connection needed', 'Add expenses your way. We never ask for your banking credentials.'],
+                            ['account_balance_wallet', 'Budgets that stick', 'Recurring expenses, smart limits, and alerts that adapt to how you actually spend.'],
                         ];
                     @endphp
                     @foreach ($features as [$icon, $featureTitle, $text])
@@ -128,16 +124,18 @@
                 </div>
             </div>
 
-            {{-- SCREENSHOT PLACEHOLDERS — replace each .screenshot-ph with a real <img> --}}
             <div class="max-w-container-max mx-auto px-gutter">
                 <div data-carousel class="flex gap-6 overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth pb-2">
-                    @foreach (['Home dashboard', 'Detailed analytics', 'Add expense', 'Transaction history', 'AI receipt scan', 'Budget limits'] as $label)
+                    @foreach ([
+                        'analytics' => 'Detailed analytics',
+                        'scan' => 'Add expense',
+                        'scannec' => 'AI receipt scan',
+                        'history' => 'Transaction history',
+                        'sound' => 'Voice expense',
+                    ] as $file => $label)
                         <div data-carousel-item class="snap-start shrink-0 basis-full md:basis-[calc((100%-3rem)/3)]">
                             <div class="app-frame w-full max-w-[280px] mx-auto aspect-[9/19.5] overflow-hidden bg-white shadow-xl">
-                                <div class="screenshot-ph w-full h-full flex-col gap-2 text-primary/40">
-                                    <span class="material-symbols-outlined text-4xl">screenshot</span>
-                                    <span class="font-label-sm text-label-sm px-4 text-center">{{ $label }}</span>
-                                </div>
+                                <img src="{{ asset('images/'.$file.'.webp') }}" alt="{{ $label }}" class="w-full h-full object-cover" loading="lazy">
                             </div>
                             <p class="text-center mt-4 font-label-lg text-label-lg">{{ $label }}</p>
                         </div>
@@ -158,7 +156,8 @@
             </div>
         </section>
 
-        {{-- ============ Testimonials ============ --}}
+        {{--
+        ============ Testimonials (hidden until app launch — no real users/reviews yet) ============
         <section class="py-section-padding-mobile md:py-section-padding-desktop bg-surface">
             <div class="max-w-container-max mx-auto px-gutter">
                 <h2 class="font-headline-lg text-headline-lg text-primary text-center mb-10">What our users say</h2>
@@ -179,7 +178,6 @@
                             </div>
                             <p class="font-body-md text-body-md text-on-surface mb-8 italic">"{{ $quote }}"</p>
                             <div class="flex items-center gap-4">
-                                {{-- AVATAR PLACEHOLDER — swap for a real photo when available --}}
                                 <div class="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold border-2 border-white">{{ $initials }}</div>
                                 <div>
                                     <div class="font-label-lg text-label-lg text-primary">{{ $name }}</div>
@@ -191,6 +189,7 @@
                 </div>
             </div>
         </section>
+        --}}
 
         {{-- ============ FAQ ============ --}}
         <section class="py-section-padding-mobile md:py-section-padding-desktop bg-surface scroll-mt-[72px]" id="faq">
@@ -222,9 +221,9 @@
         {{-- ============ Final CTA ============ --}}
         <section class="py-section-padding-mobile md:py-section-padding-desktop bg-primary-container relative overflow-hidden">
             <div class="max-w-container-max mx-auto px-gutter relative z-10 flex flex-col items-center text-center">
-                <h2 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-white mb-6">Ready for financial clarity?</h2>
+                <h2 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-white mb-6">Start tracking your spending with Vtrata</h2>
                 <p class="font-body-lg text-body-lg text-on-primary-container mb-10 max-w-lg">
-                    Start tracking your spending in minutes — no spreadsheets, no manual sorting.
+                    We're putting the finishing touches on the app. Join the waitlist and we'll let you know the moment it's live — no spreadsheets, no bank linking, no manual sorting.
                 </p>
                 <div class="flex flex-col sm:flex-row justify-center gap-4">
                     <div class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 opacity-70 cursor-not-allowed select-none">
