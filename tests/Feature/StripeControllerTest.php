@@ -1283,6 +1283,68 @@ final class StripeControllerTest extends TestCase
         $this->assertDatabaseMissing('payments', ['payment_invoice_id' => 'in_orphan_001']);
     }
 
+    /**
+     * Stripe doesn't guarantee webhook delivery order — invoice.paid can arrive before
+     * customer.subscription.created. onInvoicePaid() must self-heal via Subscription::retrieve
+     * instead of just logging a warning and dropping the payment/status-recovery logic.
+     */
+    public function test_invoice_paid_self_heals_missing_subscription_via_stripe_retrieve(): void
+    {
+        $user = $this->makeAppUser();
+        $user->update(['payment_customer_id' => 'cus_self_heal']);
+        $plan = $this->makePlan(PlanType::Basic);
+        $priceId = 'price_self_heal';
+        config(['services.stripe.prices.basic.usd' => $priceId]);
+        $this->seedStatuses();
+
+        ApiRequestor::setHttpClient(new StripeHttpClientFake([
+            '/v1/subscriptions/sub_self_heal' => [
+                'id' => 'sub_self_heal',
+                'object' => 'subscription',
+                'customer' => 'cus_self_heal',
+                'status' => 'active',
+                'cancel_at_period_end' => false,
+                'current_period_end' => now()->addMonth()->timestamp,
+                'trial_start' => null,
+                'trial_end' => null,
+                'items' => [
+                    'object' => 'list',
+                    'data' => [[
+                        'id' => 'si_self_heal',
+                        'object' => 'subscription_item',
+                        'current_period_end' => now()->addMonth()->timestamp,
+                        'price' => ['id' => $priceId, 'object' => 'price'],
+                    ]],
+                ],
+            ],
+        ]));
+
+        [$payload, $sig] = StripePayloadBuilder::invoicePaid(
+            customerId: 'cus_self_heal',
+            invoiceId: 'in_self_heal_001',
+            subscriptionId: 'sub_self_heal',
+            amountPaid: 500,
+            currency: 'usd',
+            billingReason: 'subscription_create',
+        );
+
+        $this->call('POST', '/api/stripe/webhook', [], [], [],
+            ['HTTP_STRIPE_SIGNATURE' => $sig, 'CONTENT_TYPE' => 'application/json'],
+            $payload
+        )->assertOk();
+
+        $this->assertDatabaseHas('user_subscriptions', [
+            'app_user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'payment_subscription_id' => 'sub_self_heal',
+        ]);
+        $this->assertDatabaseHas('payments', [
+            'payment_invoice_id' => 'in_self_heal_001',
+            'app_user_id' => $user->id,
+            'amount' => 500,
+        ]);
+    }
+
     public function test_invoice_paid_recovers_past_due_subscription_to_active(): void
     {
         $user = $this->makeAppUser();

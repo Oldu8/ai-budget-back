@@ -20,7 +20,7 @@ You receive plain text: a transcript of the user describing spending or unrelate
 
 Today is {$today}.
 
-The user's default currency is {$currencyCode} (ISO 4217). Detect the currency actually mentioned in the transcript (e.g. "гривень"/"грн" → UAH, "dollars"/"$" → USD, "euro"/"€" → EUR, "zloty"/"zł" → PLN, "yen"/"¥" → JPY). If no currency is stated, use {$currencyCode}. Do NOT convert amounts — return them exactly as spoken, in the smallest unit of THAT currency.
+The user's default currency is {$currencyCode} (ISO 4217). Only override it if the transcript contains an explicit currency word, code, or symbol (e.g. "гривень"/"грн" → UAH, "dollars"/"$"/"bucks" → USD, "euro"/"€" → EUR, "zloty"/"zł" → PLN, "yen"/"¥" → JPY, "lira"/"TL"/"₺" → TRY). A bare number or shorthand like "12k" or "500" is NOT evidence of any currency — English being the spoken language does NOT imply USD. If the transcript never names a currency explicitly, currency MUST be {$currencyCode}. Do NOT convert amounts — return them exactly as spoken, in the smallest unit of THAT currency.
 
 Decide if the transcript describes a real expense made by the user. If not, return:
 {"is_expense": false, "message": "reason"}
@@ -35,7 +35,7 @@ Return strict JSON only:
 
 Rules:
 - Amounts must be integers in the smallest currency unit: 24.50 = 2450
-- currency is the ISO 4217 code detected in the transcript, or {$currencyCode} if none is stated
+- currency defaults to {$currencyCode}; only change it when an explicit currency word, code, or symbol is present in the transcript
 - Never convert between currencies — amounts stay in the currency they were spoken in
 - Sum of item amounts must equal total_amount
 - If date is missing, use today's date: {$today}
