@@ -135,6 +135,17 @@
         .article-body img { border-radius: 1rem; margin: 2rem auto; max-width: 100%; height: auto; }
         .article-body figure figcaption { text-align: center; margin-top: 1rem; font-size: 12px; font-style: italic; color: #707978; }
         .article-body blockquote { border-left: 4px solid #006a66; padding: 2rem; background: #f3f4f3; border-radius: 0.75rem; font-size: 28px; line-height: 36px; color: #002422; font-weight: 700; font-style: italic; }
+
+        /* privacy.html/terms.html are stripped down to plain h1/h2/h3/div/ul/li/a
+           markup (Termly's own classes and inline styles were removed); style them
+           here to match the site's Inter type system. */
+        .legal-content { font-size: 16px; line-height: 26px; color: #404848; }
+        .legal-content h1 { font-size: 32px; line-height: 40px; font-weight: 700; color: #002422; margin-bottom: 0.5rem; }
+        .legal-content h2 { font-size: 24px; line-height: 32px; font-weight: 700; color: #002422; margin-top: 2.5rem; margin-bottom: 1rem; }
+        .legal-content h3 { font-size: 18px; line-height: 26px; font-weight: 700; color: #002422; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .legal-content a { color: #006a66; text-decoration: underline; }
+        .legal-content ul, .legal-content ol { list-style: revert; padding-left: 1.5rem; margin: 1rem 0; }
+        .legal-content li { margin-bottom: 0.5rem; }
     </style>
     @stack('head')
 </head>

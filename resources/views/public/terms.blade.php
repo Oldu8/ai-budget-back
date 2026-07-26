@@ -12,7 +12,7 @@
              provide a centered, readable container. Rendered raw from a plain .html file so Blade
              never parses the legal HTML's @ / {{ }} characters. To update: re-export from Termly
              and replace the contents of resources/views/public/legal/terms.html --}}
-        <div class="content-canvas px-gutter">
+        <div class="content-canvas px-gutter legal-content">
             {!! file_get_contents(resource_path('views/public/legal/terms.html')) !!}
         </div>
     </main>
