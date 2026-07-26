@@ -115,8 +115,6 @@
         .app-frame { border: 12px solid #191c1c; border-radius: 44px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Placeholder screenshot fill — swap the inner <img> in when real screens are ready */
-        .screenshot-ph { background: linear-gradient(160deg, #9deee8 0%, #f3f4f3 55%, #ffdbcd 100%); display: flex; align-items: center; justify-content: center; }
         @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .floating-mockup { animation: float 6s ease-in-out infinite; }
         .content-canvas { max-width: 720px; margin-left: auto; margin-right: auto; }
