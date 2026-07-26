@@ -3,14 +3,14 @@
 declare(strict_types=1);
 
 // Where each currency's rate comes from. EUR is the pivot (implicit 1.0) and is
-// not fetched. The full supported set is EUR + ecb + nbu (23 currencies).
+// not fetched. The full supported set is EUR + ecb + nbu (24 currencies).
 // BGN was dropped: Bulgaria joined the euro on 2026-01-01, so ECB no longer
 // publishes the lev — Bulgarian amounts are now EUR.
 $ecb = [
     'USD', 'PLN', 'GBP', 'CAD', 'CHF', 'TRY', 'CZK', 'HUF', 'RON',
-    'SEK', 'NOK', 'DKK', 'JPY', 'CNY', 'AUD', 'BRL', 'ILS', 'MXN', 'IDR',
+    'SEK', 'NOK', 'DKK', 'JPY', 'CNY', 'AUD', 'BRL', 'ILS', 'MXN', 'IDR', 'THB',
 ];
-$nbu = ['UAH', 'MDL'];
+$nbu = ['UAH', 'MDL', 'VND'];
 
 return [
     // Pivot currency used only while building the rate matrix at sync time

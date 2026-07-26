@@ -583,6 +583,14 @@ class StripeController extends Controller
         }
 
         $local = UserSubscription::where('payment_subscription_id', $subscriptionId)->first();
+
+        // Stripe doesn't guarantee webhook delivery order — invoice.paid can arrive
+        // before customer.subscription.created. Self-heal by pulling the subscription
+        // from Stripe directly instead of dropping recovery/reset logic below.
+        if (! $local) {
+            $local = $this->syncSubscriptionFromStripe($subscriptionId, $invoice->id);
+        }
+
         $appUserId = $local?->app_user_id;
 
         if (! $appUserId) {
@@ -642,6 +650,36 @@ class StripeController extends Controller
                 'scans_reset_at' => now()->addDays(30),
             ]);
         }
+    }
+
+    /**
+     * Pull a subscription straight from Stripe and run it through the same
+     * create-or-update path as customer.subscription.created. Used when invoice.paid
+     * arrives before that event so we don't have to drop status recovery/reset
+     * handling for the delivery — see onInvoicePaid().
+     */
+    private function syncSubscriptionFromStripe(string $subscriptionId, string $invoiceId): ?UserSubscription
+    {
+        try {
+            $subscription = StripeSubscription::retrieve($subscriptionId);
+        } catch (\Throwable $e) {
+            Log::warning('Stripe: invoice.paid — Subscription::retrieve failed while self-healing missing local row', [
+                'stripe_subscription_id' => $subscriptionId,
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        Log::info('Stripe: invoice.paid — no local user_subscriptions row yet, synced from Stripe', [
+            'stripe_subscription_id' => $subscriptionId,
+            'invoice_id' => $invoiceId,
+        ]);
+
+        $this->onSubscriptionCreated($subscription, "invoice:{$invoiceId}");
+
+        return UserSubscription::where('payment_subscription_id', $subscriptionId)->first();
     }
 
     // ──────────────────────────────────────────────
