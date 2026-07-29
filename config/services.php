@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\PlanType;
+
 return [
 
     /*
@@ -118,6 +120,18 @@ return [
                 'eur' => env('STRIPE_PREMIUM_PRICE_EUR'),
                 'usd' => env('STRIPE_PREMIUM_PRICE_USD'),
             ],
+        ],
+    ],
+
+    // RevenueCat (iOS in-app purchases). Product IDs are fixed in App Store Connect —
+    // same across environments (Apple handles currency/pricing itself), unlike Stripe's
+    // per-currency price IDs above.
+    'revenuecat' => [
+        'webhook_secret' => env('REVENUECAT_WEBHOOK_SECRET'),
+        'products' => [
+            'vtrata.basic.monthly' => PlanType::Basic->value,
+            'vtrata.plus.monthly' => PlanType::Plus->value,
+            'vtrata.premium.monthly' => PlanType::Premium->value,
         ],
     ],
 
