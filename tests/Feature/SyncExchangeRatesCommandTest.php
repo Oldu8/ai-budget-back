@@ -52,4 +52,21 @@ final class SyncExchangeRatesCommandTest extends TestCase
             ->expectsOutputToContain('NBU failed')
             ->assertSuccessful();
     }
+
+    /**
+     * Frankfurter (ECB) is occasionally slow/unreachable from the cron container.
+     * A total ECB failure must not crash the command — it should report a warning
+     * and fail cleanly so monitoring can see it, instead of an uncaught exception.
+     */
+    public function test_fails_cleanly_when_ecb_is_unreachable(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-01-10'));
+        Http::fake([
+            'api.frankfurter.dev/*' => Http::response(null, 500),
+        ]);
+
+        $this->artisan('rates:sync', ['--days' => 1])
+            ->expectsOutputToContain('ECB failed')
+            ->assertFailed();
+    }
 }

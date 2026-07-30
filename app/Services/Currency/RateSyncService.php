@@ -25,7 +25,13 @@ final class RateSyncService
     public function sync(CarbonImmutable $from, CarbonImmutable $to): RateSyncSummary
     {
         // ECB business days drive which dates exist (one HTTP call for the range).
-        $ecbByDate = $this->ecb->unitsPerEur($from, $to);
+        // Frankfurter is occasionally slow/unreachable — don't let a transient
+        // timeout crash the whole run; the daily catch-up window self-heals it.
+        try {
+            $ecbByDate = $this->ecb->unitsPerEur($from, $to);
+        } catch (\Throwable $e) {
+            return new RateSyncSummary(0, 0, ["ECB failed for {$from->toDateString()}..{$to->toDateString()}: {$e->getMessage()}"]);
+        }
 
         $datesProcessed = 0;
         $pairsUpserted = 0;

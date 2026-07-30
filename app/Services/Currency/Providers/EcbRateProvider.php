@@ -31,8 +31,10 @@ final class EcbRateProvider
             ? $from->toDateString()
             : $from->toDateString().'..'.$to->toDateString();
 
-        $response = Http::timeout(15)
-            ->retry(2, 500)
+        // Longer timeout + backoff than the request-time lookup below: this runs
+        // from a cron job, not a user-facing request, and Frankfurter is occasionally slow.
+        $response = Http::timeout(30)
+            ->retry(3, 1000)
             ->get(self::BASE_URL.'/'.$path, [
                 'base' => 'EUR',
                 'symbols' => $symbols,
