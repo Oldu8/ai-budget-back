@@ -9,6 +9,7 @@ use App\Http\Controllers\ExpenseExportController;
 use App\Http\Controllers\ManualTransactionController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RecurringExpenseController;
+use App\Http\Controllers\RevenueCatController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\TransactionSummaryController;
@@ -21,6 +22,10 @@ Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
 // Stripe webhook — no JWT, no API key; authenticated solely by Stripe signature
 Route::post('/stripe/webhook', [StripeController::class, 'webhook'])
+    ->withoutMiddleware(EnsureApiKey::class);
+
+// RevenueCat webhook — no JWT, no API key; authenticated solely by the shared Authorization secret
+Route::post('/webhooks/revenuecat', [RevenueCatController::class, 'webhook'])
     ->withoutMiddleware(EnsureApiKey::class);
 
 Route::middleware('throttle:5,1')->group(function () {
