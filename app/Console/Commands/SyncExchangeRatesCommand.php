@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\Currency\RateSyncService;
+use App\Services\ErrorNotifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 
@@ -30,6 +31,20 @@ class SyncExchangeRatesCommand extends Command
         $this->info("Synced {$summary->datesProcessed} day(s), {$summary->pairsUpserted} pair(s).");
         foreach ($summary->warnings as $warning) {
             $this->warn($warning);
+        }
+
+        if ($summary->warnings !== []) {
+            ErrorNotifier::notify(
+                'rates:sync — partial failure',
+                implode("\n", $summary->warnings),
+                ['dates_processed' => $summary->datesProcessed, 'pairs_upserted' => $summary->pairsUpserted],
+            );
+        }
+
+        // Nothing synced at all (e.g. ECB unreachable) — surface a failed run for
+        // monitoring. Tomorrow's run still self-heals via the catch-up window.
+        if ($summary->datesProcessed === 0 && $summary->warnings !== []) {
+            return self::FAILURE;
         }
 
         return self::SUCCESS;
