@@ -320,7 +320,11 @@ class RevenueCatController extends Controller
 
     private function resolvePlanByProductId(string $productId): ?Plan
     {
-        $planType = config("services.revenuecat.products.{$productId}");
+        // Product IDs contain dots (e.g. "vtrata.basic.monthly"), so this must NOT be looked up
+        // via config("...products.{$productId}") — Laravel's dot notation would treat each
+        // segment as a nested array key instead of matching the literal product_id string.
+        $products = config('services.revenuecat.products', []);
+        $planType = $products[$productId] ?? null;
         if (! $planType) {
             Log::warning('RevenueCat: could not resolve plan for product_id', ['product_id' => $productId]);
 
