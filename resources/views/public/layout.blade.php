@@ -190,11 +190,6 @@
                     <p class="text-on-primary/60 font-body-md mb-6 max-w-xs">
                         Making financial management a calm, automated experience for everyone.
                     </p>
-                    <div class="flex gap-4">
-                        <a class="text-on-primary/60 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
-                        <a class="text-on-primary/60 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined">share</span></a>
-                        <a class="text-on-primary/60 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined">alternate_email</span></a>
-                    </div>
                 </div>
                 <ul class="space-y-4 text-on-primary/60">
                     <li><a class="hover:text-white transition-colors" href="{{ route('home') }}#features">Features</a></li>
@@ -203,8 +198,7 @@
                 </ul>
                 <ul class="space-y-4 text-on-primary/60">
                     <li><a class="hover:text-white transition-colors" href="{{ route('blog.index') }}">Blog</a></li>
-                    <li><a class="hover:text-white transition-colors" href="{{ route('privacy') }}">Privacy Policy</a></li>
-                    <li><a class="hover:text-white transition-colors" href="{{ route('terms') }}">Terms of Service</a></li>
+                    <li><a class="hover:text-white transition-colors" href="mailto:support@vtrata.com">Get Help / Support</a></li>
                 </ul>
             </div>
         </div>

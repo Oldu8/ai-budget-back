@@ -46,6 +46,19 @@
             </div>
         </section>
 
+        {{-- ============ Support callout ============ --}}
+        <section class="py-8">
+            <div class="max-w-container-max mx-auto px-gutter">
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left bg-surface-container rounded-2xl p-6">
+                    <span class="material-symbols-outlined text-secondary">support_agent</span>
+                    <p class="font-body-md text-body-md text-on-surface-variant">
+                        Found a bug or have a problem? Reach out at
+                        <a href="mailto:support@vtrata.com" class="text-primary font-bold hover:underline">support@vtrata.com</a>
+                    </p>
+                </div>
+            </div>
+        </section>
+
         {{-- ============ Problem vs Solution ============ --}}
         <section class="py-section-padding-mobile md:py-section-padding-desktop">
             <div class="max-w-container-max mx-auto px-gutter">
