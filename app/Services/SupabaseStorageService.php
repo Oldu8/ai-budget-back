@@ -17,17 +17,20 @@ final class SupabaseStorageService
 
     private string $bucket;
 
-    public function __construct()
+    /** @param string|null $bucket Overrides the default (receipts) bucket, e.g. for the public blog-covers bucket. */
+    public function __construct(?string $bucket = null)
     {
         $this->url = rtrim(config('services.supabase.url'), '/');
         $this->serviceRole = config('services.supabase.service_role');
-        $this->bucket = config('services.supabase.storage_bucket');
+        $this->bucket = $bucket ?? config('services.supabase.storage_bucket');
     }
 
-    public function upload(UploadedFile $file, int $userId): string
+    /** @param string|int|null $prefix Folder to scope the file under, e.g. a user id. Omit for a flat bucket. */
+    public function upload(UploadedFile $file, string|int|null $prefix = null): string
     {
         $ext = $file->getClientOriginalExtension() ?: 'jpg';
-        $path = "{$userId}/".Str::uuid().".{$ext}";
+        $filename = Str::uuid().".{$ext}";
+        $path = $prefix !== null ? "{$prefix}/{$filename}" : $filename;
 
         $response = Http::withHeaders([
             'Authorization' => "Bearer {$this->serviceRole}",
@@ -57,6 +60,14 @@ final class SupabaseStorageService
                 "Supabase Storage delete failed: {$response->status()} {$response->body()}"
             );
         }
+    }
+
+    /** Permanent URL for an object in a public bucket (no signing/expiry). */
+    public function publicUrl(string $path): string
+    {
+        $encodedPath = implode('/', array_map('rawurlencode', explode('/', $path)));
+
+        return "{$this->url}/storage/v1/object/public/{$this->bucket}/{$encodedPath}";
     }
 
     /**

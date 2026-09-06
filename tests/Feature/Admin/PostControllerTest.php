@@ -8,7 +8,7 @@ use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -139,7 +139,7 @@ final class PostControllerTest extends TestCase
 
     public function test_update_uploads_a_cover_image(): void
     {
-        Storage::fake('public');
+        Http::fake(['*/storage/v1/object/*' => Http::response(['Key' => 'ok'], 200)]);
         $post = Post::create($this->validPayload(['slug' => 'with-cover', 'translation_group_id' => Str::uuid()]));
 
         $this->actingAs($this->admin())->put("/admin/posts/{$post->id}", [
@@ -148,8 +148,8 @@ final class PostControllerTest extends TestCase
         ]);
 
         $post->refresh();
-        $this->assertNotNull($post->cover_image);
-        Storage::disk('public')->assertExists($post->cover_image);
+        $this->assertStringContainsString('/storage/v1/object/public/blog-covers/', $post->cover_image);
+        $this->assertStringEndsWith('.jpg', $post->cover_image);
     }
 
     public function test_destroy_deletes_the_post(): void

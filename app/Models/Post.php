@@ -70,7 +70,7 @@ final class Post extends Model
 
     public function coverUrl(): ?string
     {
-        // Root-relative URL so images resolve on any host/port regardless of APP_URL.
-        return $this->cover_image ? '/storage/'.ltrim($this->cover_image, '/') : null;
+        // cover_image stores the full public Supabase Storage URL.
+        return $this->cover_image ?: null;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PostRequest;
 use App\Models\Post;
+use App\Services\SupabaseStorageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -73,7 +74,9 @@ class PostController extends Controller
         $post->slug = $slug;
 
         if ($request->hasFile('cover')) {
-            $post->cover_image = $request->file('cover')->store('posts', 'public');
+            $storage = new SupabaseStorageService(config('services.supabase.blog_storage_bucket'));
+            $path = $storage->upload($request->file('cover'));
+            $post->cover_image = $storage->publicUrl($path);
         }
 
         if ($post->status === Post::STATUS_PUBLISHED && $post->published_at === null) {

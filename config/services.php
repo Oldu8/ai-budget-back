@@ -53,6 +53,8 @@ return [
         'url' => env('SUPABASE_URL'),
         'service_role' => env('SUPABASE_SERVICE_ROLE'),
         'storage_bucket' => env('SUPABASE_STORAGE_BUCKET', 'receipts'),
+        // Public bucket for blog cover images (marketing site) — separate from the private receipts bucket.
+        'blog_storage_bucket' => env('SUPABASE_BLOG_STORAGE_BUCKET', 'blog-covers'),
     ],
 
     /*
