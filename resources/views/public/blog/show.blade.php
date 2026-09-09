@@ -84,17 +84,11 @@
                 </div>
 
                 {{-- CTA box --}}
-                <div class="bg-secondary-container/30 border border-secondary-container p-8 md:p-12 rounded-[24px] my-16 text-center space-y-8">
+                <div class="bg-secondary-container/30 border border-secondary-container rounded-[24px] my-16 min-h-[200px] flex flex-col items-center justify-center gap-6 text-center px-8">
                     <h3 class="font-headline-lg text-headline-lg text-primary">@lang('blog.cta_title')</h3>
-                    <p class="font-body-lg text-body-lg text-on-secondary-container max-w-lg mx-auto">@lang('blog.cta_subtitle')</p>
-                    <div class="flex flex-wrap justify-center gap-4 pt-2">
-                        <a href="#" class="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label-lg text-label-lg active:scale-95 transition-transform">
-                            <span class="material-symbols-outlined text-[20px]">ios_share</span> App Store
-                        </a>
-                        <a href="#" class="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label-lg text-label-lg active:scale-95 transition-transform">
-                            <span class="material-symbols-outlined text-[20px]">play_arrow</span> Google Play
-                        </a>
-                    </div>
+                    <a href="https://apps.apple.com/app/id6795589223" onclick="typeof gtag === 'function' && gtag('event', 'app_store_click', { event_category: 'blog_cta' })">
+                        <img src="{{ asset('badges/black.svg') }}" alt="Download on the App Store" height="54">
+                    </a>
                 </div>
 
                 <div class="pt-8 border-t border-outline-variant flex justify-between items-center">

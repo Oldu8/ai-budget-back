@@ -21,8 +21,7 @@ return [
     'nav_faq' => 'FAQ',
     'get_started' => 'Get Started',
 
-    'cta_title' => 'Track this automatically with Vtrata',
-    'cta_subtitle' => 'Stop manual entry. Let our AI handle the categorization while you enjoy the peace of mind.',
+    'cta_title' => 'Join the app on the App Store',
 
     'footer_tagline' => 'Your path to financial serenity through intelligent automation.',
     'footer_product' => 'Product',

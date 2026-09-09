@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="apple-itunes-app" content="app-id=6795589223" />
 
     {{-- Google Analytics 4 (gtag.js) — prod only; also serves as Search Console verification --}}
     @if($gaId = config('services.google_analytics.measurement_id'))

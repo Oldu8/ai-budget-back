@@ -16,8 +16,7 @@ return [
     'nav_faq' => 'Preguntas',
     'get_started' => 'Empezar',
 
-    'cta_title' => 'Lleva el control automáticamente con Vtrata',
-    'cta_subtitle' => 'Olvídate de la entrada manual. Nuestra IA se encarga de la categorización mientras tú disfrutas de la tranquilidad.',
+    'cta_title' => 'Únete a la app en el App Store',
 
     'footer_tagline' => 'Tu camino hacia la serenidad financiera mediante la automatización inteligente.',
     'footer_product' => 'Producto',
