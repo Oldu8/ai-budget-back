@@ -96,7 +96,11 @@
                     {{-- App store badges — Google Play stays disabled "Coming soon" until the app is published --}}
                     <div id="download" class="flex flex-wrap justify-center lg:justify-start items-center gap-3 scroll-mt-[88px]">
                         <a href="https://apps.apple.com/app/id6795589223" onclick="typeof gtag === 'function' && gtag('event', 'app_store_click', { event_category: 'landing_hero' })">
-                            <img src="{{ asset('badges/black.svg') }}" alt="Download on the App Store" height="48">
+                            {{-- Explicit width+height (not h-full/w-auto): the SVG's own intrinsic
+                                 ratio didn't get picked up by the browser inside a stretched flex
+                                 item, so it rendered squashed. 162x54 matches the Google Play
+                                 pill's real height here (measured), keeping the 2.9916:1 ratio. --}}
+                            <img src="{{ asset('badges/black.svg') }}" alt="Download on the App Store" class="h-[54px] w-[162px]">
                         </a>
                         <div class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 opacity-60 cursor-not-allowed select-none">
                             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>
@@ -309,7 +313,9 @@
                 </p>
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
                     <a href="https://apps.apple.com/app/id6795589223" onclick="typeof gtag === 'function' && gtag('event', 'app_store_click', { event_category: 'landing_final_cta' })">
-                        <img src="{{ asset('badges/white.svg') }}" alt="Download on the App Store" height="56">
+                        {{-- 185x62 matches the Google Play pill's real height here (measured;
+                             this section uses more padding than the hero, hence the bigger pill). --}}
+                        <img src="{{ asset('badges/white.svg') }}" alt="Download on the App Store" class="h-[62px] w-[185px]">
                     </a>
                     <div class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 opacity-70 cursor-not-allowed select-none">
                         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>

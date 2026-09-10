@@ -87,7 +87,7 @@
                 <div class="bg-secondary-container/30 border border-secondary-container rounded-[24px] my-16 min-h-[200px] flex flex-col items-center justify-center gap-6 text-center px-8">
                     <h3 class="font-headline-lg text-headline-lg text-primary">@lang('blog.cta_title')</h3>
                     <a href="https://apps.apple.com/app/id6795589223" onclick="typeof gtag === 'function' && gtag('event', 'app_store_click', { event_category: 'blog_cta' })">
-                        <img src="{{ asset('badges/black.svg') }}" alt="Download on the App Store" height="54">
+                        <img src="{{ asset('badges/black.svg') }}" alt="Download on the App Store" class="h-14 w-[168px]">
                     </a>
                 </div>
 
