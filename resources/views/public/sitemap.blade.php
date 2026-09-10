@@ -16,6 +16,10 @@
         <loc>{{ route('terms') }}</loc>
         <changefreq>yearly</changefreq>
     </url>
+    <url>
+        <loc>{{ route('what-is-vtrata') }}</loc>
+        <changefreq>monthly</changefreq>
+    </url>
 @foreach ($posts as $post)
     <url>
         <loc>{{ route('blog.show', $post->slug) }}</loc>

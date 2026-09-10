@@ -32,6 +32,9 @@ Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 Route::view('/privacy', 'public.privacy')->name('privacy');
 Route::view('/terms', 'public.terms')->name('terms');
 
+// GEO: structured, extractable product facts for AI answer engines (see docs on llms.txt)
+Route::view('/what-is-vtrata', 'public.what-is-vtrata')->name('what-is-vtrata');
+
 // Admin login (guest only)
 Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/admin/login', [AuthController::class, 'login']);

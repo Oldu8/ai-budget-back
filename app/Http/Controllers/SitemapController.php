@@ -22,12 +22,26 @@ class SitemapController extends Controller
 
     public function robots(): Response
     {
+        // AI assistant / answer-engine crawlers, explicitly allowed for GEO (citability in AI
+        // search) — listed by name since many boilerplates block them by default; here there's
+        // nothing to override, but this documents the decision instead of relying on the
+        // wildcard block below being silently permissive.
+        $aiCrawlers = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-Web', 'PerplexityBot', 'Google-Extended'];
+
         $lines = [
             'User-agent: *',
             'Allow: /',
             'Disallow: /admin',
-            'Sitemap: '.url('/sitemap.xml'),
+            '',
         ];
+
+        foreach ($aiCrawlers as $bot) {
+            $lines[] = "User-agent: {$bot}";
+            $lines[] = 'Allow: /';
+            $lines[] = '';
+        }
+
+        $lines[] = 'Sitemap: '.url('/sitemap.xml');
 
         return response(implode("\n", $lines), 200)
             ->header('Content-Type', 'text/plain');

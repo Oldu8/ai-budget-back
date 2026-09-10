@@ -29,9 +29,6 @@
     @isset($metaDescription)
         <meta name="description" content="{{ $metaDescription }}" />
     @endisset
-    @isset($metaKeywords)
-        <meta name="keywords" content="{{ $metaKeywords }}" />
-    @endisset
 
     <link rel="canonical" href="{{ $canonical ?? url()->current() }}" />
 
@@ -42,10 +39,16 @@
     <meta property="og:url" content="{{ $canonical ?? url()->current() }}" />
     @isset($ogImage)<meta property="og:image" content="{{ $ogImage }}" />@endisset
     <meta name="twitter:card" content="{{ isset($ogImage) ? 'summary_large_image' : 'summary' }}" />
+    @isset($ogImage)<meta name="twitter:image" content="{{ $ogImage }}" />@endisset
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    {{-- display=block (not swap): this is a ligature icon font — "swap" briefly renders the raw
+         text (e.g. "play_arrow") before the font loads, which looks broken. "block" hides that
+         text for a short window instead. Doesn't fully solve a permanently-blocked font (falls
+         back to visible text after ~3s either way) — self-hosting or inline SVG would close that
+         gap, but this fixes the common slow-network case cheaply. --}}
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
     <script id="tailwind-config">
         tailwind.config = {
             theme: {
@@ -162,13 +165,14 @@
 
             <nav class="hidden md:flex items-center gap-8">
                 <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="{{ route('home') }}#features">Features</a>
+                <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="{{ route('home') }}#pricing">Pricing</a>
                 <a class="font-label-lg text-label-lg transition-colors {{ request()->routeIs('blog.*') ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-secondary' }}" href="{{ route('blog.index') }}">Blog</a>
                 <a class="font-label-lg text-label-lg text-on-surface-variant hover:text-secondary transition-colors" href="{{ route('home') }}#faq">FAQ</a>
             </nav>
 
             <div class="flex items-center gap-4 md:gap-6">
                 <a href="{{ route('home') }}#download" class="bg-primary-container/80 text-white px-5 md:px-6 py-2.5 rounded-full font-label-lg text-label-lg hover:opacity-90 active:scale-95 transition-all shadow-sm whitespace-nowrap inline-flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[18px]">schedule</span> Coming soon
+                    <span class="material-symbols-outlined text-[18px]">download</span> Download
                 </a>
             </div>
         </div>
@@ -189,18 +193,29 @@
                         <span class="font-headline-md text-headline-md text-on-primary tracking-tight">{{ config('app.name') }}</span>
                     </div>
                     <p class="text-on-primary/60 font-body-md mb-6 max-w-xs">
-                        Making financial management a calm, automated experience for everyone.
+                        Making financial management automatic — for everyone.
                     </p>
                 </div>
                 <ul class="space-y-4 text-on-primary/60">
                     <li><a class="hover:text-white transition-colors" href="{{ route('home') }}#features">Features</a></li>
                     <li><a class="hover:text-white transition-colors" href="{{ route('home') }}#screens">Inside the app</a></li>
+                    <li><a class="hover:text-white transition-colors" href="{{ route('home') }}#pricing">Pricing</a></li>
                     <li><a class="hover:text-white transition-colors" href="{{ route('home') }}#faq">FAQ</a></li>
+                    <li><a class="hover:text-white transition-colors" href="{{ route('what-is-vtrata') }}">What is Vtrata?</a></li>
                 </ul>
                 <ul class="space-y-4 text-on-primary/60">
                     <li><a class="hover:text-white transition-colors" href="{{ route('blog.index') }}">Blog</a></li>
-                    <li><a class="hover:text-white transition-colors" href="mailto:support@vtrata.com">Get Help / Support</a></li>
                 </ul>
+            </div>
+            {{-- Support callout — moved off the first screen (a bug-report prompt before anyone
+                 knows what the product is undersells it); the footer is where people look once
+                 they're already invested or stuck. --}}
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left bg-white/5 rounded-2xl p-6 mb-12">
+                <span class="material-symbols-outlined text-on-primary/70">support_agent</span>
+                <p class="font-body-md text-body-md text-on-primary/70">
+                    Found a bug or have a problem? Reach out at
+                    <a href="mailto:support@vtrata.com" class="text-white font-bold hover:underline">support@vtrata.com</a>
+                </p>
             </div>
         </div>
         {{-- Full-width bottom bar: border spans the whole viewport, content stays centered --}}
@@ -215,6 +230,18 @@
         </div>
     </footer>
 
+    {{-- Sticky mobile install bar — desktop already has a permanent Download button in the fixed
+         header, so this is mobile-only, and only appears once scrolled past the first screen. --}}
+    <div id="sticky-cta"
+         class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-primary text-on-primary px-5 py-3 flex items-center justify-between gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.15)] opacity-0 translate-y-full pointer-events-none transition-all duration-300">
+        <span class="font-label-lg text-label-lg font-bold">Get Vtrata free</span>
+        <a href="https://apps.apple.com/app/id6795589223"
+           onclick="typeof gtag === 'function' && gtag('event', 'app_store_click', { event_category: 'sticky_mobile_cta' })"
+           class="bg-white text-primary px-5 py-2 rounded-full font-label-lg text-label-lg font-bold active:scale-95 transition-transform">
+            Download
+        </a>
+    </div>
+
     <script>
         // Sticky header subtle shadow on scroll
         window.addEventListener("scroll", () => {
@@ -224,22 +251,16 @@
             else header.classList.remove("shadow-md");
         });
 
-        // Generic carousel: scrolls the track by one visible item per click
-        document.querySelectorAll("[data-carousel]").forEach((track) => {
-            const root = track.closest("[data-carousel-root]") || document;
-            const step = () => {
-                const item = track.querySelector("[data-carousel-item]");
-                if (!item) return track.clientWidth;
-                const gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap || "0") || 0;
-                return item.getBoundingClientRect().width + gap;
-            };
-            root.querySelectorAll("[data-carousel-prev]").forEach((b) =>
-                b.addEventListener("click", () => track.scrollBy({ left: -step(), behavior: "smooth" }))
-            );
-            root.querySelectorAll("[data-carousel-next]").forEach((b) =>
-                b.addEventListener("click", () => track.scrollBy({ left: step(), behavior: "smooth" }))
-            );
-        });
+        // Sticky mobile install bar: show once scrolled roughly past the first screen
+        const stickyCta = document.getElementById("sticky-cta");
+        if (stickyCta) {
+            window.addEventListener("scroll", () => {
+                const show = window.scrollY > window.innerHeight * 0.8;
+                stickyCta.classList.toggle("opacity-0", !show);
+                stickyCta.classList.toggle("translate-y-full", !show);
+                stickyCta.classList.toggle("pointer-events-none", !show);
+            }, { passive: true });
+        }
     </script>
     @stack('scripts')
 </body>

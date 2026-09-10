@@ -1,0 +1,24 @@
+# Vtrata
+
+> AI-powered budgeting app that turns receipt photos and voice notes into categorized expense records, with no bank account linking.
+
+## Key facts
+
+- Platforms: iOS (live on the App Store), Android (not yet released)
+- Pricing: Free ($0, 20 AI scans/month), Basic ($3/mo, 200 scans), Plus ($6/mo, 500 scans), Premium ($10/mo, 2,000 scans + voice expense entry) — full details at /what-is-vtrata
+- App interface languages: English, Spanish, Ukrainian
+- Core capability: photograph a receipt or speak a purchase out loud; AI extracts the merchant, individual items, and total automatically
+- Key differentiator: unlike bank-linking budgeting apps, Vtrata never connects to a bank account — it works with cash, foreign cards, and in any country, and nothing breaks when a user switches banks or resets a password
+- Released on the App Store in September 2026
+
+## Pages
+
+- [Vtrata](https://vtrata.com/): Marketing homepage — features, pricing, FAQ
+- [What is Vtrata](https://vtrata.com/what-is-vtrata): Structured product facts — pricing table, platforms, languages, how it differs from bank-linking apps
+- [Blog](https://vtrata.com/blog): Budgeting and personal finance articles
+- [Privacy Policy](https://vtrata.com/privacy)
+- [Terms of Service](https://vtrata.com/terms)
+
+## Contact
+
+support@vtrata.com
