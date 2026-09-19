@@ -142,7 +142,7 @@
       },
       "body": {
         "currency": "string (USD, EUR, GBP, UAH, PLN, CHF, CAD, AUD, JPY, CNY, RUB, MXN, INR, BRL)",
-        "language": "string (en, uk, es)",
+        "language": "string (en, uk, es, ru)",
         "timezone": "string (IANA, e.g. Europe/Kyiv, America/New_York)"
       }
     },

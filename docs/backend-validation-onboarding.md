@@ -43,7 +43,7 @@ $validated['last_name'] = preg_replace('/\s+/', ' ', trim($validated['last_name'
 
 ```php
 $currencies = ['USD', 'EUR', 'GBP', 'UAH', 'PLN', 'CHF', 'CAD', 'AUD', 'JPY', 'CNY', 'RUB', 'MXN', 'INR', 'BRL'];
-$languages = ['en', 'uk', 'es'];
+$languages = ['en', 'uk', 'es', 'ru'];
 $timezones = [
     'UTC', 'Europe/Kyiv', 'Europe/Madrid', 'Europe/London', 'Europe/Paris',
     'Europe/Berlin', 'Europe/Warsaw', 'Europe/Moscow', 'America/New_York',
@@ -110,7 +110,7 @@ class CreateSettingsRequest extends FormRequest
     {
         return [
             'currency' => ['required', 'string', Rule::in($this->allowedCurrencies())],
-            'language' => ['required', 'string', Rule::in(['en', 'uk', 'es'])],
+            'language' => ['required', 'string', Rule::in(['en', 'uk', 'es', 'ru'])],
             'timezone' => ['required', 'string', Rule::in($this->allowedTimezones())],
         ];
     }

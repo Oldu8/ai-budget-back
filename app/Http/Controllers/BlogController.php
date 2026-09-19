@@ -28,7 +28,6 @@ class BlogController extends Controller
             'posts' => $posts,
             'title' => __('blog.meta_title'),
             'metaDescription' => __('blog.subtitle'),
-            'metaKeywords' => __('blog.keywords'),
             'canonical' => route('blog.index'),
         ]);
     }
@@ -57,8 +56,6 @@ class BlogController extends Controller
             'related' => $related,
             'title' => $post->metaTitleValue(),
             'metaDescription' => $post->metaDescriptionValue(),
-            // Hardcoded default for now; swap for a per-article keywords column later.
-            'metaKeywords' => __('blog.article_keywords'),
             'canonical' => route('blog.show', $post->slug),
             'ogType' => 'article',
             'ogImage' => $post->coverUrl(),

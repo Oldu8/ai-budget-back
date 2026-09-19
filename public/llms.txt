@@ -5,7 +5,7 @@
 ## Key facts
 
 - Platforms: iOS (live on the App Store), Android (not yet released)
-- Pricing: Free ($0, 20 AI scans/month), Basic ($3/mo, 200 scans), Plus ($6/mo, 500 scans), Premium ($10/mo, 2,000 scans + voice expense entry) — full details at /what-is-vtrata
+- Pricing: Free ($0, 20 AI scans/month), Basic ($3/mo, 200 scans), Plus ($5/mo, 500 scans), Premium ($10/mo, 2,000 scans + voice expense entry) — full details at /what-is-vtrata
 - App interface languages: English, Spanish, Ukrainian
 - Core capability: photograph a receipt or speak a purchase out loud; AI extracts the merchant, individual items, and total automatically
 - Key differentiator: unlike bank-linking budgeting apps, Vtrata never connects to a bank account — it works with cash, foreign cards, and in any country, and nothing breaks when a user switches banks or resets a password

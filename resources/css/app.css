@@ -5,7 +5,82 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* Public marketing site design tokens (Material-style palette, Inter type scale).
+   Names match the utility classes used in resources/views/public/*.blade.php. */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-headline-lg: 'Inter';
+    --font-headline-md: 'Inter';
+    --font-display-lg: 'Inter';
+    --font-display-lg-mobile: 'Inter';
+    --font-body-lg: 'Inter';
+    --font-body-md: 'Inter';
+    --font-label-lg: 'Inter';
+    --font-label-sm: 'Inter';
+
+    --color-primary: #002422;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #003b39;
+    --color-on-primary-container: #75a5a2;
+    --color-primary-fixed: #baece8;
+    --color-primary-fixed-dim: #9ed0cc;
+    --color-secondary: #006a66;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #9deee8;
+    --color-on-secondary-container: #0c6e6a;
+    --color-secondary-fixed: #a0f1eb;
+    --color-secondary-fixed-dim: #84d4cf;
+    --color-on-secondary-fixed: #00201e;
+    --color-tertiary: #371606;
+    --color-tertiary-fixed: #ffdbcd;
+    --color-tertiary-fixed-dim: #f6b8a0;
+    --color-error: #ba1a1a;
+    --color-error-container: #ffdad6;
+    --color-background: #f9f9f8;
+    --color-on-background: #191c1c;
+    --color-surface: #f9f9f8;
+    --color-on-surface: #191c1c;
+    --color-surface-variant: #e2e3e2;
+    --color-on-surface-variant: #404848;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f3f4f3;
+    --color-surface-container: #edeeed;
+    --color-surface-container-high: #e7e8e7;
+    --color-surface-container-highest: #e2e3e2;
+    --color-outline: #707978;
+    --color-outline-variant: #c0c8c7;
+
+    --spacing-base: 8px;
+    --spacing-gutter: 24px;
+    --spacing-container-max: 1200px;
+    --spacing-section-padding-desktop: 64px;
+    --spacing-section-padding-mobile: 40px;
+
+    --text-display-lg: 57px;
+    --text-display-lg--line-height: 64px;
+    --text-display-lg--letter-spacing: -0.02em;
+    --text-display-lg--font-weight: 800;
+    --text-display-lg-mobile: 40px;
+    --text-display-lg-mobile--line-height: 48px;
+    --text-display-lg-mobile--letter-spacing: -0.02em;
+    --text-display-lg-mobile--font-weight: 800;
+    --text-headline-lg: 32px;
+    --text-headline-lg--line-height: 40px;
+    --text-headline-lg--font-weight: 700;
+    --text-headline-md: 28px;
+    --text-headline-md--line-height: 36px;
+    --text-headline-md--font-weight: 700;
+    --text-body-lg: 18px;
+    --text-body-lg--line-height: 28px;
+    --text-body-lg--font-weight: 400;
+    --text-body-md: 16px;
+    --text-body-md--line-height: 24px;
+    --text-body-md--font-weight: 400;
+    --text-label-lg: 14px;
+    --text-label-lg--line-height: 20px;
+    --text-label-lg--letter-spacing: 0.1px;
+    --text-label-lg--font-weight: 600;
+    --text-label-sm: 12px;
+    --text-label-sm--line-height: 16px;
+    --text-label-sm--font-weight: 500;
 }

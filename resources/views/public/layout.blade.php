@@ -32,16 +32,16 @@
 
     <link rel="canonical" href="{{ $canonical ?? url()->current() }}" />
 
-    {{-- Open Graph / Twitter --}}
+    {{-- Open Graph / Twitter (falls back to the brand image so shares never render bare) --}}
+    @php $ogImage = $ogImage ?? asset('images/og-image.png'); @endphp
     <meta property="og:type" content="{{ $ogType ?? 'website' }}" />
     <meta property="og:title" content="{{ $title ?? config('app.name') }}" />
     @isset($metaDescription)<meta property="og:description" content="{{ $metaDescription }}" />@endisset
     <meta property="og:url" content="{{ $canonical ?? url()->current() }}" />
-    @isset($ogImage)<meta property="og:image" content="{{ $ogImage }}" />@endisset
-    <meta name="twitter:card" content="{{ isset($ogImage) ? 'summary_large_image' : 'summary' }}" />
-    @isset($ogImage)<meta name="twitter:image" content="{{ $ogImage }}" />@endisset
+    <meta property="og:image" content="{{ $ogImage }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="{{ $ogImage }}" />
 
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     {{-- display=block (not swap): this is a ligature icon font — "swap" briefly renders the raw
          text (e.g. "play_arrow") before the font loads, which looks broken. "block" hides that
@@ -49,68 +49,8 @@
          back to visible text after ~3s either way) — self-hosting or inline SVG would close that
          gap, but this fixes the common slow-network case cheaply. --}}
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
-    <script id="tailwind-config">
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#002422",
-                        "on-primary": "#ffffff",
-                        "primary-container": "#003b39",
-                        "on-primary-container": "#75a5a2",
-                        "primary-fixed": "#baece8",
-                        "primary-fixed-dim": "#9ed0cc",
-                        "secondary": "#006a66",
-                        "on-secondary": "#ffffff",
-                        "secondary-container": "#9deee8",
-                        "on-secondary-container": "#0c6e6a",
-                        "secondary-fixed": "#a0f1eb",
-                        "secondary-fixed-dim": "#84d4cf",
-                        "on-secondary-fixed": "#00201e",
-                        "tertiary": "#371606",
-                        "tertiary-fixed": "#ffdbcd",
-                        "tertiary-fixed-dim": "#f6b8a0",
-                        "error": "#ba1a1a",
-                        "error-container": "#ffdad6",
-                        "background": "#f9f9f8",
-                        "on-background": "#191c1c",
-                        "surface": "#f9f9f8",
-                        "on-surface": "#191c1c",
-                        "surface-variant": "#e2e3e2",
-                        "on-surface-variant": "#404848",
-                        "surface-container-lowest": "#ffffff",
-                        "surface-container-low": "#f3f4f3",
-                        "surface-container": "#edeeed",
-                        "surface-container-high": "#e7e8e7",
-                        "surface-container-highest": "#e2e3e2",
-                        "outline": "#707978",
-                        "outline-variant": "#c0c8c7",
-                    },
-                    borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
-                    spacing: {
-                        base: "8px", gutter: "24px", "container-max": "1200px",
-                        /* Tightened vertical rhythm for a denser, calmer page */
-                        "section-padding-desktop": "64px", "section-padding-mobile": "40px",
-                    },
-                    fontFamily: {
-                        "headline-lg": ["Inter"], "headline-md": ["Inter"], "display-lg": ["Inter"],
-                        "display-lg-mobile": ["Inter"], "body-lg": ["Inter"], "body-md": ["Inter"],
-                        "label-lg": ["Inter"], "label-sm": ["Inter"],
-                    },
-                    fontSize: {
-                        "display-lg": ["57px", { lineHeight: "64px", letterSpacing: "-0.02em", fontWeight: "800" }],
-                        "display-lg-mobile": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "800" }],
-                        "headline-lg": ["32px", { lineHeight: "40px", fontWeight: "700" }],
-                        "headline-md": ["28px", { lineHeight: "36px", fontWeight: "700" }],
-                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
-                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
-                        "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.1px", fontWeight: "600" }],
-                        "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
-                    },
-                },
-            },
-        };
-    </script>
+    {{-- Tailwind is compiled by Vite (resources/css/app.css holds the theme tokens) --}}
+    @vite('resources/css/app.css')
     <style>
         body { background-color: #f9f9f8; color: #191c1c; -webkit-font-smoothing: antialiased; font-family: "Inter", sans-serif; }
         .glass-header { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background: rgba(249, 249, 248, 0.8); border-bottom: 1px solid rgba(111, 121, 120, 0.1); }
@@ -174,8 +114,22 @@
                 <a href="{{ route('home') }}#download" class="bg-primary-container/80 text-white px-5 md:px-6 py-2.5 rounded-full font-label-lg text-label-lg hover:opacity-90 active:scale-95 transition-all shadow-sm whitespace-nowrap inline-flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[18px]">download</span> Download
                 </a>
+                {{-- Mobile-only menu toggle; the desktop nav above is hidden below md --}}
+                <button id="nav-toggle" type="button" class="md:hidden w-10 h-10 -mr-2 flex items-center justify-center rounded-full text-primary hover:bg-surface-container transition-colors cursor-pointer" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
             </div>
         </div>
+
+        {{-- Mobile nav panel: drops down from the fixed header, closed by default --}}
+        <nav id="mobile-nav" hidden class="md:hidden absolute top-full inset-x-0 glass-header shadow-md">
+            <div class="px-gutter py-2 flex flex-col">
+                <a class="py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-outline-variant/20" href="{{ route('home') }}#features">Features</a>
+                <a class="py-3 font-label-lg text-label-lg text-on-surface-variant border-b border-outline-variant/20" href="{{ route('home') }}#pricing">Pricing</a>
+                <a class="py-3 font-label-lg text-label-lg border-b border-outline-variant/20 {{ request()->routeIs('blog.*') ? 'text-primary font-bold' : 'text-on-surface-variant' }}" href="{{ route('blog.index') }}">Blog</a>
+                <a class="py-3 font-label-lg text-label-lg text-on-surface-variant" href="{{ route('home') }}#faq">FAQ</a>
+            </div>
+        </nav>
     </header>
 
     {{-- Grows to fill the viewport so the footer stays pinned to the bottom on short pages --}}
@@ -250,6 +204,19 @@
             if (window.scrollY > 20) header.classList.add("shadow-md");
             else header.classList.remove("shadow-md");
         });
+
+        // Mobile nav toggle; closes itself after a link is tapped
+        const navToggle = document.getElementById("nav-toggle");
+        const mobileNav = document.getElementById("mobile-nav");
+        if (navToggle && mobileNav) {
+            const setOpen = (open) => {
+                mobileNav.hidden = !open;
+                navToggle.setAttribute("aria-expanded", String(open));
+                navToggle.querySelector("span").textContent = open ? "close" : "menu";
+            };
+            navToggle.addEventListener("click", () => setOpen(mobileNav.hidden));
+            mobileNav.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setOpen(false)));
+        }
 
         // Sticky mobile install bar: show once scrolled roughly past the first screen
         const stickyCta = document.getElementById("sticky-cta");

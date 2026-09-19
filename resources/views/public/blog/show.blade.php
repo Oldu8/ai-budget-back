@@ -7,6 +7,7 @@
             '@context' => 'https://schema.org',
             '@type' => 'Article',
             'headline' => $post->title,
+            'author' => ['@type' => 'Organization', 'name' => config('app.name')],
             'description' => $post->metaDescriptionValue(),
             'inLanguage' => $locale,
             'datePublished' => optional($post->published_at)->toIso8601String(),
@@ -131,7 +132,7 @@
 
     {{-- Back to top --}}
     <button id="to-top" aria-label="Back to top"
-            class="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-on-primary shadow-lg flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 hover:brightness-110">
+            class="fixed bottom-20 md:bottom-6 right-6 z-40 w-12 h-12 rounded-full cursor-pointer bg-primary text-on-primary shadow-lg flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 hover:brightness-110">
         <span class="material-symbols-outlined">arrow_upward</span>
     </button>
     <script>

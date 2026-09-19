@@ -5,9 +5,6 @@ return [
     'subtitle' => 'Expert tips on smart budgeting and achieving financial serenity.',
     // SEO: meta_title feeds <title>/og:title (richer than the H1); subtitle doubles as the meta description.
     'meta_title' => 'Budgeting Tips & Money Management Guides',
-    'keywords' => 'budgeting tips, personal finance blog, money management, saving money, expense tracking, financial planning, budget app tips',
-    // Hardcoded default keywords applied to every article for now (per-article keywords come later).
-    'article_keywords' => 'budgeting, personal finance, money management, saving tips, expense tracking, receipt scanning',
     'empty' => 'No articles yet. Check back soon.',
     'read_article' => 'Read Article',
     'min_read' => ':count min read',

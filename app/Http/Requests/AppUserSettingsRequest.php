@@ -41,7 +41,7 @@ class AppUserSettingsRequest extends FormRequest
 
     private function allowedLanguages(): array
     {
-        return ['en', 'uk', 'es'];
+        return ['en', 'uk', 'es', 'ru'];
     }
 
     private function allowedTimezones(): array

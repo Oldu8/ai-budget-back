@@ -1,7 +1,7 @@
 {
   "name": "Vtrata",
   "short_name": "Vtrata",
-  "description": "Сканируй чеки и держи бюджет под контролем",
+  "description": "Scan receipts and keep your budget under control",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f9f9f8",
@@ -16,12 +16,6 @@
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
-    },
-    {
-      "src": "icon-1024-square.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }

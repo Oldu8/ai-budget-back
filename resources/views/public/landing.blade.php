@@ -18,7 +18,7 @@
             'features' => ['200 AI scans / month (1 photo)', 'Unlimited history', 'Custom categories', 'CSV export'],
         ],
         [
-            'name' => 'Plus', 'price' => '$6', 'highlight' => true,
+            'name' => 'Plus', 'price' => '$5', 'highlight' => true,
             'features' => ['500 AI scans / month (multi-photo)', 'Recurring expenses', 'Analytics dashboard', 'CSV export'],
         ],
         [
@@ -102,7 +102,7 @@
                                  pill's real height here (measured), keeping the 2.9916:1 ratio. --}}
                             <img src="{{ asset('badges/black.svg') }}" alt="Download on the App Store" class="h-[54px] w-[162px]">
                         </a>
-                        <div class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 opacity-60 cursor-not-allowed select-none">
+                        <div class="bg-primary text-on-primary px-6 py-3 rounded-full flex items-center gap-2 opacity-60 cursor-not-allowed select-none" onclick="typeof gtag === 'function' && gtag('event', 'google_play_interest', { event_category: 'landing_hero' })">
                             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>
                             <span class="flex flex-col items-start leading-none">
                                 <span class="text-[10px] font-label-sm uppercase opacity-80">Coming soon</span>
@@ -249,7 +249,7 @@
 
         {{-- ============ Pricing ============ --}}
         {{--
-            Prices confirmed by product owner to match Stripe (2026-09): Basic $3, Plus $6, Premium $10/mo.
+            Prices confirmed by product owner to match Stripe (2026-09): Basic $3, Plus $5, Premium $10/mo.
             Feature/quota bullets come straight from database/data/plans.php (live-enforced via
             FeatureAccessService). If Stripe prices change, update the `$plans` array below to match.
         --}}
@@ -317,7 +317,7 @@
                              this section uses more padding than the hero, hence the bigger pill). --}}
                         <img src="{{ asset('badges/white.svg') }}" alt="Download on the App Store" class="h-[62px] w-[185px]">
                     </a>
-                    <div class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 opacity-70 cursor-not-allowed select-none">
+                    <div class="bg-surface-container-lowest text-primary px-8 py-4 rounded-full flex items-center justify-center gap-3 opacity-70 cursor-not-allowed select-none" onclick="typeof gtag === 'function' && gtag('event', 'google_play_interest', { event_category: 'landing_final_cta' })">
                         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>
                         <span class="flex flex-col items-start leading-none">
                             <span class="text-[10px] font-label-sm uppercase opacity-70">Coming soon</span>

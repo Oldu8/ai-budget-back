@@ -30,12 +30,12 @@
                         <tbody class="text-on-surface-variant">
                             <tr class="border-b border-outline-variant/10"><td class="py-3 pr-4">Free</td><td class="py-3 pr-4">$0</td><td class="py-3">20 (1 photo per scan)</td></tr>
                             <tr class="border-b border-outline-variant/10"><td class="py-3 pr-4">Basic</td><td class="py-3 pr-4">$3/mo</td><td class="py-3">200 (1 photo per scan)</td></tr>
-                            <tr class="border-b border-outline-variant/10"><td class="py-3 pr-4">Plus</td><td class="py-3 pr-4">$6/mo</td><td class="py-3">500 (multiple photos per scan)</td></tr>
+                            <tr class="border-b border-outline-variant/10"><td class="py-3 pr-4">Plus</td><td class="py-3 pr-4">$5/mo</td><td class="py-3">500 (multiple photos per scan)</td></tr>
                             <tr><td class="py-3 pr-4">Premium</td><td class="py-3 pr-4">$10/mo</td><td class="py-3">2,000 (multiple photos per scan)</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="font-body-sm text-body-sm text-on-surface-variant mt-4">All plans include unlimited manual entry. Basic and above add unlimited history, custom categories, and CSV export. Plus and Premium add recurring expenses and an analytics dashboard. Voice expense entry is Premium-only.</p>
+                <p class="text-[14px] leading-5 text-on-surface-variant mt-4">All plans include unlimited manual entry. Basic and above add unlimited history, custom categories, and CSV export. Plus and Premium add recurring expenses and an analytics dashboard. Voice expense entry is Premium-only.</p>
             </div>
 
             <div>
